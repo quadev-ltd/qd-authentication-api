@@ -15,10 +15,8 @@ func main() {
 	var config config.Config
 	config.Load()
 
-	mongoDBUri := config.MongoURI
-
 	// Create a MongoDB client and collection
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoDBUri))
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.MongoURI))
 	if err != nil {
 		fmt.Printf("Error connecting to the Cluster: %v", err)
 		log.Fatal(err)
