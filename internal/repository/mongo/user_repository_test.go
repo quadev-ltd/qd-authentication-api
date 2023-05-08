@@ -11,7 +11,7 @@ import (
 func TestMockUserRepository_Create(test *testing.T) {
 	mockRepo := &MockUserRepository{}
 	user := &model.User{
-		ID:               uuid.NewString(),
+		ID:               uuid.New(),
 		Email:            "mockuser@example.com",
 		Username:         "mockuser",
 		PasswordHash:     "hashedpassword",

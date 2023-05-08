@@ -2,25 +2,38 @@ package model
 
 import (
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
+
+type AccountStatus int
 
 type User struct {
-	ID               string `validate:"required,uuid"`
-	Email            string `validate:"required,email"`
-	Username         string
-	PasswordHash     string `validate:"required,len=64"`
-	PasswordSalt     string
-	FirstName        string
-	LastName         string
-	DateOfBirth      time.Time
-	RegistrationDate time.Time
-	LastLoginDate    time.Time
-	AccountStatus    int
+	ID               uuid.UUID     `validate:"required"`
+	Email            string        `validate:"required,email"`
+	Username         string        `validate:"required,min=3,max=30"`
+	PasswordHash     string        `validate:"required"`
+	PasswordSalt     string        `validate:"required"`
+	FirstName        string        `validate:"required,min=2,max=30"`
+	LastName         string        `validate:"required,min=2,max=30"`
+	DateOfBirth      time.Time     `validate:"required"`
+	RegistrationDate time.Time     `validate:"required"`
+	LastLoginDate    time.Time     `validate:"omitempty"`
+	AccountStatus    AccountStatus `validate:"required"`
 }
 
-// AccountStatus values
 const (
-	AccountStatusActive   = 1
-	AccountStatusDisabled = 2
-	AccountStatusDeleted  = 3
+	AccountStatusActive   AccountStatus = 1
+	AccountStatusDisabled AccountStatus = 2
+	AccountStatusDeleted  AccountStatus = 3
 )
+
+func ValidateUser(user *User) error {
+	validate := validator.New()
+	err := validate.Struct(user)
+	if err != nil {
+		return err
+	}
+	return nil
+}
