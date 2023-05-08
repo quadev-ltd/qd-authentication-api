@@ -25,7 +25,7 @@ func TestValidateValidUser(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.Nil(t, err)
+	assert.Nil(test, err)
 }
 
 func TestValidateValidUserWithNoLoginDate(test *testing.T) {
@@ -43,7 +43,7 @@ func TestValidateValidUserWithNoLoginDate(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.Nil(t, err)
+	assert.Nil(test, err)
 }
 
 func TestValidateUserMissingID(test *testing.T) {
@@ -60,10 +60,10 @@ func TestValidateUserMissingID(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "ID")
+	assert.NotNil(test, err)
+	assert.Contains(test, err.Error(), "ID")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(t, errors, 1)
+	assert.Len(test, errors, 1)
 }
 
 func TestValidateUserInvalidEmail(test *testing.T) {
@@ -81,10 +81,10 @@ func TestValidateUserInvalidEmail(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "Email")
+	assert.NotNil(test, err)
+	assert.Contains(test, err.Error(), "Email")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(t, errors, 1)
+	assert.Len(test, errors, 1)
 }
 
 func TestValidateUserInvalidUserNames(test *testing.T) {
@@ -102,12 +102,12 @@ func TestValidateUserInvalidUserNames(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "Username")
-	assert.Contains(t, err.Error(), "FirstName")
-	assert.Contains(t, err.Error(), "LastName")
+	assert.NotNil(test, err)
+	assert.Contains(test, err.Error(), "Username")
+	assert.Contains(test, err.Error(), "FirstName")
+	assert.Contains(test, err.Error(), "LastName")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(t, errors, 3)
+	assert.Len(test, errors, 3)
 }
 
 func TestValidateUserMissingBirthDate(test *testing.T) {
@@ -123,9 +123,9 @@ func TestValidateUserMissingBirthDate(test *testing.T) {
 		AccountStatus: AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "DateOfBirth")
-	assert.Contains(t, err.Error(), "RegistrationDate")
+	assert.NotNil(test, err)
+	assert.Contains(test, err.Error(), "DateOfBirth")
+	assert.Contains(test, err.Error(), "RegistrationDate")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(t, errors, 2)
+	assert.Len(test, errors, 2)
 }
