@@ -12,7 +12,6 @@ type AccountStatus int
 type User struct {
 	ID               uuid.UUID     `validate:"required"`
 	Email            string        `validate:"required,email"`
-	Username         string        `validate:"required,min=3,max=30"`
 	PasswordHash     string        `validate:"required"`
 	PasswordSalt     string        `validate:"required"`
 	FirstName        string        `validate:"required,min=2,max=30"`

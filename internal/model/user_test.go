@@ -14,7 +14,6 @@ func TestValidateValidUser(test *testing.T) {
 	user := &User{
 		ID:               uuid.New(),
 		Email:            "test@example.com",
-		Username:         "testuser",
 		PasswordHash:     "hash",
 		PasswordSalt:     "salt",
 		FirstName:        "Test",
@@ -33,7 +32,6 @@ func TestValidateValidUserWithNoLoginDate(test *testing.T) {
 	user := &User{
 		ID:               uuid.New(),
 		Email:            "test@example.com",
-		Username:         "testuser",
 		PasswordHash:     "hash",
 		PasswordSalt:     "salt",
 		FirstName:        "Test",
@@ -49,7 +47,6 @@ func TestValidateValidUserWithNoLoginDate(test *testing.T) {
 func TestValidateUserMissingID(test *testing.T) {
 	user := &User{
 		Email:            "test@example.com",
-		Username:         "testuser",
 		PasswordHash:     "hash",
 		PasswordSalt:     "salt",
 		FirstName:        "Test",
@@ -70,7 +67,6 @@ func TestValidateUserInvalidEmail(test *testing.T) {
 	user := &User{
 		ID:               uuid.New(),
 		Email:            "test-example.com",
-		Username:         "testuser",
 		PasswordHash:     "hash",
 		PasswordSalt:     "salt",
 		FirstName:        "Test",
@@ -91,7 +87,6 @@ func TestValidateUserInvalidUserNames(test *testing.T) {
 	user := &User{
 		ID:               uuid.New(),
 		Email:            "test@example.com",
-		Username:         "t",
 		PasswordHash:     "hash",
 		PasswordSalt:     "salt",
 		FirstName:        "T",
@@ -103,18 +98,16 @@ func TestValidateUserInvalidUserNames(test *testing.T) {
 	}
 	err := ValidateUser(user)
 	assert.NotNil(test, err)
-	assert.Contains(test, err.Error(), "Username")
 	assert.Contains(test, err.Error(), "FirstName")
 	assert.Contains(test, err.Error(), "LastName")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(test, errors, 3)
+	assert.Len(test, errors, 2)
 }
 
 func TestValidateUserMissingBirthDate(test *testing.T) {
 	user := &User{
 		ID:            uuid.New(),
 		Email:         "test@example.com",
-		Username:      "testuser",
 		PasswordHash:  "hash",
 		PasswordSalt:  "salt",
 		FirstName:     "Test",
