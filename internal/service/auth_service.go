@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 	"time"
@@ -12,23 +11,27 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const SecretKey = "your-secret-key"
+type AuthServicer interface {
+	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
+}
 
 type AuthService struct {
 	userRepo repository.UserRepository
 }
 
+var _ AuthServicer = &AuthService{}
+
 func NewAuthService(userRepo repository.UserRepository) *AuthService {
 	return &AuthService{userRepo: userRepo}
 }
 
-func (s *AuthService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
-	existingUser, error := s.userRepo.GetByEmail(email)
+func (service *AuthService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
+	existingUser, error := service.userRepo.GetByEmail(email)
 	if error != nil {
 		return error
 	}
 	if existingUser != nil {
-		return fmt.Errorf("email is already in use")
+		return &model.EmailInUseError{Email: email}
 	}
 
 	// Generate salt
@@ -62,7 +65,7 @@ func (s *AuthService) Register(email, password, firstName, lastName string, date
 	}
 
 	// Create the user in the repository
-	if error := s.userRepo.Create(user); error != nil {
+	if error := service.userRepo.Create(user); error != nil {
 		return error
 	}
 

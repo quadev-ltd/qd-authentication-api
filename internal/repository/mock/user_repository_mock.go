@@ -1,4 +1,4 @@
-package repository
+package mock
 
 import (
 	"qd_authentication_api/internal/model"

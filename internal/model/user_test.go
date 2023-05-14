@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateValidUser(test *testing.T) {
+func testValidateValidUser(t *testing.T) {
 	// Valid user
 	user := &User{
 		ID:               uuid.New(),
@@ -24,10 +24,10 @@ func TestValidateValidUser(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.Nil(test, err)
+	assert.Nil(t, err)
 }
 
-func TestValidateValidUserWithNoLoginDate(test *testing.T) {
+func testValidateValidUserWithNoLoginDate(t *testing.T) {
 	// Valid user
 	user := &User{
 		ID:               uuid.New(),
@@ -41,10 +41,10 @@ func TestValidateValidUserWithNoLoginDate(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.Nil(test, err)
+	assert.Nil(t, err)
 }
 
-func TestValidateUserMissingID(test *testing.T) {
+func testValidateUserMissingID(t *testing.T) {
 	user := &User{
 		Email:            "test@example.com",
 		PasswordHash:     "hash",
@@ -57,13 +57,13 @@ func TestValidateUserMissingID(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(test, err)
-	assert.Contains(test, err.Error(), "ID")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "ID")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(test, errors, 1)
+	assert.Len(t, errors, 1)
 }
 
-func TestValidateUserInvalidEmail(test *testing.T) {
+func testValidateUserInvalidEmail(t *testing.T) {
 	user := &User{
 		ID:               uuid.New(),
 		Email:            "test-example.com",
@@ -77,13 +77,13 @@ func TestValidateUserInvalidEmail(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(test, err)
-	assert.Contains(test, err.Error(), "Email")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "Email")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(test, errors, 1)
+	assert.Len(t, errors, 1)
 }
 
-func TestValidateUserInvalidUserNames(test *testing.T) {
+func testValidateUserInvalidUserNames(t *testing.T) {
 	user := &User{
 		ID:               uuid.New(),
 		Email:            "test@example.com",
@@ -97,14 +97,14 @@ func TestValidateUserInvalidUserNames(test *testing.T) {
 		AccountStatus:    AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(test, err)
-	assert.Contains(test, err.Error(), "FirstName")
-	assert.Contains(test, err.Error(), "LastName")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "FirstName")
+	assert.Contains(t, err.Error(), "LastName")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(test, errors, 2)
+	assert.Len(t, errors, 2)
 }
 
-func TestValidateUserMissingBirthDate(test *testing.T) {
+func testValidateUserMissingBirthDate(t *testing.T) {
 	user := &User{
 		ID:            uuid.New(),
 		Email:         "test@example.com",
@@ -116,9 +116,39 @@ func TestValidateUserMissingBirthDate(test *testing.T) {
 		AccountStatus: AccountStatusActive,
 	}
 	err := ValidateUser(user)
-	assert.NotNil(test, err)
-	assert.Contains(test, err.Error(), "DateOfBirth")
-	assert.Contains(test, err.Error(), "RegistrationDate")
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "DateOfBirth")
+	assert.Contains(t, err.Error(), "RegistrationDate")
 	errors := err.(validator.ValidationErrors)
-	assert.Len(test, errors, 2)
+	assert.Len(t, errors, 2)
+}
+
+func testValidateUserBirthDateInFuture(t *testing.T) {
+	user := &User{
+		ID:               uuid.New(),
+		Email:            "test@example.com",
+		PasswordHash:     "hash",
+		PasswordSalt:     "salt",
+		FirstName:        "Test",
+		LastName:         "User",
+		DateOfBirth:      time.Now().Add(24 * time.Hour), // This is one day in the future
+		RegistrationDate: time.Now(),
+		LastLoginDate:    time.Now(),
+		AccountStatus:    AccountStatusActive,
+	}
+	err := ValidateUser(user)
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "DateOfBirth")
+	errors := err.(validator.ValidationErrors)
+	assert.Len(t, errors, 1)
+}
+
+func TestValidateUser(t *testing.T) {
+	t.Run("Valid User", testValidateValidUser)
+	t.Run("Valid User With No Login Date", testValidateValidUserWithNoLoginDate)
+	t.Run("Missing ID", testValidateUserMissingID)
+	t.Run("Invalid Email", testValidateUserInvalidEmail)
+	t.Run("Invalid User Names", testValidateUserInvalidUserNames)
+	t.Run("Missing Birth Date", testValidateUserMissingBirthDate)
+	t.Run("Birth Date In Future", testValidateUserBirthDateInFuture)
 }

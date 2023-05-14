@@ -1,4 +1,4 @@
-package repository
+package mongo
 
 import (
 	"context"
@@ -13,21 +13,21 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func TestMongoUserRepository_Create(test *testing.T) {
+func testMongoUserRepository_Create(test *testing.T) {
 	// Setup
 	mongoServer, error := memongo.Start("4.0.5")
 	if error != nil {
-		test.Fatalf("failed to start memongo: %v", error)
+		test.Fatalf("Failed to start memongo: %v", error)
 	}
 	defer mongoServer.Stop()
 
 	client, error := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
 	if error != nil {
-		test.Fatalf("failed to create mongo client: %v", error)
+		test.Fatalf("Failed to create mongo client: %v", error)
 	}
 
 	if error := client.Connect(context.Background()); error != nil {
-		test.Fatalf("failed to connect mongo client: %v", error)
+		test.Fatalf("Failed to connect mongo client: %v", error)
 	}
 	defer client.Disconnect(context.Background())
 
@@ -55,21 +55,21 @@ func TestMongoUserRepository_Create(test *testing.T) {
 	assert.Equal(test, user.Email, foundUser.Email)
 }
 
-func TestMongoUserRepository_GetByEmail_NotFound(test *testing.T) {
+func testMongoUserRepository_GetByEmail_NotFound(test *testing.T) {
 	// Setup
 	mongoServer, error := memongo.Start("4.0.5")
 	if error != nil {
-		test.Fatalf("failed to start memongo: %v", error)
+		test.Fatalf("Failed to start memongo: %v", error)
 	}
 	defer mongoServer.Stop()
 
 	client, error := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
 	if error != nil {
-		test.Fatalf("failed to create mongo client: %v", error)
+		test.Fatalf("Failed to create mongo client: %v", error)
 	}
 
 	if error := client.Connect(context.Background()); error != nil {
-		test.Fatalf("failed to connect mongo client: %v", error)
+		test.Fatalf("Failed to connect mongo client: %v", error)
 	}
 	defer client.Disconnect(context.Background())
 
@@ -79,4 +79,10 @@ func TestMongoUserRepository_GetByEmail_NotFound(test *testing.T) {
 	email := "notfound@example.com"
 	_, error = repo.GetByEmail(email)
 	assert.Error(test, error)
+}
+
+func TestMongoUserRepository(test *testing.T) {
+	// Run all the test functions
+	test.Run("Create", testMongoUserRepository_Create)
+	test.Run("GetByEmail Not Found", testMongoUserRepository_GetByEmail_NotFound)
 }

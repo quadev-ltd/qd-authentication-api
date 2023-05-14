@@ -1,8 +1,8 @@
 package service
 
 import (
-	"errors"
-	"qd_authentication_api/internal/repository"
+	"qd_authentication_api/internal/model"
+	"qd_authentication_api/internal/repository/mock"
 	"testing"
 	"time"
 
@@ -19,7 +19,7 @@ const (
 var testDateOfBirth = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func testAuthService_Register_Success(test *testing.T) {
-	mockRepo := &repository.MockUserRepository{}
+	mockRepo := &mock.MockUserRepository{}
 	authService := NewAuthService(mockRepo)
 
 	// Test successful registration
@@ -29,17 +29,19 @@ func testAuthService_Register_Success(test *testing.T) {
 }
 
 func testAuthService_Register_EmailUniqueness(test *testing.T) {
-	mockRepo := &repository.MockUserRepository{}
+	mockRepo := &mock.MockUserRepository{}
 	authService := NewAuthService(mockRepo)
 
 	_ = authService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
-	err := authService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
-	assert.Error(test, err)
-	assert.Equal(test, errors.New("email is already in use"), err)
+	error := authService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+
+	assert.Error(test, error)
+
+	assert.Equal(test, (&model.EmailInUseError{Email: "test@example.com"}).Error(), error.Error())
 }
 
 func testAuthService_Register_InvalidEmail(test *testing.T) {
-	mockRepo := &repository.MockUserRepository{}
+	mockRepo := &mock.MockUserRepository{}
 	authService := NewAuthService(mockRepo)
 	invalidEmail := "invalid-email"
 
@@ -49,7 +51,7 @@ func testAuthService_Register_InvalidEmail(test *testing.T) {
 }
 
 func testAuthService_Register_InvalidDateOfBirth(test *testing.T) {
-	mockRepo := &repository.MockUserRepository{}
+	mockRepo := &mock.MockUserRepository{}
 	authService := NewAuthService(mockRepo)
 
 	invalidDateOfBirth := time.Time{}
