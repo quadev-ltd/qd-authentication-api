@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"errors"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 
@@ -23,20 +22,20 @@ func NewMongoUserRepository(client *mongo.Client) *MongoUserRepository {
 }
 
 func (mongoUserRepository *MongoUserRepository) Create(user *model.User) error {
-	collection := mongoUserRepository.client.Database(mongoUserRepository.dbName).Collection("users")
+	collection := mongoUserRepository.client.Database(mongoUserRepository.dbName).Collection(mongoUserRepository.collectionName)
 	_, err := collection.InsertOne(context.Background(), user)
 	return err
 }
 
 func (mongoUserRepository *MongoUserRepository) GetByEmail(email string) (*model.User, error) {
-	collection := mongoUserRepository.client.Database(mongoUserRepository.dbName).Collection("users")
+	collection := mongoUserRepository.client.Database(mongoUserRepository.dbName).Collection(mongoUserRepository.collectionName)
 	filter := bson.M{"email": email}
 	var foundUser model.User
 
 	err := collection.FindOne(context.Background(), filter).Decode(&foundUser)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("user not found")
+			return nil, nil
 		}
 		return nil, err
 	}

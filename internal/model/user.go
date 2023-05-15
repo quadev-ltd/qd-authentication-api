@@ -5,13 +5,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 )
 
 type AccountStatus int
 
 type User struct {
-	ID               uuid.UUID     `validate:"required"`
 	Email            string        `validate:"required,email"`
 	PasswordHash     string        `validate:"required"`
 	PasswordSalt     string        `validate:"required"`

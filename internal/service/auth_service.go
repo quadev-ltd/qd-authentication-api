@@ -7,7 +7,6 @@ import (
 	"qd_authentication_api/internal/repository"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -48,7 +47,6 @@ func (service *AuthService) Register(email, password, firstName, lastName string
 	}
 
 	user := &model.User{
-		ID:               uuid.New(),
 		Email:            email,
 		PasswordHash:     string(hashedPassword),
 		PasswordSalt:     salt,

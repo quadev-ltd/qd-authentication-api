@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/benweissmann/memongo"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -34,7 +33,6 @@ func testMongoUserRepository_Create(test *testing.T) {
 	repo := NewMongoUserRepository(client)
 
 	user := &model.User{
-		ID:               uuid.New(),
 		Email:            "test@example.com",
 		PasswordHash:     "hashed_password",
 		PasswordSalt:     "salt",
@@ -77,8 +75,9 @@ func testMongoUserRepository_GetByEmail_NotFound(test *testing.T) {
 
 	// Test GetByEmail
 	email := "notfound@example.com"
-	_, error = repo.GetByEmail(email)
-	assert.Error(test, error)
+	user, error := repo.GetByEmail(email)
+	assert.Nil(test, error)
+	assert.Nil(test, user)
 }
 
 func TestMongoUserRepository(test *testing.T) {
