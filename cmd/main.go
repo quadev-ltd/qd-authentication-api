@@ -26,7 +26,16 @@ func main() {
 	defer client.Disconnect(context.Background())
 
 	userRepo := mongoRepository.NewMongoUserRepository(client)
-	authService := service.NewAuthService(userRepo)
+	emailServiceConfig := service.EmailServiceConfig{
+		AppName:  config.App.Name,
+		BaseUrl:  config.App.BaseUrl,
+		From:     config.SMTP.Username,
+		Password: config.SMTP.Password,
+		Host:     config.SMTP.Host,
+		Port:     config.SMTP.Port,
+	}
+	emailService := service.NewEmailService(emailServiceConfig, &service.SmtpService{})
+	authService := service.NewAuthService(emailService, userRepo)
 	router := router.SetupRoutes(authService)
 
 	// Start the HTTP server

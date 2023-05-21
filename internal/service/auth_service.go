@@ -15,13 +15,14 @@ type AuthServicer interface {
 }
 
 type AuthService struct {
-	userRepo repository.UserRepository
+	emailService EmailServicer
+	userRepo     repository.UserRepository
 }
 
 var _ AuthServicer = &AuthService{}
 
-func NewAuthService(userRepo repository.UserRepository) *AuthService {
-	return &AuthService{userRepo: userRepo}
+func NewAuthService(emailService EmailServicer, userRepo repository.UserRepository) *AuthService {
+	return &AuthService{userRepo: userRepo, emailService: emailService}
 }
 
 func (service *AuthService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
@@ -46,15 +47,21 @@ func (service *AuthService) Register(email, password, firstName, lastName string
 		return error
 	}
 
+	verificationToken, error := generateVerificationToken()
+	if error != nil {
+		return error
+	}
+
 	user := &model.User{
-		Email:            email,
-		PasswordHash:     string(hashedPassword),
-		PasswordSalt:     salt,
-		FirstName:        firstName,
-		LastName:         lastName,
-		DateOfBirth:      *dateOfBirth,
-		RegistrationDate: time.Now(),
-		AccountStatus:    model.AccountStatusActive,
+		Email:             email,
+		VerificationToken: verificationToken,
+		PasswordHash:      string(hashedPassword),
+		PasswordSalt:      salt,
+		FirstName:         firstName,
+		LastName:          lastName,
+		DateOfBirth:       *dateOfBirth,
+		RegistrationDate:  time.Now(),
+		AccountStatus:     model.AccountStatusUnverified,
 	}
 
 	// Validate the user object
@@ -64,6 +71,10 @@ func (service *AuthService) Register(email, password, firstName, lastName string
 
 	// Create the user in the repository
 	if error := service.userRepo.Create(user); error != nil {
+		return error
+	}
+
+	if error := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); error != nil {
 		return error
 	}
 
@@ -77,4 +88,14 @@ func generateSalt(length int) (string, error) {
 		return "", error
 	}
 	return base64.StdEncoding.EncodeToString(salt), nil
+}
+
+func generateVerificationToken() (string, error) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	token := base64.URLEncoding.EncodeToString(b)
+	return token, nil
 }
