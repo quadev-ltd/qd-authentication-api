@@ -23,9 +23,8 @@ type User struct {
 }
 
 const (
-	AccountStatusActive     AccountStatus = 1
-	AccountStatusUnverified AccountStatus = 2
-	AccountStatusVerified   AccountStatus = 3
+	AccountStatusUnverified AccountStatus = 1
+	AccountStatusVerified   AccountStatus = 2
 )
 
 func ValidateUser(user *User) error {

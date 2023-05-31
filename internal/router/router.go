@@ -13,5 +13,7 @@ func SetupRoutes(authService *service.AuthService) *mux.Router {
 
 	router.HandleFunc("/register", handlers.RegisterHandler(authService)).Methods("POST")
 
+	router.HandleFunc("/verify/{verification_token}", handlers.EmailVerificationHandler(authService)).Methods("GET")
+
 	return router
 }

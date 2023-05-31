@@ -8,9 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testValidateValidUser_Valid(t *testing.T) {
-	// Valid user
-	user := &User{
+func newUser() *User {
+	return &User{
 		Email:             "test@example.com",
 		VerificationToken: "token",
 		PasswordHash:      "hash",
@@ -20,24 +19,20 @@ func testValidateValidUser_Valid(t *testing.T) {
 		DateOfBirth:       time.Now(),
 		RegistrationDate:  time.Now(),
 		LastLoginDate:     time.Now(),
-		AccountStatus:     AccountStatusActive,
+		AccountStatus:     AccountStatusVerified,
 	}
+}
+
+func testValidateValidUser_Valid(t *testing.T) {
+	// Valid user
+	user := newUser()
 	err := ValidateUser(user)
 	assert.Nil(t, err)
 }
 
 func testValidateUser_MissingVerificationToken(t *testing.T) {
-	user := &User{
-		Email:            "test@example.com",
-		PasswordHash:     "hash",
-		PasswordSalt:     "salt",
-		FirstName:        "Test",
-		LastName:         "User",
-		DateOfBirth:      time.Now(),
-		RegistrationDate: time.Now(),
-		LastLoginDate:    time.Now(),
-		AccountStatus:    AccountStatusActive,
-	}
+	user := newUser()
+	user.VerificationToken = ""
 	err := ValidateUser(user)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "VerificationToken")
@@ -56,45 +51,26 @@ func testValidate_ValidUserWithNoLoginDate(t *testing.T) {
 		LastName:          "User",
 		DateOfBirth:       time.Now(),
 		RegistrationDate:  time.Now(),
-		AccountStatus:     AccountStatusActive,
+		AccountStatus:     AccountStatusVerified,
 	}
 	err := ValidateUser(user)
 	assert.Nil(t, err)
 }
 
 func testValidateUser_InvalidEmail(t *testing.T) {
-	user := &User{
-		Email:             "test-example.com",
-		VerificationToken: "token",
-		PasswordHash:      "hash",
-		PasswordSalt:      "salt",
-		FirstName:         "Test",
-		LastName:          "User",
-		DateOfBirth:       time.Now(),
-		RegistrationDate:  time.Now(),
-		LastLoginDate:     time.Now(),
-		AccountStatus:     AccountStatusActive,
-	}
-	err := ValidateUser(user)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "Email")
-	errors := err.(validator.ValidationErrors)
+	user := newUser()
+	user.Email = "test-example.com"
+	resultError := ValidateUser(user)
+	assert.NotNil(t, resultError)
+	assert.Contains(t, resultError.Error(), "Email")
+	errors := resultError.(validator.ValidationErrors)
 	assert.Len(t, errors, 1)
 }
 
 func testValidateUser_InvalidUserNames(t *testing.T) {
-	user := &User{
-		Email:             "test@example.com",
-		VerificationToken: "token",
-		PasswordHash:      "hash",
-		PasswordSalt:      "salt",
-		FirstName:         "T",
-		LastName:          "U",
-		DateOfBirth:       time.Now(),
-		RegistrationDate:  time.Now(),
-		LastLoginDate:     time.Now(),
-		AccountStatus:     AccountStatusActive,
-	}
+	user := newUser()
+	user.FirstName = "F"
+	user.LastName = "L"
 	err := ValidateUser(user)
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "FirstName")
@@ -112,7 +88,7 @@ func testValidateUser_MissingBirthDate(t *testing.T) {
 		FirstName:         "Test",
 		LastName:          "User",
 		LastLoginDate:     time.Now(),
-		AccountStatus:     AccountStatusActive,
+		AccountStatus:     AccountStatusVerified,
 	}
 	err := ValidateUser(user)
 	assert.NotNil(t, err)
@@ -123,22 +99,12 @@ func testValidateUser_MissingBirthDate(t *testing.T) {
 }
 
 func testValidateUser_BirthDateInFuture(t *testing.T) {
-	user := &User{
-		Email:             "test@example.com",
-		VerificationToken: "token",
-		PasswordHash:      "hash",
-		PasswordSalt:      "salt",
-		FirstName:         "Test",
-		LastName:          "User",
-		DateOfBirth:       time.Now().Add(24 * time.Hour), // This is one day in the future
-		RegistrationDate:  time.Now(),
-		LastLoginDate:     time.Now(),
-		AccountStatus:     AccountStatusActive,
-	}
-	err := ValidateUser(user)
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "DateOfBirth")
-	errors := err.(validator.ValidationErrors)
+	user := newUser()
+	user.DateOfBirth = time.Now().Add(24 * time.Hour)
+	resultError := ValidateUser(user)
+	assert.NotNil(t, resultError)
+	assert.Contains(t, resultError.Error(), "DateOfBirth")
+	errors := resultError.(validator.ValidationErrors)
 	assert.Len(t, errors, 1)
 }
 

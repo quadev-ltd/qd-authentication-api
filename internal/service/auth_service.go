@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 	"time"
@@ -12,6 +13,8 @@ import (
 
 type AuthServicer interface {
 	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
+	Verify(verificationToken string) error
+	Authenticate(email, password string) (*model.User, error)
 }
 
 type AuthService struct {
@@ -20,6 +23,25 @@ type AuthService struct {
 }
 
 var _ AuthServicer = &AuthService{}
+
+func generateSalt(length int) (string, error) {
+	salt := make([]byte, length)
+	_, error := rand.Read(salt)
+	if error != nil {
+		return "", error
+	}
+	return base64.StdEncoding.EncodeToString(salt), nil
+}
+
+func generateVerificationToken() (string, error) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	token := base64.URLEncoding.EncodeToString(b)
+	return token, nil
+}
 
 func NewAuthService(emailService EmailServicer, userRepo repository.UserRepository) *AuthService {
 	return &AuthService{userRepo: userRepo, emailService: emailService}
@@ -81,21 +103,38 @@ func (service *AuthService) Register(email, password, firstName, lastName string
 	return nil
 }
 
-func generateSalt(length int) (string, error) {
-	salt := make([]byte, length)
-	_, error := rand.Read(salt)
+func (service *AuthService) Verify(verificationToken string) error {
+	user, error := service.userRepo.GetByVerificationToken(verificationToken)
 	if error != nil {
-		return "", error
+		return error
 	}
-	return base64.StdEncoding.EncodeToString(salt), nil
+	if user == nil {
+		return fmt.Errorf("Invalid verification token")
+	}
+
+	user.AccountStatus = model.AccountStatusVerified
+
+	if error := service.userRepo.Update(user); error != nil {
+		return error
+	}
+
+	return nil
 }
 
-func generateVerificationToken() (string, error) {
-	b := make([]byte, 32)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
+func (service *AuthService) Authenticate(email, password string) (*model.User, error) {
+	user, resultError := service.userRepo.GetByEmail(email)
+	if resultError != nil {
+		return nil, resultError
 	}
-	token := base64.URLEncoding.EncodeToString(b)
-	return token, nil
+
+	if user == nil {
+		return nil, fmt.Errorf("Invalid email or password")
+	}
+
+	resultError = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password+user.PasswordSalt))
+	if resultError != nil {
+		return nil, fmt.Errorf("Invalid email or password")
+	}
+
+	return user, nil
 }

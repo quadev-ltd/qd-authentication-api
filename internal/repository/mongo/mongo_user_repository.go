@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 
@@ -41,4 +42,35 @@ func (mongoUserRepository *MongoUserRepository) GetByEmail(email string) (*model
 	}
 
 	return &foundUser, nil
+}
+
+func (mongoUserRepository *MongoUserRepository) GetByVerificationToken(verificationToken string) (*model.User, error) {
+	collection := mongoUserRepository.client.Database(mongoUserRepository.dbName).Collection(mongoUserRepository.collectionName)
+	filter := bson.M{"verificationtoken": verificationToken}
+	var foundUser model.User
+
+	resultError := collection.FindOne(context.Background(), filter).Decode(&foundUser)
+	if resultError != nil {
+		if resultError == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, resultError
+	}
+
+	return &foundUser, nil
+}
+
+func (mongoUserRepository *MongoUserRepository) Update(user *model.User) error {
+	collection := mongoUserRepository.client.Database(mongoUserRepository.dbName).Collection(mongoUserRepository.collectionName)
+	filter := bson.M{"email": user.Email}
+	update := bson.M{"$set": bson.M{"accountstatus": user.AccountStatus}}
+
+	updateResult, resultError := collection.UpdateOne(context.Background(), filter, update)
+	if resultError != nil {
+		return resultError
+	}
+	if updateResult.MatchedCount == 0 {
+		return errors.New("No account was found")
+	}
+	return nil
 }

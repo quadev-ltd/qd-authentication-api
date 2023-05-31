@@ -62,3 +62,32 @@ func (mr *MockUserRepositoryMockRecorder) GetByEmail(email interface{}) *gomock.
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByEmail", reflect.TypeOf((*MockUserRepository)(nil).GetByEmail), email)
 }
+
+// GetByVerificationToken mocks base method.
+func (m *MockUserRepository) GetByVerificationToken(token string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByVerificationToken", token)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByVerificationToken indicates an expected call of GetByVerificationToken.
+func (mr *MockUserRepositoryMockRecorder) GetByVerificationToken(token interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByVerificationToken", reflect.TypeOf((*MockUserRepository)(nil).GetByVerificationToken), token)
+}
+
+// Update mocks base method.
+func (m *MockUserRepository) Update(user *model.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockUserRepositoryMockRecorder) Update(user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockUserRepository)(nil).Update), user)
+}
