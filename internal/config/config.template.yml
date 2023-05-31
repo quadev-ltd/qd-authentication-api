@@ -1,0 +1,10 @@
+app:
+  name: AppName
+  base_url: http://base.url:8080
+smtp:
+  host: smtp.host
+  port: 111
+  username: example@email.com
+  password: email-password
+mongo:
+  uri: mongo-db-uri
