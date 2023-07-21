@@ -34,11 +34,8 @@ func RegisterHandler(authService service.AuthServicer) func(writer http.Response
 		error = authService.Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, &dateOfBirth)
 		if error != nil {
 			_, isValidationError := error.(validator.ValidationErrors)
-			if isValidationError {
-				http.Error(writer, fmt.Sprintf("Register error: %s", error.Error()), http.StatusBadRequest)
-				return
-			}
-			if _, isEmailInUseError := error.(*model.EmailInUseError); isEmailInUseError {
+			_, isEmailInUseError := error.(*model.EmailInUseError)
+			if isValidationError || isEmailInUseError {
 				http.Error(writer, fmt.Sprintf("Register error: %s", error.Error()), http.StatusBadRequest)
 				return
 			}

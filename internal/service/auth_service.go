@@ -128,12 +128,12 @@ func (service *AuthService) Authenticate(email, password string) (*model.User, e
 	}
 
 	if user == nil {
-		return nil, fmt.Errorf("Invalid email or password")
+		return nil, &model.WrongEmailOrPassword{FieldName: "Email"}
 	}
 
 	resultError = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password+user.PasswordSalt))
 	if resultError != nil {
-		return nil, fmt.Errorf("Invalid email or password")
+		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
 	return user, nil

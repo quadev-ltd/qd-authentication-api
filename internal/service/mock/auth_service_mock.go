@@ -5,6 +5,7 @@
 package mock
 
 import (
+	model "qd_authentication_api/internal/model"
 	reflect "reflect"
 	time "time"
 
@@ -32,6 +33,21 @@ func NewMockAuthServicer(ctrl *gomock.Controller) *MockAuthServicer {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockAuthServicer) EXPECT() *MockAuthServicerMockRecorder {
 	return m.recorder
+}
+
+// Authenticate mocks base method.
+func (m *MockAuthServicer) Authenticate(email, password string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Authenticate", email, password)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Authenticate indicates an expected call of Authenticate.
+func (mr *MockAuthServicerMockRecorder) Authenticate(email, password interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockAuthServicer)(nil).Authenticate), email, password)
 }
 
 // Register mocks base method.

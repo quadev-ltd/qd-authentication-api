@@ -52,3 +52,11 @@ type EmailInUseError struct {
 func (e *EmailInUseError) Error() string {
 	return fmt.Sprintf("Email %s is already in use", e.Email)
 }
+
+type WrongEmailOrPassword struct {
+	FieldName string
+}
+
+func (e *WrongEmailOrPassword) Error() string {
+	return fmt.Sprintf("Wrong %s", e.FieldName)
+}
