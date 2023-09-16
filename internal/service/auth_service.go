@@ -8,13 +8,18 @@ import (
 	"qd_authentication_api/internal/repository"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// Define the JWT signing key and refresh token expiry
+var jwtSigningKey = []byte("your-secret-key")
+var refreshTokenExpiry = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
 
 type AuthServicer interface {
 	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
 	Verify(verificationToken string) error
-	Authenticate(email, password string) (*model.User, error)
+	Authenticate(email, password string) (*model.AuthTokensResponse, error)
 }
 
 type AuthService struct {
@@ -121,7 +126,7 @@ func (service *AuthService) Verify(verificationToken string) error {
 	return nil
 }
 
-func (service *AuthService) Authenticate(email, password string) (*model.User, error) {
+func (service *AuthService) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
 	user, resultError := service.userRepo.GetByEmail(email)
 	if resultError != nil {
 		return nil, resultError
@@ -136,5 +141,49 @@ func (service *AuthService) Authenticate(email, password string) (*model.User, e
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
-	return user, nil
+	// Set the expiration time for the authentication token
+	authTokenExpiration := time.Now().Add(15 * time.Minute) // Adjust the expiration time as needed
+
+	// Generate the JWT claims for the authentication token
+	authTokenClaims := jwt.MapClaims{
+		"email": user.Email,
+		// Add any other relevant claims (e.g., user ID, role, etc.)
+		"exp": authTokenExpiration.Unix(),
+	}
+
+	// Create the authentication token
+	authToken := jwt.NewWithClaims(jwt.SigningMethodHS256, authTokenClaims)
+	authTokenString, err := authToken.SignedString(jwtSigningKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the expiration time for the refresh token
+	refreshTokenExpiration := time.Now().Add(refreshTokenExpiry)
+
+	// Generate the JWT claims for the refresh token
+	refreshTokenClaims := jwt.MapClaims{
+		"email": user.Email,
+		// Add any other relevant claims
+		"exp": refreshTokenExpiration.Unix(),
+	}
+
+	// Create the refresh token
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
+	refreshTokenString, err := refreshToken.SignedString(jwtSigningKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build the response containing the authentication token, refresh token, and other information
+	response := &model.AuthTokensResponse{
+		AuthToken:          authTokenString,
+		AuthTokenExpiry:    authTokenExpiration,
+		RefreshToken:       refreshTokenString,
+		RefreshTokenExpiry: refreshTokenExpiration,
+		UserEmail:          user.Email,
+		// Add any other relevant user information
+	}
+
+	return response, nil
 }

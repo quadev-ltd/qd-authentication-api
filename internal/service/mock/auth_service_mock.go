@@ -36,10 +36,10 @@ func (m *MockAuthServicer) EXPECT() *MockAuthServicerMockRecorder {
 }
 
 // Authenticate mocks base method.
-func (m *MockAuthServicer) Authenticate(email, password string) (*model.User, error) {
+func (m *MockAuthServicer) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Authenticate", email, password)
-	ret0, _ := ret[0].(*model.User)
+	ret0, _ := ret[0].(*model.AuthTokensResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

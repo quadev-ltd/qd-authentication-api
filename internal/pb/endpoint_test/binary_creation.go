@@ -6,21 +6,19 @@ import (
 	"log"
 	"qd_authentication_api/internal/pb"
 
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-
 	"google.golang.org/protobuf/proto"
 )
 
 func main() {
 	userPb := &pb.RegisterRequest{
-		Email:     "gusfran17@gmail.com",
-		Password:  "password",
-		FirstName: "Test",
-		LastName:  "User",
-		DateOfBirth: &timestamppb.Timestamp{
-			Seconds: 1234567890,
-			Nanos:   123456789,
-		},
+		Email:    "gusfran17@gmail.com",
+		Password: "password",
+		// FirstName: "Test",
+		// LastName:  "User",
+		// DateOfBirth: &timestamppb.Timestamp{
+		// 	Seconds: 1234567890,
+		// 	Nanos:   123456789,
+		// },
 	}
 	var resolvedUserPb pb.RegisterRequest
 

@@ -13,3 +13,16 @@ message RegisterRequest {
     string last_name = 4;
     google.protobuf.Timestamp date_of_birth = 5;
 }
+
+message AuthenticateRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message AuthenticateResponse {
+    string auth_token = 1;
+    google.protobuf.Timestamp auth_token_expiry = 2;
+    string refresh_token = 3;
+    google.protobuf.Timestamp refresh_token_expiry = 4;
+    string user_email = 5;
+}

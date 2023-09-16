@@ -253,7 +253,7 @@ func testAuthService_Authenticate_UserNotFound(test *testing.T) {
 	user, err := authService.Authenticate(email, password)
 
 	assert.Error(test, err)
-	assert.Equal(test, "Invalid email or password", err.Error())
+	assert.Equal(test, "Wrong Email", err.Error())
 	assert.Nil(test, user)
 }
 
@@ -278,8 +278,42 @@ func testAuthService_Authenticate_InvalidPassword(test *testing.T) {
 	// Assert
 	assert.Error(test, resultError)
 	assert.Nil(test, resultUser)
-	assert.Equal(test, "Invalid email or password", resultError.Error())
+	assert.Equal(test, "Wrong Password", resultError.Error())
 }
+
+// TODO log the values of jwtSigningKey during this test
+// func testAuthService_Authenticate_AuthTokenSigningError(test *testing.T) {
+// 	// Arrange
+// 	controller := gomock.NewController(test)
+// 	defer controller.Finish()
+
+// 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
+// 	authService := NewAuthService(nil, mockRepo)
+
+// 	email := "test@example.com"
+// 	password := "password"
+
+// 	user := newUser()
+// 	user.PasswordHash = "$2a$10$nUXvSYPaNFSjlt2w/buFQen6w90hNdLkdRo0mqUZxXkWcMt0lb1uW"
+// 	user.PasswordSalt = "salt"
+
+// 	mockRepo.EXPECT().GetByEmail(email).Return(user, nil)
+
+// 	// Mock JWT signing key error
+// 	oldSigningKey := jwtSigningKey
+// 	defer func() {
+// 		jwtSigningKey = oldSigningKey
+// 	}()
+// 	jwtSigningKey = []byte("invalid-key")
+
+// 	// Test Authenticate
+// 	resultUser, resultError := authService.Authenticate(email, password)
+
+// 	// Assert
+// 	assert.Error(test, resultError)
+// 	assert.Nil(test, resultUser)
+// 	assert.Contains(test, resultError.Error(), "token signing")
+// }
 
 func testAuthService_Authenticate_Success(test *testing.T) {
 	// Arrange
@@ -305,7 +339,7 @@ func testAuthService_Authenticate_Success(test *testing.T) {
 	// Assert
 	assert.NoError(test, resultError)
 	assert.NotNil(test, resultUser)
-	assert.Equal(test, testEmail, resultUser.Email)
+	assert.Equal(test, testEmail, resultUser.UserEmail)
 }
 
 func TestAuthService(test *testing.T) {
@@ -326,5 +360,6 @@ func TestAuthService(test *testing.T) {
 	test.Run("GetByEmail error", testAuthService_Authenticate_GetByEmailError)
 	test.Run("User Not Found", testAuthService_Authenticate_UserNotFound)
 	test.Run("Invalid Password", testAuthService_Authenticate_InvalidPassword)
+	// test.Run("AuthToken Signing Error", testAuthService_Authenticate_AuthTokenSigningError)
 	test.Run("Authenticate Success", testAuthService_Authenticate_Success)
 }
