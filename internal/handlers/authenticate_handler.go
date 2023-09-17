@@ -1,17 +1,19 @@
 package handlers
 
 import (
+	// TODO delete io/ioutil dependency
 	"io/ioutil"
 	"net/http"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/pb"
 	"qd_authentication_api/internal/service"
 
-	"github.com/golang/protobuf/proto"
+	// TODO delete github.com/golang/protobuf/proto dependency
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/protobuf/proto"
 )
 
-func AuthenticateHandler(authService service.AuthServicer) func(writer http.ResponseWriter, request *http.Request) {
+func AuthenticateHandler(authenticationService service.AuthenticationServicer) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 		var userPb pb.AuthenticateRequest
@@ -27,7 +29,7 @@ func AuthenticateHandler(authService service.AuthServicer) func(writer http.Resp
 			return
 		}
 
-		authTokens, err := authService.Authenticate(userPb.Email, userPb.Password)
+		authTokens, err := authenticationService.Authenticate(userPb.Email, userPb.Password)
 		if err != nil {
 			handleAuthenticationError(writer, err)
 			return

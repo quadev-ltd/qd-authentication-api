@@ -17,17 +17,17 @@ func TestEmailVerificationHandler(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		authServiceMock := mock.NewMockAuthServicer(controller)
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		verificationToken := "token"
 
-		authServiceMock.EXPECT().Verify(verificationToken).Return(nil)
+		authenticationServiceMock.EXPECT().Verify(verificationToken).Return(nil)
 
 		req, err := http.NewRequest(http.MethodGet, "/verify/"+verificationToken, nil)
 		assert.NoError(test, err)
 
 		recorder := httptest.NewRecorder()
 
-		handler := EmailVerificationHandler(authServiceMock)
+		handler := EmailVerificationHandler(authenticationServiceMock)
 
 		router := mux.NewRouter()
 		router.HandleFunc("/verify/{verification_token}", handler)
@@ -40,18 +40,18 @@ func TestEmailVerificationHandler(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		authServiceMock := mock.NewMockAuthServicer(controller)
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		verificationToken := "token"
 		expectedError := errors.New("verification error")
 
-		authServiceMock.EXPECT().Verify(verificationToken).Return(expectedError)
+		authenticationServiceMock.EXPECT().Verify(verificationToken).Return(expectedError)
 
 		req, err := http.NewRequest(http.MethodGet, "/verify/"+verificationToken, nil)
 		assert.NoError(test, err)
 
 		recorder := httptest.NewRecorder()
 
-		handler := EmailVerificationHandler(authServiceMock)
+		handler := EmailVerificationHandler(authenticationServiceMock)
 
 		router := mux.NewRouter()
 		router.HandleFunc("/verify/{verification_token}", handler)

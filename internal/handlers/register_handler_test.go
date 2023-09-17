@@ -24,7 +24,7 @@ func testRegisterHandler_Success(test *testing.T) {
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
-	authServiceMock := mock.NewMockAuthServicer(controller)
+	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
 	userPb := &pb.RegisterRequest{
 		Email:       "test@example.com",
@@ -36,13 +36,13 @@ func testRegisterHandler_Success(test *testing.T) {
 
 	userPbBytes, _ := proto.Marshal(userPb)
 
-	authServiceMock.EXPECT().Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, gomock.Any()).Return(nil)
+	authenticationServiceMock.EXPECT().Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, gomock.Any()).Return(nil)
 
 	request, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(userPbBytes))
 	responseRecorder := httptest.NewRecorder()
 
 	// Act
-	RegisterHandler(authServiceMock)(responseRecorder, request)
+	RegisterHandler(authenticationServiceMock)(responseRecorder, request)
 
 	// Assert
 	assert.Equal(test, http.StatusOK, responseRecorder.Code)
@@ -62,13 +62,13 @@ func testRegisterHandler_ReadBodyError(test *testing.T) {
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
-	authServiceMock := mock.NewMockAuthServicer(controller)
+	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
 	request, _ := http.NewRequest("POST", "/register", &errorReader{})
 	responseRecorder := httptest.NewRecorder()
 
 	// Act
-	RegisterHandler(authServiceMock)(responseRecorder, request)
+	RegisterHandler(authenticationServiceMock)(responseRecorder, request)
 
 	// Assert
 	assert.Equal(test, http.StatusBadRequest, responseRecorder.Code)
@@ -82,14 +82,14 @@ func testRegisterHandler_UnmarshalError(test *testing.T) {
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
-	authServiceMock := mock.NewMockAuthServicer(controller)
+	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
 	invalidProtobuf := []byte("not a valid protobuf message")
 	request, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(invalidProtobuf))
 	responseRecorder := httptest.NewRecorder()
 
 	// Act
-	RegisterHandler(authServiceMock)(responseRecorder, request)
+	RegisterHandler(authenticationServiceMock)(responseRecorder, request)
 
 	// Assert
 	assert.Equal(test, http.StatusBadRequest, responseRecorder.Code)
@@ -103,7 +103,7 @@ func testRegisterHandler_ValidationError(test *testing.T) {
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
-	authServiceMock := mock.NewMockAuthServicer(controller)
+	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
 	userPb := &pb.RegisterRequest{
 		Email:       "test@example.com",
@@ -116,13 +116,13 @@ func testRegisterHandler_ValidationError(test *testing.T) {
 	bodyBytes, _ := proto.Marshal(userPb)
 
 	mockValidationError := validator.ValidationErrors{}
-	authServiceMock.EXPECT().Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, gomock.Any()).Return(mockValidationError)
+	authenticationServiceMock.EXPECT().Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, gomock.Any()).Return(mockValidationError)
 
 	request, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(bodyBytes))
 	responseRecorder := httptest.NewRecorder()
 
 	// Act
-	RegisterHandler(authServiceMock)(responseRecorder, request)
+	RegisterHandler(authenticationServiceMock)(responseRecorder, request)
 
 	// Assert
 	assert.Equal(test, http.StatusBadRequest, responseRecorder.Code)
@@ -136,7 +136,7 @@ func testRegisterHandler_EmailInUseError(test *testing.T) {
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
-	authServiceMock := mock.NewMockAuthServicer(controller)
+	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
 	userPb := &pb.RegisterRequest{
 		Email:       "test@example.com",
@@ -149,13 +149,13 @@ func testRegisterHandler_EmailInUseError(test *testing.T) {
 	bodyBytes, _ := proto.Marshal(userPb)
 
 	mockEmailInUseError := &model.EmailInUseError{Email: "test@example.com"}
-	authServiceMock.EXPECT().Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, gomock.Any()).Return(mockEmailInUseError)
+	authenticationServiceMock.EXPECT().Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, gomock.Any()).Return(mockEmailInUseError)
 
 	request, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(bodyBytes))
 	responseRecorder := httptest.NewRecorder()
 
 	// Act
-	RegisterHandler(authServiceMock)(responseRecorder, request)
+	RegisterHandler(authenticationServiceMock)(responseRecorder, request)
 
 	// Assert
 	assert.Equal(test, http.StatusBadRequest, responseRecorder.Code)

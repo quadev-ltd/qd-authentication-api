@@ -22,7 +22,7 @@ func TestAuthenticateHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		authServiceMock := mock.NewMockAuthServicer(ctrl)
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(ctrl)
 
 		// Create a request with invalid Protobuff payload
 		request, err := http.NewRequest(http.MethodPost, "/authenticate", bytes.NewReader([]byte("invalid-data")))
@@ -30,7 +30,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 
-		handler := AuthenticateHandler(authServiceMock)
+		handler := AuthenticateHandler(authenticationServiceMock)
 
 		router := http.NewServeMux()
 		router.HandleFunc("/authenticate", handler)
@@ -47,7 +47,7 @@ func TestAuthenticateHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		authServiceMock := mock.NewMockAuthServicer(ctrl)
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(ctrl)
 
 		requestBody := &pb.AuthenticateRequest{
 			Email:    "test@example.com",
@@ -56,7 +56,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		// Simulate an authentication error
 		expectedError := &model.WrongEmailOrPassword{FieldName: "Email"}
-		authServiceMock.EXPECT().Authenticate(requestBody.Email, requestBody.Password).Return(nil, expectedError)
+		authenticationServiceMock.EXPECT().Authenticate(requestBody.Email, requestBody.Password).Return(nil, expectedError)
 
 		// Create a request with valid Protobuff payload
 		bodyBytes, requestCreationError := proto.Marshal(requestBody)
@@ -67,7 +67,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 
-		handler := AuthenticateHandler(authServiceMock)
+		handler := AuthenticateHandler(authenticationServiceMock)
 
 		router := http.NewServeMux()
 		router.HandleFunc("/authenticate", handler)
@@ -83,7 +83,7 @@ func TestAuthenticateHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		authServiceMock := mock.NewMockAuthServicer(ctrl)
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(ctrl)
 
 		requestBody := &pb.AuthenticateRequest{
 			Email:    "test@example.com",
@@ -91,7 +91,7 @@ func TestAuthenticateHandler(t *testing.T) {
 		}
 
 		expectedError := errors.New("some error")
-		authServiceMock.EXPECT().Authenticate(requestBody.Email, requestBody.Password).Return(nil, expectedError)
+		authenticationServiceMock.EXPECT().Authenticate(requestBody.Email, requestBody.Password).Return(nil, expectedError)
 
 		// Create a request with valid Protobuff payload
 		bodyBytes, requestCreationError := proto.Marshal(requestBody)
@@ -102,7 +102,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 
-		handler := AuthenticateHandler(authServiceMock)
+		handler := AuthenticateHandler(authenticationServiceMock)
 
 		router := http.NewServeMux()
 		router.HandleFunc("/authenticate", handler)
@@ -118,7 +118,7 @@ func TestAuthenticateHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		authServiceMock := mock.NewMockAuthServicer(ctrl)
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(ctrl)
 
 		requestBody := &pb.AuthenticateRequest{
 			Email:    "test@example.com",
@@ -140,7 +140,7 @@ func TestAuthenticateHandler(t *testing.T) {
 			RefreshTokenExpiry: timestamppb.New(time.Now().Add(7 * 24 * time.Hour)),
 			UserEmail:          requestBody.Email,
 		}
-		authServiceMock.EXPECT().Authenticate(requestBody.Email, requestBody.Password).Return(authTokens, nil)
+		authenticationServiceMock.EXPECT().Authenticate(requestBody.Email, requestBody.Password).Return(authTokens, nil)
 
 		// Create a request with valid Protobuff payload
 		bodyBytes, err := proto.Marshal(requestBody)
@@ -151,7 +151,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		recorder := httptest.NewRecorder()
 
-		handler := AuthenticateHandler(authServiceMock)
+		handler := AuthenticateHandler(authenticationServiceMock)
 
 		router := http.NewServeMux()
 		router.HandleFunc("/authenticate", handler)

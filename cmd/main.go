@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
+	"net"
 
 	"qd_authentication_api/internal/config"
+	"qd_authentication_api/internal/pb"
 	mongoRepository "qd_authentication_api/internal/repository/mongo"
-	"qd_authentication_api/internal/router"
+	server_grpc "qd_authentication_api/internal/server_grpc"
 	"qd_authentication_api/internal/service"
-	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -35,17 +36,23 @@ func main() {
 		Port:     config.SMTP.Port,
 	}
 	emailService := service.NewEmailService(emailServiceConfig, &service.SmtpService{})
-	authService := service.NewAuthService(emailService, userRepo)
-	router := router.SetupRoutes(authService)
+	authenticationService := service.NewAuthenticationService(emailService, userRepo)
 
-	// Start the HTTP server
-	server := &http.Server{
-		Handler:      router,
-		Addr:         "127.0.0.1:8080",
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+	// Create a gRPC server
+	authenticationServiceGRPCServer := server_grpc.AuthenticationServiceServer{
+		AuthenticationService: authenticationService,
 	}
+	grpcServer := grpc.NewServer()
+	pb.RegisterAuthenticationServiceServer(grpcServer, authenticationServiceGRPCServer)
 
+	// Start the gRPC server
+	grpcListener, err := net.Listen("tcp", "127.0.0.1:8080") // Choose a port for gRPC
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+	defer grpcListener.Close()
 	log.Println("Starting the server on :8080...")
-	log.Fatal(server.ListenAndServe())
+	if err := grpcServer.Serve(grpcListener); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
 }

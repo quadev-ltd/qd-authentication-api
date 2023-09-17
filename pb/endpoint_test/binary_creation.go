@@ -1,4 +1,4 @@
-package main
+package binary_creation
 
 import (
 	"encoding/base64"

@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func RegisterHandler(authService service.AuthServicer) func(writer http.ResponseWriter, request *http.Request) {
+func RegisterHandler(authenticationService service.AuthenticationServicer) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var userPb pb.RegisterRequest
 
@@ -31,7 +31,7 @@ func RegisterHandler(authService service.AuthServicer) func(writer http.Response
 
 		// Convert google.protobuf.Timestamp to time.Time
 		dateOfBirth := time.Unix(userPb.DateOfBirth.GetSeconds(), int64(userPb.DateOfBirth.GetNanos()))
-		error = authService.Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, &dateOfBirth)
+		_, error = authenticationService.Register(userPb.Email, userPb.Password, userPb.FirstName, userPb.LastName, &dateOfBirth)
 		if error != nil {
 			_, isValidationError := error.(validator.ValidationErrors)
 			_, isEmailInUseError := error.(*model.EmailInUseError)

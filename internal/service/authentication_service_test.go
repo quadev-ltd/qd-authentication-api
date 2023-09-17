@@ -36,78 +36,82 @@ func newUser() *model.User {
 	}
 }
 
-func testAuthService_Register_Success(test *testing.T) {
+func testAuthenticationService_Register_Success(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	mockRepo.EXPECT().GetByEmail(testEmail).Return(nil, nil)
 	mockRepo.EXPECT().Create(gomock.Any()).Return(nil)
 	mockEmail.EXPECT().SendVerificationMail(testEmail, testFirstName, gomock.Any()).Return(nil)
 
 	// Test successful registration
-	err := authService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	verificationToken, err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 	assert.NoError(test, err)
+	assert.NotEqual(test, verificationToken, "test")
 }
 
-func testAuthService_Register_EmailUniqueness(test *testing.T) {
+func testAuthenticationService_Register_EmailUniqueness(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	mockRepo.EXPECT().GetByEmail(testEmail).Return(&model.User{}, nil)
 
-	error := authService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	verificationToken, err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 
-	assert.Error(test, error)
+	assert.Error(test, err)
 
-	assert.Equal(test, (&model.EmailInUseError{Email: testEmail}).Error(), error.Error())
+	assert.Equal(test, (&model.EmailInUseError{Email: testEmail}).Error(), err.Error())
+	assert.Nil(test, verificationToken)
 }
 
-func testAuthService_Register_InvalidEmail(test *testing.T) {
+func testAuthenticationService_Register_InvalidEmail(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 	invalidEmail := "invalid-email"
 
 	mockRepo.EXPECT().GetByEmail(invalidEmail).Return(nil, nil)
 
-	err := authService.Register(invalidEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	verificationToken, err := authenticationService.Register(invalidEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 
 	assert.Error(test, err)
 	assert.Contains(test, err.Error(), "Email")
+	assert.Nil(test, verificationToken)
 }
 
-func testAuthService_Register_InvalidDateOfBirth(test *testing.T) {
+func testAuthenticationService_Register_InvalidDateOfBirth(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 	invalidDateOfBirth := time.Time{}
 
 	mockRepo.EXPECT().GetByEmail(testEmail).Return(nil, nil)
 
-	err := authService.Register(testEmail, testPassword, testFirstName, testLastName, &invalidDateOfBirth)
+	verificationToken, err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &invalidDateOfBirth)
 
 	assert.Error(test, err)
 	assert.Contains(test, err.Error(), "DateOfBirth")
+	assert.Nil(test, verificationToken)
 }
 
-func testAuthService_Register_SendEmailError(test *testing.T) {
+func testAuthenticationService_Register_SendEmailError(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
@@ -115,26 +119,27 @@ func testAuthService_Register_SendEmailError(test *testing.T) {
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	mockRepo.EXPECT().GetByEmail(testEmail).Return(nil, nil)
 	mockRepo.EXPECT().Create(gomock.Any()).Return(nil)
 	mockEmail.EXPECT().SendVerificationMail(testEmail, testFirstName, gomock.Any()).Return(mockedError)
 
 	// Test successful registration
-	error := authService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	verificationToken, error := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 	assert.Error(test, error)
 	assert.Equal(test, mockedError.Error(), error.Error())
+	assert.Nil(test, verificationToken)
 }
 
-func testAuthService_Verify_Success(test *testing.T) {
+func testAuthenticationService_Verify_Success(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	verificationToken := "testToken"
 	testUser := newUser()
@@ -143,20 +148,20 @@ func testAuthService_Verify_Success(test *testing.T) {
 	mockRepo.EXPECT().Update(testUser).Return(nil)
 
 	// Test successful verification
-	err := authService.Verify(verificationToken)
+	err := authenticationService.Verify(verificationToken)
 
 	assert.NoError(test, err)
 	assert.Equal(test, model.AccountStatusVerified, testUser.AccountStatus)
 }
 
-func testAuthService_Verify_GetByVerificationTokenError(test *testing.T) {
+func testAuthenticationService_Verify_GetByVerificationTokenError(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	verificationToken := "testToken"
 	mockedError := errors.New("Test error")
@@ -164,39 +169,39 @@ func testAuthService_Verify_GetByVerificationTokenError(test *testing.T) {
 	mockRepo.EXPECT().GetByVerificationToken(verificationToken).Return(nil, mockedError)
 
 	// Test Verify
-	resultError := authService.Verify(verificationToken)
+	resultError := authenticationService.Verify(verificationToken)
 
 	assert.Error(test, resultError)
 	assert.Equal(test, mockedError.Error(), resultError.Error())
 }
 
-func testAuthService_Verify_UserNotFound(test *testing.T) {
+func testAuthenticationService_Verify_UserNotFound(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	verificationToken := "testToken"
 
 	mockRepo.EXPECT().GetByVerificationToken(verificationToken).Return(nil, nil)
 
 	// Test Verify
-	resultError := authService.Verify(verificationToken)
+	resultError := authenticationService.Verify(verificationToken)
 
 	assert.Error(test, resultError)
 	assert.Equal(test, "Invalid verification token", resultError.Error())
 }
 
-func testAuthService_Verify_UpdateError(test *testing.T) {
+func testAuthenticationService_Verify_UpdateError(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
-	authService := NewAuthService(nil, mockRepo)
+	authenticationService := NewAuthenticationService(nil, mockRepo)
 
 	testToken := "testToken"
 
@@ -206,21 +211,21 @@ func testAuthService_Verify_UpdateError(test *testing.T) {
 	mockRepo.EXPECT().Update(user).Return(errors.New("update error"))
 
 	// Act
-	resultError := authService.Verify(testToken)
+	resultError := authenticationService.Verify(testToken)
 
 	// Assert
 	assert.Error(test, resultError)
 	assert.Equal(test, "update error", resultError.Error())
 }
 
-func testAuthService_Authenticate_GetByEmailError(test *testing.T) {
+func testAuthenticationService_Authenticate_GetByEmailError(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	email := "test@example.com"
 	errorMessage := "Database error"
@@ -228,7 +233,7 @@ func testAuthService_Authenticate_GetByEmailError(test *testing.T) {
 	mockRepo.EXPECT().GetByEmail(email).Return(nil, errors.New(errorMessage))
 
 	// Test Authenticate
-	user, err := authService.Authenticate(email, "password")
+	user, err := authenticationService.Authenticate(email, "password")
 
 	// Assert
 	assert.Error(test, err)
@@ -236,13 +241,13 @@ func testAuthService_Authenticate_GetByEmailError(test *testing.T) {
 	assert.Nil(test, user)
 }
 
-func testAuthService_Authenticate_UserNotFound(test *testing.T) {
+func testAuthenticationService_Authenticate_UserNotFound(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
-	authService := NewAuthService(nil, mockRepo)
+	authenticationService := NewAuthenticationService(nil, mockRepo)
 
 	email := "test@example.com"
 	password := "password"
@@ -250,20 +255,20 @@ func testAuthService_Authenticate_UserNotFound(test *testing.T) {
 	mockRepo.EXPECT().GetByEmail(email).Return(nil, nil)
 
 	// Test Authenticate
-	user, err := authService.Authenticate(email, password)
+	user, err := authenticationService.Authenticate(email, password)
 
 	assert.Error(test, err)
 	assert.Equal(test, "Wrong Email", err.Error())
 	assert.Nil(test, user)
 }
 
-func testAuthService_Authenticate_InvalidPassword(test *testing.T) {
+func testAuthenticationService_Authenticate_InvalidPassword(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
-	authService := NewAuthService(nil, mockRepo)
+	authenticationService := NewAuthenticationService(nil, mockRepo)
 
 	email := "test@example.com"
 
@@ -273,7 +278,7 @@ func testAuthService_Authenticate_InvalidPassword(test *testing.T) {
 	mockRepo.EXPECT().GetByEmail(email).Return(user, nil)
 
 	// Test Authenticate
-	resultUser, resultError := authService.Authenticate(email, invalidPassword)
+	resultUser, resultError := authenticationService.Authenticate(email, invalidPassword)
 
 	// Assert
 	assert.Error(test, resultError)
@@ -282,13 +287,13 @@ func testAuthService_Authenticate_InvalidPassword(test *testing.T) {
 }
 
 // TODO log the values of jwtSigningKey during this test
-// func testAuthService_Authenticate_AuthTokenSigningError(test *testing.T) {
+// func testAuthenticationService_Authenticate_AuthTokenSigningError(test *testing.T) {
 // 	// Arrange
 // 	controller := gomock.NewController(test)
 // 	defer controller.Finish()
 
 // 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
-// 	authService := NewAuthService(nil, mockRepo)
+// 	authenticationService := NewAuthenticationService(nil, mockRepo)
 
 // 	email := "test@example.com"
 // 	password := "password"
@@ -307,7 +312,7 @@ func testAuthService_Authenticate_InvalidPassword(test *testing.T) {
 // 	jwtSigningKey = []byte("invalid-key")
 
 // 	// Test Authenticate
-// 	resultUser, resultError := authService.Authenticate(email, password)
+// 	resultUser, resultError := authenticationService.Authenticate(email, password)
 
 // 	// Assert
 // 	assert.Error(test, resultError)
@@ -315,14 +320,14 @@ func testAuthService_Authenticate_InvalidPassword(test *testing.T) {
 // 	assert.Contains(test, resultError.Error(), "token signing")
 // }
 
-func testAuthService_Authenticate_Success(test *testing.T) {
+func testAuthenticationService_Authenticate_Success(test *testing.T) {
 	// Arrange
 	controller := gomock.NewController(test)
 	defer controller.Finish()
 
 	mockRepo := userRepositoryMock.NewMockUserRepository(controller)
 	mockEmail := emailServiceMock.NewMockEmailServicer(controller)
-	authService := NewAuthService(mockEmail, mockRepo)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo)
 
 	testEmail := "test@example.com"
 	testPassword := "password"
@@ -334,7 +339,7 @@ func testAuthService_Authenticate_Success(test *testing.T) {
 	mockRepo.EXPECT().GetByEmail(testEmail).Return(user, nil)
 
 	// Act
-	resultUser, resultError := authService.Authenticate(testEmail, testPassword)
+	resultUser, resultError := authenticationService.Authenticate(testEmail, testPassword)
 
 	// Assert
 	assert.NoError(test, resultError)
@@ -342,24 +347,24 @@ func testAuthService_Authenticate_Success(test *testing.T) {
 	assert.Equal(test, testEmail, resultUser.UserEmail)
 }
 
-func TestAuthService(test *testing.T) {
+func TestAuthenticationService(test *testing.T) {
 	// Register
-	test.Run("Success", testAuthService_Register_Success)
-	test.Run("Email Uniqueness", testAuthService_Register_EmailUniqueness)
-	test.Run("Invalid Email", testAuthService_Register_InvalidEmail)
-	test.Run("Invalid Date Of Birth", testAuthService_Register_InvalidDateOfBirth)
-	test.Run("Send email error", testAuthService_Register_SendEmailError)
+	test.Run("Success", testAuthenticationService_Register_Success)
+	test.Run("Email Uniqueness", testAuthenticationService_Register_EmailUniqueness)
+	test.Run("Invalid Email", testAuthenticationService_Register_InvalidEmail)
+	test.Run("Invalid Date Of Birth", testAuthenticationService_Register_InvalidDateOfBirth)
+	test.Run("Send email error", testAuthenticationService_Register_SendEmailError)
 
 	// Verify
-	test.Run("Verify Success", testAuthService_Verify_Success)
-	test.Run("Returns error", testAuthService_Verify_GetByVerificationTokenError)
-	test.Run("Token not found error", testAuthService_Verify_UserNotFound)
-	test.Run("Update error", testAuthService_Verify_UpdateError)
+	test.Run("Verify Success", testAuthenticationService_Verify_Success)
+	test.Run("Returns error", testAuthenticationService_Verify_GetByVerificationTokenError)
+	test.Run("Token not found error", testAuthenticationService_Verify_UserNotFound)
+	test.Run("Update error", testAuthenticationService_Verify_UpdateError)
 
 	// Authenticate
-	test.Run("GetByEmail error", testAuthService_Authenticate_GetByEmailError)
-	test.Run("User Not Found", testAuthService_Authenticate_UserNotFound)
-	test.Run("Invalid Password", testAuthService_Authenticate_InvalidPassword)
-	// test.Run("AuthToken Signing Error", testAuthService_Authenticate_AuthTokenSigningError)
-	test.Run("Authenticate Success", testAuthService_Authenticate_Success)
+	test.Run("GetByEmail error", testAuthenticationService_Authenticate_GetByEmailError)
+	test.Run("User Not Found", testAuthenticationService_Authenticate_UserNotFound)
+	test.Run("Invalid Password", testAuthenticationService_Authenticate_InvalidPassword)
+	// test.Run("AuthToken Signing Error", testAuthenticationService_Authenticate_AuthTokenSigningError)
+	test.Run("Authenticate Success", testAuthenticationService_Authenticate_Success)
 }

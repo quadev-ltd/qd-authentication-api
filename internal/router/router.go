@@ -7,15 +7,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func SetupRoutes(authService *service.AuthService) *mux.Router {
+func SetupRoutes(authenticationService *service.AuthenticationService) *mux.Router {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/register", handlers.RegisterHandler(authService)).Methods("POST")
+	router.HandleFunc("/register", handlers.RegisterHandler(authenticationService)).Methods("POST")
 
-	router.HandleFunc("/verify/{verification_token}", handlers.EmailVerificationHandler(authService)).Methods("GET")
+	router.HandleFunc("/verify/{verification_token}", handlers.EmailVerificationHandler(authenticationService)).Methods("GET")
 
-	router.HandleFunc("/authenticate", handlers.AuthenticateHandler(authService)).Methods("POST")
+	router.HandleFunc("/authenticate", handlers.AuthenticateHandler(authenticationService)).Methods("POST")
 
 	return router
 }

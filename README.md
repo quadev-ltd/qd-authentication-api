@@ -10,3 +10,13 @@ To test the requests we use curl reuests. In the folder `/Users/GFC01/Documents/
 ```
 curl -X POST -H "Content-Type: application/protobuf" --data-binary @test.bin http://localhost:8080/register
 ```
+
+
+<!-- TODOs -->
+<!-- 
+    GRPC
+    Errors
+    Start with token validation functionality
+    Implement RegistrationResponse
+    Add routines
+ -->

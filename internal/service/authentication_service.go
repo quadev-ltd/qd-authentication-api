@@ -16,18 +16,18 @@ import (
 var jwtSigningKey = []byte("your-secret-key")
 var refreshTokenExpiry = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
 
-type AuthServicer interface {
-	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
+type AuthenticationServicer interface {
+	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) (*string, error)
 	Verify(verificationToken string) error
 	Authenticate(email, password string) (*model.AuthTokensResponse, error)
 }
 
-type AuthService struct {
+type AuthenticationService struct {
 	emailService EmailServicer
 	userRepo     repository.UserRepository
 }
 
-var _ AuthServicer = &AuthService{}
+var _ AuthenticationServicer = &AuthenticationService{}
 
 func generateSalt(length int) (string, error) {
 	salt := make([]byte, length)
@@ -48,35 +48,35 @@ func generateVerificationToken() (string, error) {
 	return token, nil
 }
 
-func NewAuthService(emailService EmailServicer, userRepo repository.UserRepository) *AuthService {
-	return &AuthService{userRepo: userRepo, emailService: emailService}
+func NewAuthenticationService(emailService EmailServicer, userRepo repository.UserRepository) *AuthenticationService {
+	return &AuthenticationService{userRepo: userRepo, emailService: emailService}
 }
 
-func (service *AuthService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
+func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) (*string, error) {
 	existingUser, error := service.userRepo.GetByEmail(email)
 	if error != nil {
-		return error
+		return nil, error
 	}
 	if existingUser != nil {
-		return &model.EmailInUseError{Email: email}
+		return nil, &model.EmailInUseError{Email: email}
 	}
 
 	// Generate salt
 	saltLength := 32
 	salt, error := generateSalt(saltLength)
 	if error != nil {
-		return error
+		return nil, error
 	}
 
 	// Hash password
 	hashedPassword, error := bcrypt.GenerateFromPassword([]byte(password+salt), bcrypt.DefaultCost)
 	if error != nil {
-		return error
+		return nil, error
 	}
 
 	verificationToken, error := generateVerificationToken()
 	if error != nil {
-		return error
+		return nil, error
 	}
 
 	user := &model.User{
@@ -93,22 +93,22 @@ func (service *AuthService) Register(email, password, firstName, lastName string
 
 	// Validate the user object
 	if error := model.ValidateUser(user); error != nil {
-		return error
+		return nil, error
 	}
 
 	// Create the user in the repository
 	if error := service.userRepo.Create(user); error != nil {
-		return error
+		return nil, error
 	}
 
 	if error := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); error != nil {
-		return error
+		return nil, error
 	}
 
-	return nil
+	return &verificationToken, nil
 }
 
-func (service *AuthService) Verify(verificationToken string) error {
+func (service *AuthenticationService) Verify(verificationToken string) error {
 	user, error := service.userRepo.GetByVerificationToken(verificationToken)
 	if error != nil {
 		return error
@@ -126,7 +126,7 @@ func (service *AuthService) Verify(verificationToken string) error {
 	return nil
 }
 
-func (service *AuthService) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
+func (service *AuthenticationService) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
 	user, resultError := service.userRepo.GetByEmail(email)
 	if resultError != nil {
 		return nil, resultError

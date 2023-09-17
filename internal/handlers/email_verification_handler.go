@@ -8,11 +8,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func EmailVerificationHandler(authService service.AuthServicer) func(writer http.ResponseWriter, request *http.Request) {
+func EmailVerificationHandler(authenticationService service.AuthenticationServicer) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		params := mux.Vars(request)
 		verificationToken := params["verification_token"]
-		resultError := authService.Verify(verificationToken)
+		resultError := authenticationService.Verify(verificationToken)
 		if resultError != nil {
 			http.Error(writer, fmt.Sprintf("Email verification error: %s", resultError.Error()), http.StatusInternalServerError)
 			return
