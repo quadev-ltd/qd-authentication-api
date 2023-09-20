@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"fmt"
+	// TODO delete io/ioutil dependency
 	"io/ioutil"
 	"net/http"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/pb"
 	"qd_authentication_api/internal/service"
+	"qd_authentication_api/pb/gen/go/pb_authentication"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -15,7 +16,7 @@ import (
 
 func RegisterHandler(authenticationService service.AuthenticationServicer) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		var userPb pb.RegisterRequest
+		var userPb pb_authentication.RegisterRequest
 
 		bodyBytes, error := ioutil.ReadAll(request.Body)
 		if error != nil {

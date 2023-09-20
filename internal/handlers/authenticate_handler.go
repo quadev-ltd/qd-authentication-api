@@ -5,10 +5,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/pb"
 	"qd_authentication_api/internal/service"
+	"qd_authentication_api/pb/gen/go/pb_authentication"
 
-	// TODO delete github.com/golang/protobuf/proto dependency
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/protobuf/proto"
 )
@@ -16,7 +15,7 @@ import (
 func AuthenticateHandler(authenticationService service.AuthenticationServicer) func(writer http.ResponseWriter, request *http.Request) {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
-		var userPb pb.AuthenticateRequest
+		var userPb pb_authentication.AuthenticateRequest
 
 		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
@@ -65,8 +64,8 @@ func handleAuthenticationError(writer http.ResponseWriter, err error) {
 	http.Error(writer, errorMessage, statusCode)
 }
 
-func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb.AuthenticateResponse {
-	return &pb.AuthenticateResponse{
+func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authentication.AuthenticateResponse {
+	return &pb_authentication.AuthenticateResponse{
 		AuthToken: authTokens.AuthToken,
 		AuthTokenExpiry: &timestamp.Timestamp{
 			Seconds: authTokens.AuthTokenExpiry.Unix(),

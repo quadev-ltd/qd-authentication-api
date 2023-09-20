@@ -3,9 +3,9 @@ package server_grpc
 import (
 	"context"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/pb"
 	"qd_authentication_api/internal/service"
 	"qd_authentication_api/internal/util"
+	"qd_authentication_api/pb/gen/go/pb_authentication"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -15,15 +15,15 @@ import (
 
 type AuthenticationServiceServer struct {
 	AuthenticationService *service.AuthenticationService
-	pb.UnimplementedAuthenticationServiceServer
+	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
-var _ pb.AuthenticationServiceServer = &AuthenticationServiceServer{}
+var _ pb_authentication.AuthenticationServiceServer = &AuthenticationServiceServer{}
 
 func (service AuthenticationServiceServer) Register(
 	ctx context.Context,
-	request *pb.RegisterRequest,
-) (*pb.RegisterResponse, error) {
+	request *pb_authentication.RegisterRequest,
+) (*pb_authentication.RegisterResponse, error) {
 	dateOfBirth := time.Unix(request.DateOfBirth.GetSeconds(), int64(request.DateOfBirth.GetNanos()))
 	verificationToken, registerError := service.AuthenticationService.Register(request.Email, request.Password, request.FirstName, request.LastName, &dateOfBirth)
 	if registerError != nil {
@@ -34,17 +34,32 @@ func (service AuthenticationServiceServer) Register(
 			return nil, err
 		}
 	}
-	return &pb.RegisterResponse{
+	return &pb_authentication.RegisterResponse{
 		Success:           true,
 		Message:           "Registration successful",
 		VerificationToken: *verificationToken,
 	}, nil
 }
 
+func (service AuthenticationServiceServer) VerifyEmail(
+	ctx context.Context,
+	request *pb_authentication.VerifyEmailRequest,
+) (*pb_authentication.VerifyEmailResponse, error) {
+	verifyEmailError := service.AuthenticationService.Verify(request.VerificationToken)
+	if verifyEmailError != nil {
+		err := status.Errorf(codes.InvalidArgument, verifyEmailError.Error())
+		return nil, err
+	}
+	return &pb_authentication.VerifyEmailResponse{
+		Success: true,
+		Message: "Email verified successfully",
+	}, nil
+}
+
 func (service AuthenticationServiceServer) Authenticate(
 	ctx context.Context,
-	request *pb.AuthenticateRequest,
-) (*pb.AuthenticateResponse, error) {
+	request *pb_authentication.AuthenticateRequest,
+) (*pb_authentication.AuthenticateResponse, error) {
 	authTokens, err := service.AuthenticationService.Authenticate(request.Email, request.Password)
 	if err != nil {
 		handleAuthenticationError(err)
@@ -63,8 +78,8 @@ func handleAuthenticationError(err error) error {
 	}
 }
 
-func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb.AuthenticateResponse {
-	return &pb.AuthenticateResponse{
+func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authentication.AuthenticateResponse {
+	return &pb_authentication.AuthenticateResponse{
 		AuthToken:          authTokens.AuthToken,
 		AuthTokenExpiry:    util.ConvertToTimestamp(authTokens.AuthTokenExpiry),
 		RefreshToken:       authTokens.RefreshToken,

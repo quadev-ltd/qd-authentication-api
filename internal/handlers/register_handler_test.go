@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/pb"
 	"qd_authentication_api/internal/service/mock"
+	"qd_authentication_api/pb/gen/go/pb_authentication"
 	"testing"
 	"time"
 
@@ -26,7 +26,7 @@ func testRegisterHandler_Success(test *testing.T) {
 
 	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
-	userPb := &pb.RegisterRequest{
+	userPb := &pb_authentication.RegisterRequest{
 		Email:       "test@example.com",
 		Password:    "password",
 		FirstName:   "First",
@@ -105,7 +105,7 @@ func testRegisterHandler_ValidationError(test *testing.T) {
 
 	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
-	userPb := &pb.RegisterRequest{
+	userPb := &pb_authentication.RegisterRequest{
 		Email:       "test@example.com",
 		Password:    "password",
 		FirstName:   "First",
@@ -138,7 +138,7 @@ func testRegisterHandler_EmailInUseError(test *testing.T) {
 
 	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 
-	userPb := &pb.RegisterRequest{
+	userPb := &pb_authentication.RegisterRequest{
 		Email:       "test@example.com",
 		Password:    "password",
 		FirstName:   "First",

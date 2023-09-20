@@ -8,6 +8,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Address struct {
+	Host string
+	Port string
+}
+
 type SMTPConfig struct {
 	Host     string
 	Port     string
@@ -16,12 +21,14 @@ type SMTPConfig struct {
 }
 
 type Application struct {
-	BaseUrl string
-	Name    string
+	Name     string
+	Protocol string
 }
 
 type Config struct {
 	App      Application
+	REST     Address
+	GRPC     Address
 	MongoURI string
 	SMTP     SMTPConfig
 }
@@ -42,7 +49,11 @@ func (config *Config) Load() error {
 	}
 
 	config.App.Name = viper.GetString("app.name")
-	config.App.BaseUrl = viper.GetString("app.base_url")
+	config.App.Protocol = viper.GetString("app.protocol")
+	config.REST.Host = viper.GetString("http.host")
+	config.REST.Port = viper.GetString("http.port")
+	config.GRPC.Host = viper.GetString("grpc.host")
+	config.GRPC.Port = viper.GetString("grpc.port")
 	config.MongoURI = viper.GetString("mongo.uri")
 	config.SMTP.Host = viper.GetString("smtp.host")
 	config.SMTP.Port = viper.GetString("smtp.port")

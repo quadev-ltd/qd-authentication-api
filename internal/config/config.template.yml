@@ -1,6 +1,12 @@
 app:
   name: AppName
-  base_url: http://base.url:8080
+  protocol: http/https
+rest:
+  host: hast_name
+  port: port_number
+grpc:
+  host: hast_name
+  port: port_number
 smtp:
   host: smtp.host
   port: 111

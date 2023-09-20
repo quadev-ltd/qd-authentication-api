@@ -6,14 +6,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/pb"
 	"qd_authentication_api/internal/service/mock"
+	"qd_authentication_api/pb/gen/go/pb_authentication"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -49,7 +49,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(ctrl)
 
-		requestBody := &pb.AuthenticateRequest{
+		requestBody := &pb_authentication.AuthenticateRequest{
 			Email:    "test@example.com",
 			Password: "password",
 		}
@@ -85,7 +85,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(ctrl)
 
-		requestBody := &pb.AuthenticateRequest{
+		requestBody := &pb_authentication.AuthenticateRequest{
 			Email:    "test@example.com",
 			Password: "password",
 		}
@@ -120,7 +120,7 @@ func TestAuthenticateHandler(t *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(ctrl)
 
-		requestBody := &pb.AuthenticateRequest{
+		requestBody := &pb_authentication.AuthenticateRequest{
 			Email:    "test@example.com",
 			Password: "password",
 		}
@@ -133,7 +133,7 @@ func TestAuthenticateHandler(t *testing.T) {
 			RefreshTokenExpiry: time.Now().Add(7 * 24 * time.Hour),
 			UserEmail:          requestBody.Email,
 		}
-		expectedAuthTokens := &pb.AuthenticateResponse{
+		expectedAuthTokens := &pb_authentication.AuthenticateResponse{
 			AuthToken:          "sample-auth-token",
 			AuthTokenExpiry:    timestamppb.New(time.Now().Add(15 * time.Minute)),
 			RefreshToken:       "sample-refresh-token",
@@ -162,7 +162,7 @@ func TestAuthenticateHandler(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 
 		// Decode the authenticationResponse to protobuff and assert its contents
-		var authenticationResponse pb.AuthenticateResponse
+		var authenticationResponse pb_authentication.AuthenticateResponse
 		err = proto.Unmarshal(recorder.Body.Bytes(), &authenticationResponse)
 		assert.NoError(t, err)
 

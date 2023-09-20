@@ -11,12 +11,16 @@ To test the requests we use curl reuests. In the folder `/Users/GFC01/Documents/
 curl -X POST -H "Content-Type: application/protobuf" --data-binary @test.bin http://localhost:8080/register
 ```
 
+## GRPC
+Run `buf generate` in `/pb/` to generate the protobuf files and GRPC and GRPC Gateway implementations 
+Run `buf generate --path ./google/api` if path need to be declared for imports.
+Flags `-v --debug` will provide more details on the execution.
 
 <!-- TODOs -->
 <!-- 
     GRPC
     Errors
-    Start with token validation functionality
+    Email verification token expiry and announce if token already verified
     Implement RegistrationResponse
     Add routines
  -->
