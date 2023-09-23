@@ -15,12 +15,14 @@ curl -X POST -H "Content-Type: application/protobuf" --data-binary @test.bin htt
 Run `buf generate` in `/pb/` to generate the protobuf files and GRPC and GRPC Gateway implementations 
 Run `buf generate --path ./google/api` if path need to be declared for imports.
 Flags `-v --debug` will provide more details on the execution.
-
+GRPC_Gateway docs:
+https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
 <!-- TODOs -->
 <!-- 
-    GRPC
-    Errors
-    Email verification token expiry and announce if token already verified
+    DONE: Remove handlers and create unit tests for GRPC server 
+    DONE: service
+    Errors and logs
+    Email verification token expiry and announce if token already Email verified message and unit test
     Implement RegistrationResponse
     Add routines
  -->

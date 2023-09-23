@@ -29,7 +29,6 @@ message RegisterRequest {
 message RegisterResponse {
     bool success = 1;
     string message = 2;
-    string verification_token = 3;
 }
 
 message VerifyEmailRequest {

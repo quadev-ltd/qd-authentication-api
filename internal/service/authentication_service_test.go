@@ -50,9 +50,8 @@ func testAuthenticationService_Register_Success(test *testing.T) {
 	mockEmail.EXPECT().SendVerificationMail(testEmail, testFirstName, gomock.Any()).Return(nil)
 
 	// Test successful registration
-	verificationToken, err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 	assert.NoError(test, err)
-	assert.NotEqual(test, verificationToken, "test")
 }
 
 func testAuthenticationService_Register_EmailUniqueness(test *testing.T) {
@@ -66,12 +65,11 @@ func testAuthenticationService_Register_EmailUniqueness(test *testing.T) {
 
 	mockRepo.EXPECT().GetByEmail(testEmail).Return(&model.User{}, nil)
 
-	verificationToken, err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 
 	assert.Error(test, err)
 
 	assert.Equal(test, (&model.EmailInUseError{Email: testEmail}).Error(), err.Error())
-	assert.Nil(test, verificationToken)
 }
 
 func testAuthenticationService_Register_InvalidEmail(test *testing.T) {
@@ -85,11 +83,10 @@ func testAuthenticationService_Register_InvalidEmail(test *testing.T) {
 
 	mockRepo.EXPECT().GetByEmail(invalidEmail).Return(nil, nil)
 
-	verificationToken, err := authenticationService.Register(invalidEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	err := authenticationService.Register(invalidEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 
 	assert.Error(test, err)
 	assert.Contains(test, err.Error(), "Email")
-	assert.Nil(test, verificationToken)
 }
 
 func testAuthenticationService_Register_InvalidDateOfBirth(test *testing.T) {
@@ -104,11 +101,10 @@ func testAuthenticationService_Register_InvalidDateOfBirth(test *testing.T) {
 
 	mockRepo.EXPECT().GetByEmail(testEmail).Return(nil, nil)
 
-	verificationToken, err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &invalidDateOfBirth)
+	err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &invalidDateOfBirth)
 
 	assert.Error(test, err)
 	assert.Contains(test, err.Error(), "DateOfBirth")
-	assert.Nil(test, verificationToken)
 }
 
 func testAuthenticationService_Register_SendEmailError(test *testing.T) {
@@ -126,10 +122,9 @@ func testAuthenticationService_Register_SendEmailError(test *testing.T) {
 	mockEmail.EXPECT().SendVerificationMail(testEmail, testFirstName, gomock.Any()).Return(mockedError)
 
 	// Test successful registration
-	verificationToken, error := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
+	error := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 	assert.Error(test, error)
 	assert.Equal(test, mockedError.Error(), error.Error())
-	assert.Nil(test, verificationToken)
 }
 
 func testAuthenticationService_Verify_Success(test *testing.T) {

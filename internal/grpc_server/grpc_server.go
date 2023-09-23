@@ -2,6 +2,7 @@ package server_grpc
 
 import (
 	"context"
+	"fmt"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/service"
 	"qd_authentication_api/internal/util"
@@ -14,7 +15,7 @@ import (
 )
 
 type AuthenticationServiceServer struct {
-	AuthenticationService *service.AuthenticationService
+	AuthenticationService service.AuthenticationServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
@@ -25,19 +26,24 @@ func (service AuthenticationServiceServer) Register(
 	request *pb_authentication.RegisterRequest,
 ) (*pb_authentication.RegisterResponse, error) {
 	dateOfBirth := time.Unix(request.DateOfBirth.GetSeconds(), int64(request.DateOfBirth.GetNanos()))
-	verificationToken, registerError := service.AuthenticationService.Register(request.Email, request.Password, request.FirstName, request.LastName, &dateOfBirth)
+	registerError := service.AuthenticationService.Register(request.Email, request.Password, request.FirstName, request.LastName, &dateOfBirth)
 	if registerError != nil {
 		_, isValidationError := registerError.(validator.ValidationErrors)
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
-		if isValidationError || isEmailInUseError {
-			err := status.Errorf(codes.InvalidArgument, "Registration failed: Invalid input")
+		if isValidationError {
+			err := status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
 			return nil, err
 		}
+		if isEmailInUseError {
+			err := status.Errorf(codes.InvalidArgument, "Registration failed: email already in use")
+			return nil, err
+		}
+		err := status.Errorf(codes.Internal, "Registration failed: internal server error")
+		return nil, err
 	}
 	return &pb_authentication.RegisterResponse{
-		Success:           true,
-		Message:           "Registration successful",
-		VerificationToken: *verificationToken,
+		Success: true,
+		Message: "Registration successful",
 	}, nil
 }
 
@@ -62,7 +68,7 @@ func (service AuthenticationServiceServer) Authenticate(
 ) (*pb_authentication.AuthenticateResponse, error) {
 	authTokens, err := service.AuthenticationService.Authenticate(request.Email, request.Password)
 	if err != nil {
-		handleAuthenticationError(err)
+		err = handleAuthenticationError(err)
 		return nil, err
 	}
 	authenticateResponse := *convertAuthTokensToResponse(authTokens)

@@ -17,7 +17,7 @@ var jwtSigningKey = []byte("your-secret-key")
 var refreshTokenExpiry = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
 
 type AuthenticationServicer interface {
-	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) (*string, error)
+	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
 	Verify(verificationToken string) error
 	Authenticate(email, password string) (*model.AuthTokensResponse, error)
 }
@@ -52,31 +52,31 @@ func NewAuthenticationService(emailService EmailServicer, userRepo repository.Us
 	return &AuthenticationService{userRepo: userRepo, emailService: emailService}
 }
 
-func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) (*string, error) {
+func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
 	existingUser, error := service.userRepo.GetByEmail(email)
 	if error != nil {
-		return nil, error
+		return error
 	}
 	if existingUser != nil {
-		return nil, &model.EmailInUseError{Email: email}
+		return &model.EmailInUseError{Email: email}
 	}
 
 	// Generate salt
 	saltLength := 32
 	salt, error := generateSalt(saltLength)
 	if error != nil {
-		return nil, error
+		return error
 	}
 
 	// Hash password
 	hashedPassword, error := bcrypt.GenerateFromPassword([]byte(password+salt), bcrypt.DefaultCost)
 	if error != nil {
-		return nil, error
+		return error
 	}
 
 	verificationToken, error := generateVerificationToken()
 	if error != nil {
-		return nil, error
+		return error
 	}
 
 	user := &model.User{
@@ -93,19 +93,19 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 
 	// Validate the user object
 	if error := model.ValidateUser(user); error != nil {
-		return nil, error
+		return error
 	}
 
 	// Create the user in the repository
 	if error := service.userRepo.Create(user); error != nil {
-		return nil, error
+		return error
 	}
 
 	if error := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); error != nil {
-		return nil, error
+		return error
 	}
 
-	return &verificationToken, nil
+	return nil
 }
 
 func (service *AuthenticationService) Verify(verificationToken string) error {

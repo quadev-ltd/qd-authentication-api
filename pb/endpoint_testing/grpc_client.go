@@ -1,9 +1,9 @@
-package main
+package endpoint_testing
 
 import (
 	"context"
 	"log"
-	"qd_authentication_api/internal/pb"
+	"qd_authentication_api/pb/gen/go/pb_authentication"
 
 	"google.golang.org/grpc"
 )
@@ -15,7 +15,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	client := pb.NewAuthenticationServiceClient(conn)
+	client := pb_authentication.NewAuthenticationServiceClient(conn)
 
 	// You can now use the client to call your gRPC methods
 	ctx := context.Background()
@@ -26,7 +26,7 @@ func main() {
 	// 	LastName:  "Doe",
 	// 	// Populate other fields as needed
 	// })
-	authenticateResponse, err := client.Authenticate(ctx, &pb.AuthenticateRequest{
+	authenticateResponse, err := client.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
 		Email:    "gusfran17@gmail.com",
 		Password: "password",
 	})

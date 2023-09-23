@@ -51,12 +51,11 @@ func (mr *MockAuthenticationServicerMockRecorder) Authenticate(email, password i
 }
 
 // Register mocks base method.
-func (m *MockAuthenticationServicer) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) (*string, error) {
+func (m *MockAuthenticationServicer) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Register", email, password, firstName, lastName, dateOfBirth)
-	ret0, _ := ret[0].(*string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // Register indicates an expected call of Register.
