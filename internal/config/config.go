@@ -13,7 +13,7 @@ type Address struct {
 	Port string
 }
 
-type SMTPConfig struct {
+type SMTP struct {
 	Host     string
 	Port     string
 	Username string
@@ -25,12 +25,17 @@ type Application struct {
 	Protocol string
 }
 
+type Authentication struct {
+	Key string
+}
+
 type Config struct {
-	App      Application
-	REST     Address
-	GRPC     Address
-	MongoURI string
-	SMTP     SMTPConfig
+	App            Application
+	REST           Address
+	GRPC           Address
+	MongoURI       string
+	SMTP           SMTP
+	Authentication Authentication
 }
 
 func (config *Config) Load() error {
@@ -59,6 +64,7 @@ func (config *Config) Load() error {
 	config.SMTP.Port = viper.GetString("smtp.port")
 	config.SMTP.Username = viper.GetString("smtp.username")
 	config.SMTP.Password = viper.GetString("smtp.password")
+	config.Authentication.Key = viper.GetString("authentication.key")
 
 	return nil
 }

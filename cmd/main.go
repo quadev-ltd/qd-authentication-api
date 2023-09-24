@@ -40,7 +40,7 @@ func main() {
 		Port:     config.SMTP.Port,
 	}
 	emailService := service.NewEmailService(emailServiceConfig, &service.SmtpService{})
-	authenticationService := service.NewAuthenticationService(emailService, userRepo)
+	authenticationService := service.NewAuthenticationService(emailService, userRepo, config.Authentication.Key)
 
 	// TODO deprecated
 	// grpclog.SetLogger(log.New(os.Stdout, "grpc: ", log.LstdFlags))

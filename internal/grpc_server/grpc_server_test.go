@@ -6,6 +6,7 @@ import (
 	grpcServerService "qd_authentication_api/internal/grpc_server"
 	"qd_authentication_api/internal/model"
 	validationErrorsMock "qd_authentication_api/internal/model/mock"
+	"qd_authentication_api/internal/service"
 	"qd_authentication_api/internal/service/mock"
 	"qd_authentication_api/pb/gen/go/pb_authentication"
 	"testing"
@@ -169,7 +170,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(test, response.Success, successfulResponse.Success)
 	})
 
-	test.Run("Email verification error", func(test *testing.T) {
+	test.Run("Email verification internal server error", func(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
@@ -182,7 +183,29 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mockVerifyEmailError := errors.New("some verification error")
 
 		authenticationServiceMock.EXPECT().
-			Verify(gomock.Any()).
+			VerifyEmail(gomock.Any()).
+			Return(mockVerifyEmailError)
+
+		response, returnedError := server.VerifyEmail(context.Background(), verifyEmailRequest)
+
+		assert.Equal(test, status.Error(codes.Internal, "Internal server error"), returnedError)
+		assert.Nil(test, response)
+	})
+
+	test.Run("Email verification service error", func(test *testing.T) {
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+
+		server := grpcServerService.AuthenticationServiceServer{
+			AuthenticationService: authenticationServiceMock,
+		}
+
+		mockVerifyEmailError := &service.ServiceError{Message: "some error"}
+
+		authenticationServiceMock.EXPECT().
+			VerifyEmail(gomock.Any()).
 			Return(mockVerifyEmailError)
 
 		response, returnedError := server.VerifyEmail(context.Background(), verifyEmailRequest)
@@ -207,7 +230,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		authenticationServiceMock.EXPECT().
-			Verify(gomock.Any()).
+			VerifyEmail(gomock.Any()).
 			Return(nil)
 
 		// Call the VerifyEmail function on your gRPC server.

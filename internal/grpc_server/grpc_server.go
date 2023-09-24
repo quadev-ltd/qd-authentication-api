@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/service"
+	authenticationService "qd_authentication_api/internal/service"
 	"qd_authentication_api/internal/util"
 	"qd_authentication_api/pb/gen/go/pb_authentication"
 	"time"
@@ -15,7 +15,7 @@ import (
 )
 
 type AuthenticationServiceServer struct {
-	AuthenticationService service.AuthenticationServicer
+	AuthenticationService authenticationService.AuthenticationServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
@@ -51,15 +51,18 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
 ) (*pb_authentication.VerifyEmailResponse, error) {
-	verifyEmailError := service.AuthenticationService.Verify(request.VerificationToken)
-	if verifyEmailError != nil {
-		err := status.Errorf(codes.InvalidArgument, verifyEmailError.Error())
-		return nil, err
+	verifyEmailError := service.AuthenticationService.VerifyEmail(request.VerificationToken)
+	if verifyEmailError == nil {
+		return &pb_authentication.VerifyEmailResponse{
+			Success: true,
+			Message: "Email verified successfully",
+		}, nil
 	}
-	return &pb_authentication.VerifyEmailResponse{
-		Success: true,
-		Message: "Email verified successfully",
-	}, nil
+	if serviceErr, ok := verifyEmailError.(*authenticationService.ServiceError); ok {
+		return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+	} else {
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
 }
 
 func (service AuthenticationServiceServer) Authenticate(

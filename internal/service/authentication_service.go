@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 	"time"
@@ -12,22 +11,32 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Define the JWT signing key and refresh token expiry
-var jwtSigningKey = []byte("your-secret-key")
-var refreshTokenExpiry = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
+// TODO: Analyse best expiry times for tokens
+const AuthenticationTokenExpiry = 2 * time.Hour // Authentication token expiry set to 2 hours
+const RefreshTokenExpiry = 7 * 24 * time.Hour   // Refresh token expiry set to 7 days
+const VerificationTokenExpiry = 24 * time.Hour  // Verification token expiry set to 24 hours
 
 type AuthenticationServicer interface {
 	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
-	Verify(verificationToken string) error
+	VerifyEmail(verificationToken string) error
 	Authenticate(email, password string) (*model.AuthTokensResponse, error)
 }
 
 type AuthenticationService struct {
 	emailService EmailServicer
 	userRepo     repository.UserRepository
+	key          []byte
 }
 
 var _ AuthenticationServicer = &AuthenticationService{}
+
+type ServiceError struct {
+	Message string
+}
+
+func (e *ServiceError) Error() string {
+	return e.Message
+}
 
 func generateSalt(length int) (string, error) {
 	salt := make([]byte, length)
@@ -48,8 +57,33 @@ func generateVerificationToken() (string, error) {
 	return token, nil
 }
 
-func NewAuthenticationService(emailService EmailServicer, userRepo repository.UserRepository) *AuthenticationService {
-	return &AuthenticationService{userRepo: userRepo, emailService: emailService}
+func NewAuthenticationService(
+	emailService EmailServicer,
+	userRepo repository.UserRepository,
+	key string,
+) *AuthenticationService {
+	return &AuthenticationService{
+		userRepo:     userRepo,
+		emailService: emailService,
+		key:          []byte(key),
+	}
+}
+
+func generateHash(password string) ([]byte, *string, error) {
+	// Generate salt
+	saltLength := 32
+	salt, error := generateSalt(saltLength)
+	if error != nil {
+		return nil, nil, error
+	}
+
+	// Hash password
+	hashedPassword, error := bcrypt.GenerateFromPassword([]byte(password+salt), bcrypt.DefaultCost)
+	if error != nil {
+		return nil, nil, error
+	}
+
+	return hashedPassword, &salt, nil
 }
 
 func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
@@ -61,15 +95,7 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 		return &model.EmailInUseError{Email: email}
 	}
 
-	// Generate salt
-	saltLength := 32
-	salt, error := generateSalt(saltLength)
-	if error != nil {
-		return error
-	}
-
-	// Hash password
-	hashedPassword, error := bcrypt.GenerateFromPassword([]byte(password+salt), bcrypt.DefaultCost)
+	hashedPassword, salt, error := generateHash(password)
 	if error != nil {
 		return error
 	}
@@ -79,16 +105,19 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 		return error
 	}
 
+	verificationTokentExpiryDate := time.Now().Add(VerificationTokenExpiry)
+
 	user := &model.User{
-		Email:             email,
-		VerificationToken: verificationToken,
-		PasswordHash:      string(hashedPassword),
-		PasswordSalt:      salt,
-		FirstName:         firstName,
-		LastName:          lastName,
-		DateOfBirth:       *dateOfBirth,
-		RegistrationDate:  time.Now(),
-		AccountStatus:     model.AccountStatusUnverified,
+		Email:                       email,
+		VerificationToken:           verificationToken,
+		VerificationTokenExpiryDate: verificationTokentExpiryDate,
+		PasswordHash:                string(hashedPassword),
+		PasswordSalt:                *salt,
+		FirstName:                   firstName,
+		LastName:                    lastName,
+		DateOfBirth:                 *dateOfBirth,
+		RegistrationDate:            time.Now(),
+		AccountStatus:               model.AccountStatusUnverified,
 	}
 
 	// Validate the user object
@@ -108,15 +137,22 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 	return nil
 }
 
-func (service *AuthenticationService) Verify(verificationToken string) error {
+func (service *AuthenticationService) VerifyEmail(verificationToken string) error {
 	user, error := service.userRepo.GetByVerificationToken(verificationToken)
 	if error != nil {
 		return error
 	}
-	if user == nil {
-		return fmt.Errorf("Invalid verification token")
+	if user.AccountStatus == model.AccountStatusVerified {
+		return &ServiceError{Message: "Email already verified"}
 	}
-
+	if user == nil {
+		return &ServiceError{Message: "Invalid verification token"}
+	}
+	current := time.Now()
+	timeDifference := current.Sub(user.VerificationTokenExpiryDate)
+	if timeDifference >= VerificationTokenExpiry {
+		return &ServiceError{Message: "Verification token expired"}
+	}
 	user.AccountStatus = model.AccountStatusVerified
 
 	if error := service.userRepo.Update(user); error != nil {
@@ -141,25 +177,24 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
-	// Set the expiration time for the authentication token
-	authTokenExpiration := time.Now().Add(15 * time.Minute) // Adjust the expiration time as needed
+	authenticationTokenExpiryDate := time.Now().Add(AuthenticationTokenExpiry)
 
 	// Generate the JWT claims for the authentication token
 	authTokenClaims := jwt.MapClaims{
 		"email": user.Email,
 		// Add any other relevant claims (e.g., user ID, role, etc.)
-		"exp": authTokenExpiration.Unix(),
+		"exp": authenticationTokenExpiryDate.Unix(),
 	}
 
 	// Create the authentication token
 	authToken := jwt.NewWithClaims(jwt.SigningMethodHS256, authTokenClaims)
-	authTokenString, err := authToken.SignedString(jwtSigningKey)
+	authTokenString, err := authToken.SignedString(service.key)
 	if err != nil {
 		return nil, err
 	}
 
 	// Set the expiration time for the refresh token
-	refreshTokenExpiration := time.Now().Add(refreshTokenExpiry)
+	refreshTokenExpiration := time.Now().Add(RefreshTokenExpiry)
 
 	// Generate the JWT claims for the refresh token
 	refreshTokenClaims := jwt.MapClaims{
@@ -170,7 +205,7 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 
 	// Create the refresh token
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
-	refreshTokenString, err := refreshToken.SignedString(jwtSigningKey)
+	refreshTokenString, err := refreshToken.SignedString(service.key)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +213,7 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 	// Build the response containing the authentication token, refresh token, and other information
 	response := &model.AuthTokensResponse{
 		AuthToken:          authTokenString,
-		AuthTokenExpiry:    authTokenExpiration,
+		AuthTokenExpiry:    authenticationTokenExpiryDate,
 		RefreshToken:       refreshTokenString,
 		RefreshTokenExpiry: refreshTokenExpiration,
 		UserEmail:          user.Email,

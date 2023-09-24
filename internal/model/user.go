@@ -10,16 +10,17 @@ import (
 type AccountStatus int
 
 type User struct {
-	Email             string        `validate:"required,email"`
-	VerificationToken string        `validate:"required"`
-	PasswordHash      string        `validate:"required"`
-	PasswordSalt      string        `validate:"required"`
-	FirstName         string        `validate:"required,min=2,max=30"`
-	LastName          string        `validate:"required,min=2,max=30"`
-	DateOfBirth       time.Time     `validate:"required,not_future"`
-	RegistrationDate  time.Time     `validate:"required"`
-	LastLoginDate     time.Time     `validate:"omitempty"`
-	AccountStatus     AccountStatus `validate:"required"`
+	Email                       string        `validate:"required,email"`
+	VerificationToken           string        `validate:"required"`
+	VerificationTokenExpiryDate time.Time     `validate:"required"`
+	PasswordHash                string        `validate:"required"`
+	PasswordSalt                string        `validate:"required"`
+	FirstName                   string        `validate:"required,min=2,max=30"`
+	LastName                    string        `validate:"required,min=2,max=30"`
+	DateOfBirth                 time.Time     `validate:"required,not_future"`
+	RegistrationDate            time.Time     `validate:"required"`
+	LastLoginDate               time.Time     `validate:"omitempty"`
+	AccountStatus               AccountStatus `validate:"required"`
 }
 
 const (

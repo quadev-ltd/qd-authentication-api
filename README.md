@@ -19,10 +19,9 @@ GRPC_Gateway docs:
 https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
 <!-- TODOs -->
 <!-- 
-    DONE: Remove handlers and create unit tests for GRPC server 
-    DONE: service
+    Test expiration dates in tokens
     Errors and logs
     Email verification token expiry and announce if token already Email verified message and unit test
-    Implement RegistrationResponse
+    Add token refresh endpooint
     Add routines
  -->

@@ -1,4 +1,4 @@
-package endpoint_testing
+package main
 
 import (
 	"context"
@@ -19,8 +19,8 @@ func main() {
 
 	// You can now use the client to call your gRPC methods
 	ctx := context.Background()
-	// registerResponse, err := client.Register(ctx, &pb.RegisterRequest{
-	// 	Email:     "gusfran17@hotmail.com",
+	// registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
+	// 	Email:     "gusfran17@gmail.com",
 	// 	Password:  "password123",
 	// 	FirstName: "John",
 	// 	LastName:  "Doe",
@@ -28,7 +28,7 @@ func main() {
 	// })
 	authenticateResponse, err := client.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
 		Email:    "gusfran17@gmail.com",
-		Password: "password",
+		Password: "password123",
 	})
 
 	if err != nil {
@@ -36,5 +36,6 @@ func main() {
 	}
 
 	// Handle the response
-	log.Printf("Register response: %v", authenticateResponse)
+	log.Printf("Authentication response:\n\n\n\n%v", authenticateResponse)
+	// log.Printf("Register response:\n\n\n\n%v", registerResponse)
 }

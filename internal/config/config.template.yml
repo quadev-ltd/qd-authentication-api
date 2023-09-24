@@ -1,6 +1,8 @@
 app:
   name: AppName
   protocol: http/https
+authentication:
+  key: service_key
 rest:
   host: hast_name
   port: port_number

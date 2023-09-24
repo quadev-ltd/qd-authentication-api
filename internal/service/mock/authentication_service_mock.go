@@ -64,16 +64,16 @@ func (mr *MockAuthenticationServicerMockRecorder) Register(email, password, firs
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockAuthenticationServicer)(nil).Register), email, password, firstName, lastName, dateOfBirth)
 }
 
-// Verify mocks base method.
-func (m *MockAuthenticationServicer) Verify(verificationToken string) error {
+// VerifyEmail mocks base method.
+func (m *MockAuthenticationServicer) VerifyEmail(verificationToken string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Verify", verificationToken)
+	ret := m.ctrl.Call(m, "VerifyEmail", verificationToken)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Verify indicates an expected call of Verify.
-func (mr *MockAuthenticationServicerMockRecorder) Verify(verificationToken interface{}) *gomock.Call {
+// VerifyEmail indicates an expected call of VerifyEmail.
+func (mr *MockAuthenticationServicerMockRecorder) VerifyEmail(verificationToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verify", reflect.TypeOf((*MockAuthenticationServicer)(nil).Verify), verificationToken)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmail", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyEmail), verificationToken)
 }
