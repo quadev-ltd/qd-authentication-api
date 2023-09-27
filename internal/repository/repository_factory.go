@@ -21,10 +21,10 @@ func (repositoryFactory *RepositoryFactory) CreateRepository(config *config.Conf
 		return nil, err
 	}
 
-	userRepo := mongoRepository.NewMongoUserRepository(client)
+	userRepository := mongoRepository.NewMongoUserRepository(client)
 
 	return &Repository{
 		client:         client,
-		userRepository: userRepo,
+		userRepository: userRepository,
 	}, nil
 }

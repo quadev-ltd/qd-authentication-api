@@ -14,6 +14,7 @@ require (
 
 require (
 	github.com/golang/glog v1.1.2 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20230913181813-007df8e322eb // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230913181813-007df8e322eb // indirect

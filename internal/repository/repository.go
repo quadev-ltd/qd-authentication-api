@@ -2,8 +2,7 @@ package repository
 
 import (
 	"context"
-
-	"go.mongodb.org/mongo-driver/mongo"
+	"errors"
 )
 
 type Repositoryer interface {
@@ -11,9 +10,14 @@ type Repositoryer interface {
 	Close() error
 }
 
+type MongoClienter interface {
+	Connect(ctx context.Context) error
+	Disconnect(ctx context.Context) error
+}
+
 type Repository struct {
 	userRepository UserRepositoryer
-	client         *mongo.Client
+	client         MongoClienter
 }
 
 func (repository *Repository) GetUserRepository() UserRepositoryer {
@@ -24,5 +28,5 @@ func (repository *Repository) Close() error {
 	if repository.client != nil {
 		return repository.client.Disconnect(context.Background())
 	}
-	return nil
+	return errors.New("Repository client is nil.")
 }

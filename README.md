@@ -19,14 +19,15 @@ GRPC_Gateway docs:
 https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
 <!-- TODOs -->
 <!--
+    Link interfaces with implementation structs
     Integration tests 
-    Unmarshal config
+    Factory unit tests service, grpc
     Test expiration dates in tokens
-    
     Errors and logs
     Email verification token expiry and announce if token already Email verified message and unit test
     Add token refresh endpooint
     Add routines
+
     Refresh Token: This endpoint allows users to refresh their authentication token using a valid refresh token. It helps maintain the user's session without requiring them to log in again.
 
 Logout: This endpoint logs the user out by invalidating their refresh token. It's useful when a user wants to sign out or when you need to manage active sessions.

@@ -29,7 +29,12 @@ func newUser() *model.User {
 
 func setupMongoServer() (*memongo.Server, *mongo.Client, error) {
 	// Start mongo server
-	mongoServer, err := memongo.Start("4.0.5")
+	mongoServer, err := memongo.StartWithOptions(
+		&memongo.Options{
+			LogLevel:     4,
+			MongoVersion: "4.0.5",
+		},
+	)
 	if err != nil {
 		return nil, nil, err
 	}

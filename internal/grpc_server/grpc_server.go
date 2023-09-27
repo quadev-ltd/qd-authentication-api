@@ -1,10 +1,14 @@
 package grpc_server
 
 import (
+	"errors"
 	"net"
-
-	"google.golang.org/grpc"
 )
+
+type GRPCServerInterface interface {
+	Serve(net.Listener) error
+	Stop()
+}
 
 type GRPCServicer interface {
 	Serve() error
@@ -12,20 +16,22 @@ type GRPCServicer interface {
 }
 
 type GRPCService struct {
-	grpcServer   *grpc.Server
+	grpcServer   GRPCServerInterface
 	grpcListener net.Listener
 }
 
-func (grpcServerFactory *GRPCService) Serve() error {
-	return grpcServerFactory.grpcServer.Serve(grpcServerFactory.grpcListener)
+func (grpcService *GRPCService) Serve() error {
+	return grpcService.grpcServer.Serve(grpcService.grpcListener)
 }
 
-func (grpcServerFactory *GRPCService) Close() error {
-	if grpcServerFactory.grpcServer != nil {
-		grpcServerFactory.grpcServer.Stop()
+func (grpcService *GRPCService) Close() error {
+	if grpcService.grpcServer == nil || grpcService.grpcListener == nil {
+		if grpcService.grpcListener != nil {
+			return grpcService.grpcListener.Close()
+		}
+		return errors.New("GRPC server or listener is nil.")
+	} else {
+		grpcService.grpcServer.Stop()
+		return grpcService.grpcListener.Close()
 	}
-	if grpcServerFactory.grpcListener != nil {
-		return grpcServerFactory.grpcListener.Close()
-	}
-	return nil
 }

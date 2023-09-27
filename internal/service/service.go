@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"qd_authentication_api/internal/repository"
 )
 
@@ -22,5 +23,5 @@ func (service *Service) Close() error {
 	if service.repository != nil {
 		return service.repository.Close()
 	}
-	return nil
+	return errors.New("Service repository is nil.")
 }
