@@ -14,5 +14,5 @@ smtp:
   port: 111
   username: example@email.com
   password: email-password
-mongo:
+db:
   uri: mongo-db-uri

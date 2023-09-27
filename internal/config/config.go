@@ -29,11 +29,15 @@ type Authentication struct {
 	Key string
 }
 
+type DB struct {
+	URI string
+}
+
 type Config struct {
 	App            Application
 	REST           Address
 	GRPC           Address
-	MongoURI       string
+	DB             DB
 	SMTP           SMTP
 	Authentication Authentication
 }
@@ -53,18 +57,9 @@ func (config *Config) Load() error {
 		log.Fatalf("Error loading configuration file: %v", err)
 	}
 
-	config.App.Name = viper.GetString("app.name")
-	config.App.Protocol = viper.GetString("app.protocol")
-	config.REST.Host = viper.GetString("http.host")
-	config.REST.Port = viper.GetString("http.port")
-	config.GRPC.Host = viper.GetString("grpc.host")
-	config.GRPC.Port = viper.GetString("grpc.port")
-	config.MongoURI = viper.GetString("mongo.uri")
-	config.SMTP.Host = viper.GetString("smtp.host")
-	config.SMTP.Port = viper.GetString("smtp.port")
-	config.SMTP.Username = viper.GetString("smtp.username")
-	config.SMTP.Password = viper.GetString("smtp.password")
-	config.Authentication.Key = viper.GetString("authentication.key")
+	if err := viper.Unmarshal(&config); err != nil {
+		return fmt.Errorf("Error unmarshaling configuration: %v", err)
+	}
 
 	return nil
 }

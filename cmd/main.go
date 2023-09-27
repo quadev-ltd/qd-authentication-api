@@ -1,87 +1,53 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 
 	"qd_authentication_api/internal/config"
 	grpcServerService "qd_authentication_api/internal/grpc_server"
-	mongoRepository "qd_authentication_api/internal/repository/mongo"
 	"qd_authentication_api/internal/service"
-	"qd_authentication_api/pb/gen/go/pb_authentication"
-
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"google.golang.org/grpc"
 )
 
 func main() {
+	// grpclog.SetLogger(log.New(os.Stdout, "grpc: ", log.LstdFlags))
+
 	var config config.Config
 	config.Load()
 
-	client, error := mongo.Connect(context.Background(), options.Client().ApplyURI(config.MongoURI))
-	if error != nil {
-		log.Fatal(error)
-	}
-	defer client.Disconnect(context.Background())
-
-	userRepo := mongoRepository.NewMongoUserRepository(client)
-	baseUrl := fmt.Sprintf("%s://%s:%s", config.App.Protocol, config.REST.Host, config.REST.Port)
-	emailServiceConfig := service.EmailServiceConfig{
-		AppName:  config.App.Name,
-		BaseUrl:  baseUrl,
-		From:     config.SMTP.Username,
-		Password: config.SMTP.Password,
-		Host:     config.SMTP.Host,
-		Port:     config.SMTP.Port,
-	}
-	emailService := service.NewEmailService(emailServiceConfig, &service.SmtpService{})
-	authenticationService := service.NewAuthenticationService(emailService, userRepo, config.Authentication.Key)
-
-	// TODO deprecated
-	// grpclog.SetLogger(log.New(os.Stdout, "grpc: ", log.LstdFlags))
-
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	mux := runtime.NewServeMux()
-	// TODO deprecated
-	opts := []grpc.DialOption{grpc.WithInsecure()}
 	grpcServerAddress := fmt.Sprintf("%s:%s", config.GRPC.Host, config.GRPC.Port)
-	err := pb_authentication.RegisterAuthenticationServiceHandlerFromEndpoint(ctx, mux, grpcServerAddress, opts)
+	grpcGatewayAddress := fmt.Sprintf("%s:%s", config.REST.Host, config.REST.Port)
+
+	service, err := (&service.ServiceFactory{}).CreateService(&config)
 	if err != nil {
-		log.Fatalf("Failed to register gRPC-gateway handler: %v", err)
+		log.Fatalf("Failed to create authentication service: %v", err)
 	}
+	defer service.Close()
 
-	// Create a gRPC server
-	authenticationServiceGRPCServer := grpcServerService.AuthenticationServiceServer{
-		AuthenticationService: authenticationService,
-	}
-	grpcServer := grpc.NewServer()
-	pb_authentication.RegisterAuthenticationServiceServer(grpcServer, authenticationServiceGRPCServer)
-
-	// Start the gRPC server
-	grpcListener, err := net.Listen("tcp", grpcServerAddress) // Choose a port for gRPC
+	grpcServiceServer, err := (&grpcServerService.GRPCServerFactory{}).Create(
+		grpcServerAddress,
+		service.GetAuthenticationService(),
+	)
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("Failed to create grpc server: %v", err)
 	}
-	defer grpcListener.Close()
-
+	defer grpcServiceServer.Close()
 	go func() {
-		log.Printf("Starting the GRPC server on %s:...", config.GRPC.Port)
-		if err := grpcServer.Serve(grpcListener); err != nil {
-			log.Fatalf("Failed to serve: %v", err)
+		log.Printf("Starting gRPC server on port %s:...", config.GRPC.Port)
+		err := grpcServiceServer.Serve()
+		if err != nil {
+			log.Fatalf("Failed to serve grpc server: %v", err)
 		}
 	}()
 
-	// Start the gRPC-gateway server
-	log.Printf("Starting gRPC-gateway server on %s:...", config.REST.Port)
-	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", config.REST.Host, config.REST.Port), mux); err != nil {
-		log.Fatalf("gRPC-gateway server failed: %v", err)
+	grpcGatewayServer, err := (&grpcServerService.GRPCGatewayFactory{}).Create(grpcServerAddress, grpcGatewayAddress)
+	if err != nil {
+		log.Fatalf("Failed to create grpc gateway server: %v", err)
+	}
+	defer grpcGatewayServer.Close()
+	log.Printf("Starting gRPC-gateway server on port %s:...", config.REST.Port)
+	err = grpcGatewayServer.Serve()
+	if err != nil {
+		log.Fatalf("Failed to serve grpc gateway server: %v", err)
 	}
 }

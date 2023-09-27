@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/repository"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -15,8 +14,6 @@ type MongoUserRepository struct {
 	collectionName string
 	client         *mongo.Client
 }
-
-var _ repository.UserRepository = &MongoUserRepository{}
 
 func NewMongoUserRepository(client *mongo.Client) *MongoUserRepository {
 	return &MongoUserRepository{client: client, dbName: "qd_authentication", collectionName: "users"}

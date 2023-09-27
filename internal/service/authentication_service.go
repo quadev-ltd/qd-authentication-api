@@ -1,8 +1,6 @@
 package service
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 	"time"
@@ -23,71 +21,27 @@ type AuthenticationServicer interface {
 }
 
 type AuthenticationService struct {
-	emailService EmailServicer
-	userRepo     repository.UserRepository
-	key          []byte
+	emailService   EmailServicer
+	userRepository repository.UserRepositoryer
+	key            []byte
 }
 
 var _ AuthenticationServicer = &AuthenticationService{}
 
-type ServiceError struct {
-	Message string
-}
-
-func (e *ServiceError) Error() string {
-	return e.Message
-}
-
-func generateSalt(length int) (string, error) {
-	salt := make([]byte, length)
-	_, error := rand.Read(salt)
-	if error != nil {
-		return "", error
-	}
-	return base64.StdEncoding.EncodeToString(salt), nil
-}
-
-func generateVerificationToken() (string, error) {
-	b := make([]byte, 32)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	token := base64.URLEncoding.EncodeToString(b)
-	return token, nil
-}
-
 func NewAuthenticationService(
 	emailService EmailServicer,
-	userRepo repository.UserRepository,
+	userRepository repository.UserRepositoryer,
 	key string,
-) *AuthenticationService {
+) AuthenticationServicer {
 	return &AuthenticationService{
-		userRepo:     userRepo,
-		emailService: emailService,
-		key:          []byte(key),
+		userRepository: userRepository,
+		emailService:   emailService,
+		key:            []byte(key),
 	}
-}
-
-func generateHash(password string) ([]byte, *string, error) {
-	// Generate salt
-	saltLength := 32
-	salt, error := generateSalt(saltLength)
-	if error != nil {
-		return nil, nil, error
-	}
-
-	// Hash password
-	hashedPassword, error := bcrypt.GenerateFromPassword([]byte(password+salt), bcrypt.DefaultCost)
-	if error != nil {
-		return nil, nil, error
-	}
-
-	return hashedPassword, &salt, nil
 }
 
 func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
-	existingUser, error := service.userRepo.GetByEmail(email)
+	existingUser, error := service.userRepository.GetByEmail(email)
 	if error != nil {
 		return error
 	}
@@ -126,7 +80,7 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 	}
 
 	// Create the user in the repository
-	if error := service.userRepo.Create(user); error != nil {
+	if error := service.userRepository.Create(user); error != nil {
 		return error
 	}
 
@@ -138,15 +92,15 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 }
 
 func (service *AuthenticationService) VerifyEmail(verificationToken string) error {
-	user, error := service.userRepo.GetByVerificationToken(verificationToken)
+	user, error := service.userRepository.GetByVerificationToken(verificationToken)
 	if error != nil {
 		return error
 	}
-	if user.AccountStatus == model.AccountStatusVerified {
-		return &ServiceError{Message: "Email already verified"}
-	}
 	if user == nil {
 		return &ServiceError{Message: "Invalid verification token"}
+	}
+	if user.AccountStatus == model.AccountStatusVerified {
+		return &ServiceError{Message: "Email already verified"}
 	}
 	current := time.Now()
 	timeDifference := current.Sub(user.VerificationTokenExpiryDate)
@@ -155,7 +109,7 @@ func (service *AuthenticationService) VerifyEmail(verificationToken string) erro
 	}
 	user.AccountStatus = model.AccountStatusVerified
 
-	if error := service.userRepo.Update(user); error != nil {
+	if error := service.userRepository.Update(user); error != nil {
 		return error
 	}
 
@@ -163,7 +117,7 @@ func (service *AuthenticationService) VerifyEmail(verificationToken string) erro
 }
 
 func (service *AuthenticationService) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
-	user, resultError := service.userRepo.GetByEmail(email)
+	user, resultError := service.userRepository.GetByEmail(email)
 	if resultError != nil {
 		return nil, resultError
 	}

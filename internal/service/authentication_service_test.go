@@ -42,7 +42,7 @@ func newUser() *model.User {
 
 func TestAuthenticationService(test *testing.T) {
 	// Register
-	test.Run("Register: Success", func(test *testing.T) {
+	test.Run("Register_Success", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -59,7 +59,7 @@ func TestAuthenticationService(test *testing.T) {
 		err := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 		assert.NoError(test, err)
 	})
-	test.Run("Register: Email Uniqueness", func(test *testing.T) {
+	test.Run("Register_Email_Uniqueness", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -76,7 +76,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		assert.Equal(test, (&model.EmailInUseError{Email: testEmail}).Error(), err.Error())
 	})
-	test.Run("Register: Invalid Email", func(test *testing.T) {
+	test.Run("Register_Invalid_Email", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -92,7 +92,7 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Error(test, err)
 		assert.Contains(test, err.Error(), "Email")
 	})
-	test.Run("Register: Invalid Date Of Birth", func(test *testing.T) {
+	test.Run("Register_Invalid_DOB", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -109,7 +109,7 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Error(test, err)
 		assert.Contains(test, err.Error(), "DateOfBirth")
 	})
-	test.Run("Register: Send email error", func(test *testing.T) {
+	test.Run("Register_Send_email_error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -130,7 +130,7 @@ func TestAuthenticationService(test *testing.T) {
 	})
 
 	// Verify
-	test.Run("Verify: Verify Success", func(test *testing.T) {
+	test.Run("Verify_Verify_Success", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -151,7 +151,7 @@ func TestAuthenticationService(test *testing.T) {
 		assert.NoError(test, err)
 		assert.Equal(test, model.AccountStatusVerified, testUser.AccountStatus)
 	})
-	test.Run("Verify: Token expired error", func(test *testing.T) {
+	test.Run("Verify_Token_expired_error", func(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
@@ -172,7 +172,7 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Contains(test, err.Error(), "Verification token expired")
 
 	})
-	test.Run("Verify: Returns error", func(test *testing.T) {
+	test.Run("Verify_Returns_error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -192,7 +192,7 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Error(test, resultError)
 		assert.Equal(test, mockedError.Error(), resultError.Error())
 	})
-	test.Run("Verify: Token not found error", func(test *testing.T) {
+	test.Run("Verify_Token_not_found_error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -209,9 +209,10 @@ func TestAuthenticationService(test *testing.T) {
 		resultError := authenticationService.VerifyEmail(verificationToken)
 
 		assert.Error(test, resultError)
+		assert.NotNil(test, resultError)
 		assert.Equal(test, "Invalid verification token", resultError.Error())
 	})
-	test.Run("Verify: Update error", func(test *testing.T) {
+	test.Run("Verify_Update_error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -235,7 +236,7 @@ func TestAuthenticationService(test *testing.T) {
 	})
 
 	// Authenticate
-	test.Run("Authenticate: GetByEmail error", func(test *testing.T) {
+	test.Run("Authenticate_GetByEmail_error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -257,7 +258,7 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Equal(test, errorMessage, err.Error())
 		assert.Nil(test, user)
 	})
-	test.Run("Authenticate: User Not Found", func(test *testing.T) {
+	test.Run("Authenticate_User_Not_Found", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -277,7 +278,7 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Equal(test, "Wrong Email", err.Error())
 		assert.Nil(test, user)
 	})
-	test.Run("Authenticate: Invalid Password", func(test *testing.T) {
+	test.Run("Authenticate_Invalid_Password", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
@@ -300,8 +301,8 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Nil(test, resultUser)
 		assert.Equal(test, "Wrong Password", resultError.Error())
 	})
-	// test.Run("Authenticate: AuthToken Signing Error", testAuthenticationService_Authenticate_AuthTokenSigningError)
-	test.Run("Authenticate: Authenticate Success", func(test *testing.T) {
+	// test.Run("Authenticate_AuthToken Signing Error", testAuthenticationService_Authenticate_AuthTokenSigningError)
+	test.Run("Authenticate_Authenticate_Success", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
