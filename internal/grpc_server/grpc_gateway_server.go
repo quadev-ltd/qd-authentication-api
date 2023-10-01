@@ -19,6 +19,8 @@ type GRPCGatewayService struct {
 	cancel               context.CancelFunc
 }
 
+var _ GRPCGatewayServicer = &GRPCGatewayService{}
+
 func (grpcGatewayService *GRPCGatewayService) Serve() error {
 	return http.ListenAndServe(grpcGatewayService.gatewayServerAddress, grpcGatewayService.mux)
 }

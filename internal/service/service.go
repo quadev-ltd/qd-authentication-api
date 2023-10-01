@@ -15,6 +15,8 @@ type Service struct {
 	repository            repository.Repositoryer
 }
 
+var _ Servicer = &Service{}
+
 func (service *Service) GetAuthenticationService() AuthenticationServicer {
 	return service.authenticationService
 }

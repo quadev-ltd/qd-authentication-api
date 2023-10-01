@@ -12,6 +12,8 @@ type ServiceFactoryer interface {
 
 type ServiceFactory struct{}
 
+var _ ServiceFactoryer = &ServiceFactory{}
+
 func (serviceFactory *ServiceFactory) CreateService(
 	config *config.Config,
 ) (Servicer, error) {

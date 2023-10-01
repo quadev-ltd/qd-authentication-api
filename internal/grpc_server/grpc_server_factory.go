@@ -14,6 +14,8 @@ type GRPCServiceFactoryer interface {
 
 type GRPCServerFactory struct{}
 
+var _ GRPCServiceFactoryer = &GRPCServerFactory{}
+
 func (grpcServerFactory *GRPCServerFactory) Create(
 	grpcServerAddress string,
 	authenticationService service.AuthenticationServicer,

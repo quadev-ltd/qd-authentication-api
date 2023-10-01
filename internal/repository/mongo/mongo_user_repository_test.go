@@ -6,10 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/benweissmann/memongo"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func newUser() *model.User {
@@ -27,37 +24,8 @@ func newUser() *model.User {
 	}
 }
 
-func setupMongoServer() (*memongo.Server, *mongo.Client, error) {
-	// Start mongo server
-	mongoServer, err := memongo.StartWithOptions(
-		&memongo.Options{
-			LogLevel:     4,
-			MongoVersion: "4.0.5",
-		},
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Create a new mongo client
-	client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
-	if err != nil {
-		mongoServer.Stop()
-		return nil, nil, err
-	}
-
-	// Connect the mongo client
-	if err := client.Connect(context.Background()); err != nil {
-		client.Disconnect(context.Background())
-		mongoServer.Stop()
-		return nil, nil, err
-	}
-
-	return mongoServer, client, nil
-}
-
 func testMongoUserRepository_Create(test *testing.T) {
-	mongoServer, client, error := setupMongoServer()
+	mongoServer, client, error := SetupMockMongoServer()
 	defer client.Disconnect(context.Background())
 	defer mongoServer.Stop()
 
@@ -77,7 +45,7 @@ func testMongoUserRepository_Create(test *testing.T) {
 }
 
 func testMongoUserRepository_GetByEmail_NotFound(test *testing.T) {
-	mongoServer, client, error := setupMongoServer()
+	mongoServer, client, error := SetupMockMongoServer()
 	defer client.Disconnect(context.Background())
 	defer mongoServer.Stop()
 
@@ -91,7 +59,7 @@ func testMongoUserRepository_GetByEmail_NotFound(test *testing.T) {
 }
 
 func testMongoUserRepository_GetUserByVerificationToken(test *testing.T) {
-	mongoServer, client, error := setupMongoServer()
+	mongoServer, client, error := SetupMockMongoServer()
 	defer client.Disconnect(context.Background())
 	defer mongoServer.Stop()
 
@@ -111,7 +79,7 @@ func testMongoUserRepository_GetUserByVerificationToken(test *testing.T) {
 }
 
 func testMongoUserRepository_Update_Success(test *testing.T) {
-	mongoServer, client, err := setupMongoServer()
+	mongoServer, client, err := SetupMockMongoServer()
 	defer client.Disconnect(context.Background())
 	defer mongoServer.Stop()
 	repo := NewMongoUserRepository(client)
@@ -131,7 +99,7 @@ func testMongoUserRepository_Update_Success(test *testing.T) {
 }
 
 func testMongoUserRepository_Update_UserNotFound(test *testing.T) {
-	mongoServer, client, error := setupMongoServer()
+	mongoServer, client, error := SetupMockMongoServer()
 	defer client.Disconnect(context.Background())
 	defer mongoServer.Stop()
 

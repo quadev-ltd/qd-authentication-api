@@ -40,7 +40,8 @@ func (service *EmailService) sendMail(dest string, subject string, body string) 
 		body
 	config := service.config
 	auth := smtp.PlainAuth("", config.From, config.Password, config.Host)
-	resultError := smtp.SendMail(config.Host+":"+config.Port,
+	resultError := smtp.SendMail(
+		fmt.Sprintf("%s:%s", config.Host, config.Port),
 		auth,
 		config.From, []string{dest}, []byte(message))
 	return resultError

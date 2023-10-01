@@ -15,6 +15,8 @@ type RepositoryFactoryer interface {
 
 type RepositoryFactory struct{}
 
+var _ RepositoryFactoryer = &RepositoryFactory{}
+
 func (repositoryFactory *RepositoryFactory) CreateRepository(config *config.Config) (Repositoryer, error) {
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.DB.URI))
 	if err != nil {

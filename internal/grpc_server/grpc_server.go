@@ -20,6 +20,8 @@ type GRPCService struct {
 	grpcListener net.Listener
 }
 
+var _ GRPCServicer = &GRPCService{}
+
 func (grpcService *GRPCService) Serve() error {
 	return grpcService.grpcServer.Serve(grpcService.grpcListener)
 }

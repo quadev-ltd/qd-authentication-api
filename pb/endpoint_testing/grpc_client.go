@@ -19,32 +19,32 @@ func main() {
 	// You can now use the client to call your gRPC methods
 	ctx := context.Background()
 
-	// // Registration
+	// Registration
 
-	// registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
-	// 	Email:     "gusfran17@gmail.com",
-	// 	Password:  "password123",
-	// 	FirstName: "John",
-	// 	LastName:  "Doe",
-	// 	// Populate other fields as needed
-	// })
-
-	// if err != nil {
-	// 	log.Fatalf("Register failed: %v", err)
-	// }
-
-	// // Handle the response
-	// log.Printf("Register response:\n\n\n\n%v", registerResponse)
-
-	// Authentication
-
-	authenticateResponse, err := client.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
-		Email:    "gusfran17@gmail.com",
-		Password: "password123",
+	registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
+		Email:     "gusfran17@gmail.com",
+		Password:  "password123",
+		FirstName: "John",
+		LastName:  "Doe",
+		// Populate other fields as needed
 	})
+
 	if err != nil {
 		log.Fatalf("Register failed: %v", err)
 	}
+
 	// Handle the response
-	log.Printf("Authentication response:\n\n\n\n%v", authenticateResponse)
+	log.Printf("Register response:\n\n\n\n%v", registerResponse)
+
+	// // Authentication
+
+	// authenticateResponse, err := client.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
+	// 	Email:    "gusfran17@gmail.com",
+	// 	Password: "password123",
+	// })
+	// if err != nil {
+	// 	log.Fatalf("Register failed: %v", err)
+	// }
+	// // Handle the response
+	// log.Printf("Authentication response:\n\n\n\n%v", authenticateResponse)
 }

@@ -16,7 +16,7 @@ type MongoUserRepository struct {
 }
 
 func NewMongoUserRepository(client *mongo.Client) *MongoUserRepository {
-	return &MongoUserRepository{client: client, dbName: "qd_authentication", collectionName: "users"}
+	return &MongoUserRepository{client: client, dbName: "qd_authentication", collectionName: "user"}
 }
 
 func (mongoUserRepository *MongoUserRepository) Create(user *model.User) error {

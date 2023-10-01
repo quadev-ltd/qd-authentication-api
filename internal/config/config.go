@@ -42,14 +42,14 @@ type Config struct {
 	Authentication Authentication
 }
 
-func (config *Config) Load() error {
+func (config *Config) Load(path string) error {
 	env := os.Getenv("APP_ENV")
 	if env == "" {
 		env = "dev"
 	}
 	viper.SetConfigName(fmt.Sprintf("config.%s", env))
 	viper.SetConfigType("yml")
-	viper.AddConfigPath("./internal/config")
+	viper.AddConfigPath(path)
 
 	// Read the configuration file
 	err := viper.ReadInConfig()

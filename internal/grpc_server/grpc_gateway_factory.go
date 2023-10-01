@@ -9,10 +9,15 @@ import (
 )
 
 type GRPCGatewayFactoryer interface {
-	Create() (GRPCGatewayServicer, error)
+	Create(
+		grpcServerAddress string,
+		gatewayServerAddress string,
+	) (GRPCGatewayServicer, error)
 }
 
 type GRPCGatewayFactory struct{}
+
+var _ GRPCGatewayFactoryer = &GRPCGatewayFactory{}
 
 func (grpcGatewayFactory *GRPCGatewayFactory) Create(
 	grpcServerAddress string,

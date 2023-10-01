@@ -20,6 +20,8 @@ type Repository struct {
 	client         MongoClienter
 }
 
+var _ Repositoryer = &Repository{}
+
 func (repository *Repository) GetUserRepository() UserRepositoryer {
 	return repository.userRepository
 }

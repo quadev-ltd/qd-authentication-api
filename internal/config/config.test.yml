@@ -1,0 +1,18 @@
+app:
+  name: QuaDevTest
+  protocol: http
+authentication:
+  key: testing
+rest:
+  host: localhost
+  port: 2222
+grpc:
+  host: localhost
+  port: 3333
+smtp:
+  host: localhost
+  port: 1111
+  username: test@test.com
+  password: testing
+db:
+  uri: mongodb+srv://password:user@cluster.test.mongodb.net/test

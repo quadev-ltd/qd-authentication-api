@@ -19,14 +19,15 @@ GRPC_Gateway docs:
 https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
 <!-- TODOs -->
 <!--
-    Link interfaces with implementation structs
-    Integration tests 
-    Factory unit tests service, grpc
     Test expiration dates in tokens
     Errors and logs
-    Email verification token expiry and announce if token already Email verified message and unit test
     Add token refresh endpooint
+    Add forgot password
+    Add change password
+    Add reset password
+    Add logout
     Add routines
+    Add 2 Factor Authentication
 
     Refresh Token: This endpoint allows users to refresh their authentication token using a valid refresh token. It helps maintain the user's session without requiring them to log in again.
 
