@@ -2,7 +2,7 @@
 config.dev.yml
 
 # Keys
-.pem
+*.pem
 
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o
