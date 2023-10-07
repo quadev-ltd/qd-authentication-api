@@ -31,7 +31,29 @@ const ExpiryClaim = "expiry"
 const PublicKeyFileName = "public.pem"
 const PrivateKeyFileName = "private.pem"
 
+func createKeysFolderIfNotExists(fileLocation string) error {
+	if _, err := os.Stat(fileLocation); os.IsNotExist(err) {
+		err := os.Mkdir(fileLocation, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func generateKeyPair() (*rsa.PrivateKey, *rsa.PublicKey, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	publicKey := &privateKey.PublicKey
+
+	return privateKey, publicKey, nil
+}
+
 func generateKeyFiles(fileLocation string) (*rsa.PrivateKey, *rsa.PublicKey, error) {
+	createKeysFolderIfNotExists(fileLocation)
 	privateKey, publicKey, err := generateKeyPair()
 	if err != nil {
 		return nil, nil, err
@@ -50,17 +72,6 @@ func generateKeyFiles(fileLocation string) (*rsa.PrivateKey, *rsa.PublicKey, err
 	if err != nil {
 		return nil, nil, err
 	}
-	return privateKey, publicKey, nil
-}
-
-func generateKeyPair() (*rsa.PrivateKey, *rsa.PublicKey, error) {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	publicKey := &privateKey.PublicKey
-
 	return privateKey, publicKey, nil
 }
 
