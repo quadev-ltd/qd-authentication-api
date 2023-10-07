@@ -1,16 +1,14 @@
 # QuaDev Authentication Service
-A GRPC API and a JWT-based authentication microservice, utilizing Atlas Mongo. This is hosted on AWS ECS and secured within a AWS VPC. The gateway of this VPC is protected by JWT-based authentication.
+A GRPC API and a private and public key JWT-based authentication microservice, utilizing Atlas Mongo. This is hosted on AWS ECS and secured within a AWS VPC. The gateway of this VPC is protected by JWT-based authentication.
 
 ## Tests
-Gomock is used to create mocks for service unit testing. Mocks can easily be updated when services are changed.
+Gomock is used to create mocks for service unit testing, and Testify is used s assertion library and to provide a better layout and organization of test results. Mocks can easily be updated when services are changed.
 For example:
 ```mockgen -source=email_service.go -destination=mock/email_service_mock.go -package=mock EmailService```
 
 ## Endpoint testing
-To test the requests we use curl reuests. In the folder `/Users/GFC01/Documents/qd-authentication-api/internal/pb/endpoint_test` the binary data for the request body is creted and then it is used for the curl request as in the following:
-```
-curl -X POST -H "Content-Type: application/protobuf" --data-binary @test.bin http://localhost:8080/register
-```
+End to end testing. The test suite `cmd/application/application_test.go` provides a set of end to end test to verify that the primary journeys are working correctly.
+Mongo DB and SMTP server are mocked using `github.com/benweissmann/memongo` and `github.com/mhale/smtpd`.
 
 ## GRPC
 Run `buf generate` in `/pb/` to generate the protobuf files and GRPC and GRPC Gateway implementations 
