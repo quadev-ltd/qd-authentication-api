@@ -32,10 +32,14 @@ func (serviceFactory *ServiceFactory) CreateService(
 		Port:     config.SMTP.Port,
 	}
 	emailService := NewEmailService(emailServiceConfig, &SmtpService{})
+	jwtAuthenticator, err := NewJWTAuthenticator("./keys")
+	if err != nil {
+		return nil, err
+	}
 	authenticationService := NewAuthenticationService(
 		emailService,
 		repository.GetUserRepository(),
-		config.Authentication.Key,
+		jwtAuthenticator,
 	)
 
 	return &Service{

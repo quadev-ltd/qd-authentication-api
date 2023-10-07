@@ -1,4 +1,5 @@
 # QuaDev Authentication Service
+A GRPC API and a JWT-based authentication microservice, utilizing Atlas Mongo. This is hosted on AWS ECS and secured within a AWS VPC. The gateway of this VPC is protected by JWT-based authentication.
 
 ## Tests
 Gomock is used to create mocks for service unit testing. Mocks can easily be updated when services are changed.
@@ -19,6 +20,10 @@ GRPC_Gateway docs:
 https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
 <!-- TODOs -->
 <!--
+    Add JWT at registration response
+    Add unit tests
+        JWTAuthenticator
+        authentication_service_test.go
     Test expiration dates in tokens
     Errors and logs
     Add token refresh endpooint

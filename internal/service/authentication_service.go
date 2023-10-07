@@ -5,7 +5,6 @@ import (
 	"qd_authentication_api/internal/repository"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,12 +17,14 @@ type AuthenticationServicer interface {
 	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
 	VerifyEmail(verificationToken string) error
 	Authenticate(email, password string) (*model.AuthTokensResponse, error)
+	VerifyTokenAndDecodeEmail(token string) (*string, error)
+	ResendEmailVerification(email string) error
 }
 
 type AuthenticationService struct {
-	emailService   EmailServicer
-	userRepository repository.UserRepositoryer
-	key            []byte
+	emailService     EmailServicer
+	userRepository   repository.UserRepositoryer
+	jwtAuthenticator JWTAthenticatorer
 }
 
 var _ AuthenticationServicer = &AuthenticationService{}
@@ -31,12 +32,12 @@ var _ AuthenticationServicer = &AuthenticationService{}
 func NewAuthenticationService(
 	emailService EmailServicer,
 	userRepository repository.UserRepositoryer,
-	key string,
+	jwtAuthenticator JWTAthenticatorer,
 ) AuthenticationServicer {
 	return &AuthenticationService{
-		userRepository: userRepository,
-		emailService:   emailService,
-		key:            []byte(key),
+		userRepository:   userRepository,
+		emailService:     emailService,
+		jwtAuthenticator: jwtAuthenticator,
 	}
 }
 
@@ -132,47 +133,70 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 	}
 
 	authenticationTokenExpiryDate := time.Now().Add(AuthenticationTokenExpiry)
-
-	// Generate the JWT claims for the authentication token
-	authTokenClaims := jwt.MapClaims{
-		"email": user.Email,
-		// Add any other relevant claims (e.g., user ID, role, etc.)
-		"exp": authenticationTokenExpiryDate.Unix(),
-	}
-
-	// Create the authentication token
-	authToken := jwt.NewWithClaims(jwt.SigningMethodHS256, authTokenClaims)
-	authTokenString, err := authToken.SignedString(service.key)
+	authTokenString, err := service.jwtAuthenticator.SignToken(user.Email, authenticationTokenExpiryDate)
 	if err != nil {
-		return nil, err
+		return nil, &ServiceError{
+			Message: "Error creating authentication token.",
+		}
 	}
 
-	// Set the expiration time for the refresh token
 	refreshTokenExpiration := time.Now().Add(RefreshTokenExpiry)
-
-	// Generate the JWT claims for the refresh token
-	refreshTokenClaims := jwt.MapClaims{
-		"email": user.Email,
-		// Add any other relevant claims
-		"exp": refreshTokenExpiration.Unix(),
-	}
-
-	// Create the refresh token
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
-	refreshTokenString, err := refreshToken.SignedString(service.key)
+	refreshTokenString, err := service.jwtAuthenticator.SignToken(user.Email, refreshTokenExpiration)
 	if err != nil {
-		return nil, err
+		return nil, &ServiceError{
+			Message: "Error creating refresh token.",
+		}
 	}
 
-	// Build the response containing the authentication token, refresh token, and other information
 	response := &model.AuthTokensResponse{
-		AuthToken:          authTokenString,
+		AuthToken:          *authTokenString,
 		AuthTokenExpiry:    authenticationTokenExpiryDate,
-		RefreshToken:       refreshTokenString,
+		RefreshToken:       *refreshTokenString,
 		RefreshTokenExpiry: refreshTokenExpiration,
 		UserEmail:          user.Email,
-		// Add any other relevant user information
 	}
 
 	return response, nil
+}
+
+func (service *AuthenticationService) VerifyTokenAndDecodeEmail(token string) (*string, error) {
+	jwtToken, error := service.jwtAuthenticator.VerifyToken(token)
+	if error != nil {
+		return nil, error
+	}
+	email, error := service.jwtAuthenticator.GetEmailFromToken(jwtToken)
+	if error != nil {
+		return nil, error
+	}
+	return email, nil
+}
+
+func (service *AuthenticationService) ResendEmailVerification(email string) error {
+	user, error := service.userRepository.GetByEmail(email)
+	if error != nil {
+		return error
+	}
+	if user == nil {
+		return &ServiceError{Message: "Invalid email"}
+	}
+	if user.AccountStatus == model.AccountStatusVerified {
+		return &ServiceError{Message: "Email already verified"}
+	}
+
+	verificationToken, error := generateVerificationToken()
+	if error != nil {
+		return error
+	}
+	user.VerificationToken = verificationToken
+	user.VerificationTokenExpiryDate = time.Now().Add(VerificationTokenExpiry)
+
+	if error := service.userRepository.Update(user); error != nil {
+		return error
+	}
+
+	if error := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); error != nil {
+		return error
+	}
+
+	return nil
 }

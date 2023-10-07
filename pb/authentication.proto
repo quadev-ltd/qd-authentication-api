@@ -16,6 +16,7 @@ service AuthenticationService {
         };
     }
     rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
+    rpc ResendEmailVerification(ResendEmailVerificationRequest) returns (ResendEmailVerificationResponse);
 }
 
 message RegisterRequest {
@@ -51,4 +52,13 @@ message AuthenticateResponse {
     string refresh_token = 3;
     google.protobuf.Timestamp refresh_token_expiry = 4;
     string user_email = 5;
+}
+
+message ResendEmailVerificationRequest {
+    string auth_token = 1;
+}
+
+message ResendEmailVerificationResponse {
+    bool success = 1;
+    string message = 2;
 }

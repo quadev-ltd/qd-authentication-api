@@ -323,4 +323,128 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, returnedError)
 		assert.Equal(test, successfulResponse, response)
 	})
+
+	test.Run("ResendEmailVerification_VerifyTokenAndDecodeEmail_Error", func(test *testing.T) {
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+
+		server := AuthenticationServiceServer{
+			AuthenticationService: authenticationServiceMock,
+		}
+
+		expectedError := errors.New("test error")
+
+		authenticationServiceMock.EXPECT().
+			VerifyTokenAndDecodeEmail(gomock.Any()).
+			Return(nil, expectedError)
+
+		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+
+		assert.Nil(test, response)
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Unauthenticated desc = Invalid JWT token", returnedError.Error())
+	})
+
+	test.Run("ResendEmailVerification_ServiceError_Error", func(test *testing.T) {
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+
+		server := AuthenticationServiceServer{
+			AuthenticationService: authenticationServiceMock,
+		}
+
+		expectedError := &service.ServiceError{Message: "test error"}
+
+		authenticationServiceMock.EXPECT().
+			VerifyTokenAndDecodeEmail(gomock.Any()).
+			Return(nil, expectedError)
+
+		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+
+		assert.Nil(test, response)
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = InvalidArgument desc = test error", returnedError.Error())
+	})
+
+	test.Run("ResendEmailVerification_InvalidArgument_Error", func(test *testing.T) {
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+
+		server := AuthenticationServiceServer{
+			AuthenticationService: authenticationServiceMock,
+		}
+
+		expectedError := &service.ServiceError{Message: "test error"}
+		testEmail := "example@email.com"
+		authenticationServiceMock.EXPECT().
+			VerifyTokenAndDecodeEmail(gomock.Any()).
+			Return(&testEmail, nil)
+		authenticationServiceMock.EXPECT().
+			ResendEmailVerification(testEmail).
+			Return(expectedError)
+
+		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+
+		assert.Nil(test, response)
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = InvalidArgument desc = test error", returnedError.Error())
+	})
+
+	test.Run("ResendEmailVerification_InternalServerError", func(test *testing.T) {
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+
+		server := AuthenticationServiceServer{
+			AuthenticationService: authenticationServiceMock,
+		}
+
+		expectedError := errors.New("test error")
+		testEmail := "example@email.com"
+		authenticationServiceMock.EXPECT().
+			VerifyTokenAndDecodeEmail(gomock.Any()).
+			Return(&testEmail, nil)
+		authenticationServiceMock.EXPECT().
+			ResendEmailVerification(testEmail).
+			Return(expectedError)
+
+		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+
+		assert.Nil(test, response)
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+	})
+
+	test.Run("ResendEmailVerification_Success", func(test *testing.T) {
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+
+		server := AuthenticationServiceServer{
+			AuthenticationService: authenticationServiceMock,
+		}
+
+		testEmail := "example@email.com"
+		authenticationServiceMock.EXPECT().
+			VerifyTokenAndDecodeEmail(gomock.Any()).
+			Return(&testEmail, nil)
+		authenticationServiceMock.EXPECT().
+			ResendEmailVerification(testEmail).
+			Return(nil)
+
+		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+
+		assert.Nil(test, returnedError)
+		assert.Equal(test, true, response.Success)
+		assert.Equal(test, "Email verification sent successfully", response.Message)
+	})
+
 }

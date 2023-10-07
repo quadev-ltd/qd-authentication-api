@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -95,4 +96,37 @@ func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authe
 		RefreshTokenExpiry: util.ConvertToTimestamp(authTokens.RefreshTokenExpiry),
 		UserEmail:          authTokens.UserEmail,
 	}
+}
+
+var limiter = rate.NewLimiter(rate.Limit(1), 5)
+
+func (service AuthenticationServiceServer) ResendEmailVerification(
+	ctx context.Context,
+	request *pb_authentication.ResendEmailVerificationRequest,
+) (*pb_authentication.ResendEmailVerificationResponse, error) {
+	if !limiter.Allow() {
+		return &pb_authentication.ResendEmailVerificationResponse{
+				Success: false,
+				Message: "Rate limit exceeded",
+			},
+			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
+	}
+	email, error := service.AuthenticationService.VerifyTokenAndDecodeEmail(request.AuthToken)
+	if error != nil {
+		if serviceErr, ok := error.(*authenticationService.ServiceError); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
+	}
+	error = service.AuthenticationService.ResendEmailVerification(*email)
+	if error != nil {
+		if serviceErr, ok := error.(*authenticationService.ServiceError); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	return &pb_authentication.ResendEmailVerificationResponse{
+		Success: true,
+		Message: "Email verification sent successfully",
+	}, nil
 }

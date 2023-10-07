@@ -64,6 +64,20 @@ func (mr *MockAuthenticationServicerMockRecorder) Register(email, password, firs
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Register", reflect.TypeOf((*MockAuthenticationServicer)(nil).Register), email, password, firstName, lastName, dateOfBirth)
 }
 
+// ResendEmailVerification mocks base method.
+func (m *MockAuthenticationServicer) ResendEmailVerification(email string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResendEmailVerification", email)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResendEmailVerification indicates an expected call of ResendEmailVerification.
+func (mr *MockAuthenticationServicerMockRecorder) ResendEmailVerification(email interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResendEmailVerification", reflect.TypeOf((*MockAuthenticationServicer)(nil).ResendEmailVerification), email)
+}
+
 // VerifyEmail mocks base method.
 func (m *MockAuthenticationServicer) VerifyEmail(verificationToken string) error {
 	m.ctrl.T.Helper()
@@ -76,4 +90,19 @@ func (m *MockAuthenticationServicer) VerifyEmail(verificationToken string) error
 func (mr *MockAuthenticationServicerMockRecorder) VerifyEmail(verificationToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmail", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyEmail), verificationToken)
+}
+
+// VerifyTokenAndDecodeEmail mocks base method.
+func (m *MockAuthenticationServicer) VerifyTokenAndDecodeEmail(token string) (*string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyTokenAndDecodeEmail", token)
+	ret0, _ := ret[0].(*string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VerifyTokenAndDecodeEmail indicates an expected call of VerifyTokenAndDecodeEmail.
+func (mr *MockAuthenticationServicerMockRecorder) VerifyTokenAndDecodeEmail(token interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyTokenAndDecodeEmail", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyTokenAndDecodeEmail), token)
 }
