@@ -11,6 +11,3 @@ smtp:
   port: 1111
   username: test@test.com
   password: test_password
-rest:
-  host: localhost
-  port: 4444

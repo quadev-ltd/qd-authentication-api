@@ -1,6 +1,6 @@
-package repository
+package grpcserver
 
-// Error is the error type for the repository
+// Error is an error that occurs in the gRPC server layer
 type Error struct {
 	Message string
 }

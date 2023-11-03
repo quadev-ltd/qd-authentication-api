@@ -1,9 +1,11 @@
 package service
 
-type ServiceError struct {
+// Error is the error type for the service
+type Error struct {
 	Message string
 }
 
-func (e *ServiceError) Error() string {
+// Error returns the error message
+func (e *Error) Error() string {
 	return e.Message
 }

@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# Redirect output to stderr.
+exec 1>&2
+
+# Run gofmt
+echo "Checking code formatting with gofmt..."
+unformatted=$(gofmt -l .)
+[ -z "$unformatted" ] || (echo "The following files need formatting (using gofmt):" && echo "$unformatted" && exit 1)
+
+# Run goimports
+echo "Checking imports with goimports..."
+unimported=$(goimports -l .)
+[ -z "$unimported" ] || (echo "The following files have import issues (using goimports):" && echo "$unimported" && exit 1)
+
+# Run golint
+echo "Checking code with golint..."
+linterrors=$(golint ./...)
+[ -z "$linterrors" ] || (echo "Linting issues found:" && echo "$linterrors" && exit 1)
+
+exit 0

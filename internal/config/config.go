@@ -8,34 +8,35 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Address struct {
+type address struct {
 	Host string
 	Port string
 }
 
-type SMTP struct {
+type smtp struct {
 	Host     string
 	Port     string
 	Username string
 	Password string
 }
 
-type DB struct {
+type db struct {
 	URI string
 }
 
+// Config is the configuration of the application
 type Config struct {
 	Verbose                   bool
 	Environment               string
 	App                       string
 	AuthenticationKey         string `mapstructure:"authentication_key"`
 	EmailVerificationEndpoint string `mapstructure:"email_verification_endpoint"`
-	GRPC                      Address
-	REST                      Address
-	DB                        DB
-	SMTP                      SMTP
+	GRPC                      address
+	DB                        db
+	SMTP                      smtp
 }
 
+// Load loads the configuration from the given path yml file
 func (config *Config) Load(path string) error {
 	env := os.Getenv(AppEnvironmentKey)
 	if env == "" {

@@ -9,10 +9,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// RepositoryFactory is the implementation of the repository factory
 type RepositoryFactory struct{}
 
-var _ repository.RepositoryFactoryer = &RepositoryFactory{}
+var _ repository.Factoryer = &RepositoryFactory{}
 
+// CreateRepository creates a repository
 func (repositoryFactory *RepositoryFactory) CreateRepository(
 	config *config.Config,
 ) (repository.Repositoryer, error) {

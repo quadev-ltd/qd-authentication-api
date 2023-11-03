@@ -1,4 +1,4 @@
-package grpc_server
+package grpcserver
 
 import (
 	"net"
@@ -8,15 +8,18 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GRPCServiceFactoryer interface {
+// Factoryer is the interfact for creating a gRPC server
+type Factoryer interface {
 	Create(grpcServerAddress string, authenticationService service.AuthenticationServicer) (GRPCServicer, error)
 }
 
-type GRPCServerFactory struct{}
+// Factory is the implementation of the gRPC server factory
+type Factory struct{}
 
-var _ GRPCServiceFactoryer = &GRPCServerFactory{}
+var _ Factoryer = &Factory{}
 
-func (grpcServerFactory *GRPCServerFactory) Create(
+// Create creates a gRPC server
+func (grpcServerFactory *Factory) Create(
 	grpcServerAddress string,
 	authenticationService service.AuthenticationServicer,
 ) (GRPCServicer, error) {

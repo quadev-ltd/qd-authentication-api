@@ -9,8 +9,8 @@ import (
 func TestCreateVerificationEmailContent(test *testing.T) {
 	emailService := &EmailService{
 		config: EmailServiceConfig{
-			AppName: "MyApp",
-			BaseUrl: "http://myapp.com",
+			AppName:                   "MyApp",
+			EmailVerificationEndpoint: "http://myapp.com",
 		},
 	}
 

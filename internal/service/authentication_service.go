@@ -10,10 +10,14 @@ import (
 )
 
 // TODO: Analyse best expiry times for tokens
-const AuthenticationTokenExpiry = 2 * time.Hour // Authentication token expiry set to 2 hours
-const RefreshTokenExpiry = 7 * 24 * time.Hour   // Refresh token expiry set to 7 days
-const VerificationTokenExpiry = 24 * time.Hour  // Verification token expiry set to 24 hours
+// Expiry times for tokens
+const (
+	AuthenticationTokenExpiry = 2 * time.Hour      // Authentication token expiry set to 2 hours
+	RefreshTokenExpiry        = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
+	VerificationTokenExpiry   = 24 * time.Hour     // Verification token expiry set to 24 hours
+)
 
+// AuthenticationServicer is the interface for the authentication service
 type AuthenticationServicer interface {
 	GetPublicKey() (string, error)
 	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
@@ -23,6 +27,7 @@ type AuthenticationServicer interface {
 	ResendEmailVerification(email string) error
 }
 
+// AuthenticationService is the implementation of the authentication service
 type AuthenticationService struct {
 	emailService     EmailServicer
 	userRepository   repository.UserRepositoryer
@@ -31,6 +36,7 @@ type AuthenticationService struct {
 
 var _ AuthenticationServicer = &AuthenticationService{}
 
+// NewAuthenticationService creates a new authentication service
 func NewAuthenticationService(
 	emailService EmailServicer,
 	userRepository repository.UserRepositoryer,
@@ -43,10 +49,12 @@ func NewAuthenticationService(
 	}
 }
 
+// GetPublicKey gets the public key
 func (service *AuthenticationService) GetPublicKey() (string, error) {
 	return service.jwtAuthenticator.GetPublicKey()
 }
 
+// Register registers a new user
 func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
 	existingUser, err := service.userRepository.GetByEmail(email)
 	if err != nil {
@@ -98,21 +106,22 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 	return nil
 }
 
+// VerifyEmail verifies a user's email
 func (service *AuthenticationService) VerifyEmail(verificationToken string) error {
 	user, err := service.userRepository.GetByVerificationToken(verificationToken)
 	if err != nil {
 		return fmt.Errorf("Error getting user by verification token: %v", err)
 	}
 	if user == nil {
-		return &ServiceError{Message: "Invalid verification token"}
+		return &Error{Message: "Invalid verification token"}
 	}
 	if user.AccountStatus == model.AccountStatusVerified {
-		return &ServiceError{Message: "Email already verified"}
+		return &Error{Message: "Email already verified"}
 	}
 	current := time.Now()
 	timeDifference := current.Sub(user.VerificationTokenExpiryDate)
 	if timeDifference >= VerificationTokenExpiry {
-		return &ServiceError{Message: "Verification token expired"}
+		return &Error{Message: "Verification token expired"}
 	}
 	user.AccountStatus = model.AccountStatusVerified
 
@@ -123,6 +132,7 @@ func (service *AuthenticationService) VerifyEmail(verificationToken string) erro
 	return nil
 }
 
+// Authenticate authenticates a user and provides a token
 func (service *AuthenticationService) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
 	user, resultError := service.userRepository.GetByEmail(email)
 	if resultError != nil {
@@ -141,16 +151,16 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 	authenticationTokenExpiryDate := time.Now().Add(AuthenticationTokenExpiry)
 	authTokenString, err := service.jwtAuthenticator.SignToken(user.Email, authenticationTokenExpiryDate)
 	if err != nil {
-		return nil, &ServiceError{
-			Message: "Error creating authentication token.",
+		return nil, &Error{
+			Message: "Error creating authentication token",
 		}
 	}
 
 	refreshTokenExpiration := time.Now().Add(RefreshTokenExpiry)
 	refreshTokenString, err := service.jwtAuthenticator.SignToken(user.Email, refreshTokenExpiration)
 	if err != nil {
-		return nil, &ServiceError{
-			Message: "Error creating refresh token.",
+		return nil, &Error{
+			Message: "Error creating refresh token",
 		}
 	}
 
@@ -165,6 +175,7 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 	return response, nil
 }
 
+// VerifyTokenAndDecodeEmail verifies a token and decodes the email
 func (service *AuthenticationService) VerifyTokenAndDecodeEmail(token string) (*string, error) {
 	jwtToken, err := service.jwtAuthenticator.VerifyToken(token)
 	if err != nil {
@@ -177,16 +188,17 @@ func (service *AuthenticationService) VerifyTokenAndDecodeEmail(token string) (*
 	return email, nil
 }
 
+// ResendEmailVerification resends a verification email
 func (service *AuthenticationService) ResendEmailVerification(email string) error {
 	user, err := service.userRepository.GetByEmail(email)
 	if err != nil {
 		return fmt.Errorf("Error getting user by email: %v", err)
 	}
 	if user == nil {
-		return &ServiceError{Message: "Invalid email"}
+		return &Error{Message: "Invalid email"}
 	}
 	if user.AccountStatus == model.AccountStatusVerified {
-		return &ServiceError{Message: "Email already verified"}
+		return &Error{Message: "Email already verified"}
 	}
 
 	verificationToken, err := generateVerificationToken()

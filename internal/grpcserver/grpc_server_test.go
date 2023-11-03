@@ -1,4 +1,4 @@
-package grpc_server
+package grpcserver
 
 import (
 	"net"
@@ -105,7 +105,7 @@ func TestGRPCService(test *testing.T) {
 		err := service.Close()
 
 		assert.Error(test, err)
-		assert.Equal(test, "GRPC server or listener is nil.", err.Error())
+		assert.Equal(test, "GRPC server or listener is nil", err.Error())
 	})
 
 	test.Run("Close_Listner_Nil_Error", func(test *testing.T) {
@@ -117,6 +117,6 @@ func TestGRPCService(test *testing.T) {
 		err := service.Close()
 
 		assert.Error(test, err)
-		assert.Equal(test, "GRPC server or listener is nil.", err.Error())
+		assert.Equal(test, "GRPC server or listener is nil", err.Error())
 	})
 }

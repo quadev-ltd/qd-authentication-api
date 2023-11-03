@@ -11,7 +11,6 @@ import (
 )
 
 func setUpLogs(configurations *config.Config) {
-
 	if configurations.Verbose == true {
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stdout))
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -28,15 +27,15 @@ func setUpLogs(configurations *config.Config) {
 
 func main() {
 
-	var config config.Config
+	var configurations config.Config
 	configLocation := "./internal/config"
-	config.Load(configLocation)
+	configurations.Load(configLocation)
 
-	setUpLogs(&config)
+	setUpLogs(&configurations)
 
-	log.Info().Msg("Starting authentication service...")
-	application := application.NewApplication(&config)
-	application.StartServers()
+	log.Info().Msg("Starting authentication service..")
+	application := application.NewApplication(&configurations)
+	application.StartServer()
 
 	defer application.Close()
 }

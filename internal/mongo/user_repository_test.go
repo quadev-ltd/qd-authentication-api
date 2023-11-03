@@ -111,20 +111,4 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Equal(test, "No account was found", error.Error())
 		// Assert error type
 	})
-	// Mock error without delaying tests
-	// test.Run("Update_Unexpected_Error", func(test *testing.T) {
-	// 	mongoServer, client, error := mock.SetupMockMongoServer()
-	// 	client.Disconnect(context.Background())
-	// 	mongoServer.Stop()
-
-	// 	repo := NewUserRepository(client)
-
-	// 	user := newUser()
-
-	// 	// Test Update
-	// 	error = repo.Update(user)
-	// 	assert.Error(test, error)
-	// 	assert.Equal(test, "There has been an error trying to update the user.", error.Error())
-	// 	// Assert error type
-	// })
 }

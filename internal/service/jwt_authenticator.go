@@ -13,6 +13,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+// JWTAthenticatorer is an interface for JWTAuthenticator
 type JWTAthenticatorer interface {
 	GenerateNewKeyPair() error
 	GetPublicKey() (string, error)
@@ -21,6 +22,7 @@ type JWTAthenticatorer interface {
 	GetEmailFromToken(token *jwt.Token) (*string, error)
 }
 
+// JWTAuthenticator is responsible for generating and verifying JWT tokens
 type JWTAuthenticator struct {
 	fileLocation string
 	privateKey   *rsa.PrivateKey
@@ -29,6 +31,7 @@ type JWTAuthenticator struct {
 
 var _ JWTAthenticatorer = &JWTAuthenticator{}
 
+// Key constants
 const (
 	EmailClaim         = "email"
 	ExpiryClaim        = "expiry"
@@ -149,6 +152,7 @@ func loadPublicKeyFromFile(filename string) (*rsa.PublicKey, error) {
 	return publicKey.(*rsa.PublicKey), nil
 }
 
+// NewJWTAuthenticator creates a new JWT authenticator
 func NewJWTAuthenticator(fileLocation string) (JWTAthenticatorer, error) {
 	privateKey, err := loadPrivateKeyFromFile(
 		fmt.Sprintf("%s/%s", fileLocation, PrivateKeyFileName),
@@ -175,6 +179,7 @@ func NewJWTAuthenticator(fileLocation string) (JWTAthenticatorer, error) {
 	}, nil
 }
 
+// GenerateNewKeyPair generates a new key pair
 func (authenticator *JWTAuthenticator) GenerateNewKeyPair() error {
 	privateKey, publicKey, err := generateKeyFiles(authenticator.fileLocation)
 	if err != nil {
@@ -185,6 +190,7 @@ func (authenticator *JWTAuthenticator) GenerateNewKeyPair() error {
 	return nil
 }
 
+// GetPublicKey gets the public key
 func (authenticator *JWTAuthenticator) GetPublicKey() (string, error) {
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(authenticator.publicKey)
 	if err != nil {
@@ -197,6 +203,7 @@ func (authenticator *JWTAuthenticator) GetPublicKey() (string, error) {
 	return string(publicKeyPEM), nil
 }
 
+// SignToken signs a JWT token
 func (authenticator *JWTAuthenticator) SignToken(email string, expiry time.Time) (*string, error) {
 	tokenClaims := jwt.MapClaims{
 		EmailClaim:  email,
@@ -210,6 +217,7 @@ func (authenticator *JWTAuthenticator) SignToken(email string, expiry time.Time)
 	return &tokenString, nil
 }
 
+// VerifyToken verifies a JWT token
 func (authenticator *JWTAuthenticator) VerifyToken(tokenString string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
@@ -221,8 +229,8 @@ func (authenticator *JWTAuthenticator) VerifyToken(tokenString string) (*jwt.Tok
 		return nil, err
 	}
 	if !token.Valid {
-		return nil, &ServiceError{
-			Message: "JWT Token is not valid.",
+		return nil, &Error{
+			Message: "JWT Token is not valid",
 		}
 	}
 	expiry, err := authenticator.GetExpiryFromToken(token)
@@ -230,34 +238,36 @@ func (authenticator *JWTAuthenticator) VerifyToken(tokenString string) (*jwt.Tok
 		return nil, err
 	}
 	if expiry.Before(time.Now()) {
-		return nil, &ServiceError{
-			Message: "JWT Token is expired.",
+		return nil, &Error{
+			Message: "JWT Token is expired",
 		}
 	}
 	return token, nil
 }
 
+// GetExpiryFromToken gets the expiry from a JWT token
 func (authenticator *JWTAuthenticator) GetExpiryFromToken(token *jwt.Token) (*time.Time, error) {
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("JWT Token claims are not valid.")
+		return nil, errors.New("JWT Token claims are not valid")
 	}
 	expiry, ok := claims[ExpiryClaim].(float64)
 	if !ok {
-		return nil, errors.New("JWT Token expiry is not valid.")
+		return nil, errors.New("JWT Token expiry is not valid")
 	}
 	expiryTime := time.Unix(int64(expiry), 0)
 	return &expiryTime, nil
 }
 
+// GetEmailFromToken gets the email from a JWT token
 func (authenticator *JWTAuthenticator) GetEmailFromToken(token *jwt.Token) (*string, error) {
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("JWT Token claims are not valid.")
+		return nil, errors.New("JWT Token claims are not valid")
 	}
 	email, ok := claims[EmailClaim].(string)
 	if !ok {
-		return nil, errors.New("JWT Token email is not valid.")
+		return nil, errors.New("JWT Token email is not valid")
 	}
 	return &email, nil
 }

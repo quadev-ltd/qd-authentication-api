@@ -1,20 +1,22 @@
 package service
 
 import (
-	"fmt"
 	"qd_authentication_api/internal/config"
 	mongo "qd_authentication_api/internal/mongo"
 )
 
-type ServiceFactoryer interface {
+// Factoryer is a factory for creating a service
+type Factoryer interface {
 	CreateService(config *config.Config) (Servicer, error)
 }
 
-type ServiceFactory struct{}
+// Factory is the implementation of the service factory
+type Factory struct{}
 
-var _ ServiceFactoryer = &ServiceFactory{}
+var _ Factoryer = &Factory{}
 
-func (serviceFactory *ServiceFactory) CreateService(
+// CreateService creates a service
+func (serviceFactory *Factory) CreateService(
 	config *config.Config,
 ) (Servicer, error) {
 	repository, err := (&mongo.RepositoryFactory{}).CreateRepository(config)
@@ -22,16 +24,15 @@ func (serviceFactory *ServiceFactory) CreateService(
 		return nil, err
 	}
 
-	baseUrl := fmt.Sprintf("http://%s:%s", config.REST.Host, config.REST.Port)
 	emailServiceConfig := EmailServiceConfig{
-		AppName:  config.App,
-		BaseUrl:  baseUrl,
-		From:     config.SMTP.Username,
-		Password: config.SMTP.Password,
-		Host:     config.SMTP.Host,
-		Port:     config.SMTP.Port,
+		AppName:                   config.App,
+		EmailVerificationEndpoint: config.EmailVerificationEndpoint,
+		From:                      config.SMTP.Username,
+		Password:                  config.SMTP.Password,
+		Host:                      config.SMTP.Host,
+		Port:                      config.SMTP.Port,
 	}
-	emailService := NewEmailService(emailServiceConfig, &SmtpService{})
+	emailService := NewEmailService(emailServiceConfig, &SMTPService{})
 	jwtAuthenticator, err := NewJWTAuthenticator("./keys")
 	if err != nil {
 		return nil, err

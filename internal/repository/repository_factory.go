@@ -4,6 +4,7 @@ import (
 	"qd_authentication_api/internal/config"
 )
 
-type RepositoryFactoryer interface {
+// Factoryer is the interface for the repository factory
+type Factoryer interface {
 	CreateRepository(config *config.Config) (Repositoryer, error)
 }

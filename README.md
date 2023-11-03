@@ -16,6 +16,13 @@ Run `buf generate --path ./google/api` if path need to be declared for imports.
 Flags `-v --debug` will provide more details on the execution.
 GRPC_Gateway docs:
 https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
+
+## Git Hooks
+To activate commit hooks use the following command:
+```git config core.hooksPath githooks/```
+
+
+##  TODOs
 <!-- TODOs -->
 <!--
     Errors and logs

@@ -2,6 +2,7 @@ package model
 
 import "time"
 
+// AuthTokensResponse is the response object for the auth tokens endpoint
 type AuthTokensResponse struct {
 	AuthToken          string    `json:"auth_token"`
 	AuthTokenExpiry    time.Time `json:"auth_token_expiry"`

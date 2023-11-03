@@ -38,6 +38,6 @@ func TestService(test *testing.T) {
 
 		err := service.Close()
 
-		assert.Equal(test, "Service repository is nil.", err.Error())
+		assert.Equal(test, "Service repository is nil", err.Error())
 	})
 }

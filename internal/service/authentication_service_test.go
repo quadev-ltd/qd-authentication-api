@@ -363,7 +363,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Assert
 		assert.Error(test, resultError)
 		assert.Nil(test, resultUser)
-		assert.Equal(test, "Error creating authentication token.", resultError.Error())
+		assert.Equal(test, "Error creating authentication token", resultError.Error())
 	})
 	test.Run("Authenticate_Authenticate_Success", func(test *testing.T) {
 		// Arrange
@@ -498,7 +498,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, err)
-		assert.IsType(test, &ServiceError{}, err)
+		assert.IsType(test, &Error{}, err)
 		assert.Contains(test, err.Error(), "Invalid email")
 	})
 
@@ -522,7 +522,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, err)
-		assert.IsType(test, &ServiceError{}, err)
+		assert.IsType(test, &Error{}, err)
 		assert.Contains(test, err.Error(), "Email already verified")
 	})
 

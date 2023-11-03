@@ -7,8 +7,10 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// AccountStatus is the type for the account status
 type AccountStatus int
 
+// User is the model for the user
 type User struct {
 	Email                       string        `validate:"required,email"`
 	VerificationToken           string        `validate:"required"`
@@ -23,11 +25,13 @@ type User struct {
 	AccountStatus               AccountStatus `validate:"required"`
 }
 
+// AccountStatus constants
 const (
 	AccountStatusUnverified AccountStatus = 1
 	AccountStatusVerified   AccountStatus = 2
 )
 
+// ValidateUser validates the userproperties
 func ValidateUser(user *User) error {
 	validate := validator.New()
 	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
@@ -45,19 +49,22 @@ func ValidateUser(user *User) error {
 	return nil
 }
 
-// Custom email error type
+// EmailInUseError is a Custom email error type
 type EmailInUseError struct {
 	Email string
 }
 
+// Error returns the error message
 func (e *EmailInUseError) Error() string {
 	return fmt.Sprintf("Email %s is already in use", e.Email)
 }
 
+// WrongEmailOrPassword is a Custom wrong email or password error type
 type WrongEmailOrPassword struct {
 	FieldName string
 }
 
+// Error returns the error message
 func (e *WrongEmailOrPassword) Error() string {
 	return fmt.Sprintf("Wrong %s", e.FieldName)
 }

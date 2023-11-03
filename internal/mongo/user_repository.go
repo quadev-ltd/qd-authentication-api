@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 
@@ -9,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// UserRepository is a mongo specific user repository
 type UserRepository struct {
 	dbName         string
 	collectionName string
@@ -17,6 +19,7 @@ type UserRepository struct {
 
 var _ repository.UserRepositoryer = &UserRepository{}
 
+// NewUserRepository creates a new mongo user repository
 func NewUserRepository(client *mongo.Client) *UserRepository {
 	return &UserRepository{client: client, dbName: "qd_authentication", collectionName: "user"}
 }
@@ -27,18 +30,17 @@ func (userRepository *UserRepository) getCollection() *mongo.Collection {
 	).Collection(userRepository.collectionName)
 }
 
+// Create creates a new user in the mongo database
 func (userRepository *UserRepository) Create(user *model.User) error {
 	collection := userRepository.getCollection()
 	_, err := collection.InsertOne(context.Background(), user)
 	if err != nil {
-		// TODO log
-		return &repository.RepositoryError{
-			Message: "Insertion Error",
-		}
+		return fmt.Errorf("Insertion error: %v", err)
 	}
 	return nil
 }
 
+// GetByEmail gets a user by email from the mongo database
 func (userRepository *UserRepository) GetByEmail(email string) (*model.User, error) {
 	collection := userRepository.getCollection()
 
@@ -50,15 +52,13 @@ func (userRepository *UserRepository) GetByEmail(email string) (*model.User, err
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
 		}
-		// TODO log err
-		return nil, &repository.RepositoryError{
-			Message: "There has been an error trying to find user by email.",
-		}
+		return nil, fmt.Errorf("Error finding user by email: %v", err)
 	}
 
 	return &foundUser, nil
 }
 
+// GetByVerificationToken gets a user by verification token from the mongo database
 func (userRepository *UserRepository) GetByVerificationToken(verificationToken string) (*model.User, error) {
 	collection := userRepository.getCollection()
 	filter := bson.M{"verificationtoken": verificationToken}
@@ -69,15 +69,13 @@ func (userRepository *UserRepository) GetByVerificationToken(verificationToken s
 		if resultError == mongo.ErrNoDocuments {
 			return nil, nil
 		}
-		// TODO log
-		return nil, &repository.RepositoryError{
-			Message: "There has been an error trying to find user by token.",
-		}
+		return nil, fmt.Errorf("Error finding user by verification token: %v", resultError)
 	}
 
 	return &foundUser, nil
 }
 
+// Update updates a user in the mongo database
 func (userRepository *UserRepository) Update(user *model.User) error {
 	collection := userRepository.getCollection()
 	filter := bson.M{"email": user.Email}
@@ -85,13 +83,10 @@ func (userRepository *UserRepository) Update(user *model.User) error {
 
 	updateResult, resultError := collection.UpdateOne(context.Background(), filter, update)
 	if resultError != nil {
-		// TODO log updateError
-		return &repository.RepositoryError{
-			Message: "There has been an error trying to update the user.",
-		}
+		return fmt.Errorf("Error updating user: %v", resultError)
 	}
 	if updateResult.MatchedCount == 0 {
-		return &repository.RepositoryError{
+		return &repository.Error{
 			Message: "No account was found",
 		}
 	}

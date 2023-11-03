@@ -5,27 +5,31 @@ import (
 	"qd_authentication_api/internal/repository"
 )
 
-type MongoClienter interface {
+// Clienter specific client interface
+type Clienter interface {
 	Connect(ctx context.Context) error
 	Disconnect(ctx context.Context) error
 }
 
+// Repository is a mongo specific repository
 type Repository struct {
 	userRepository repository.UserRepositoryer
-	client         MongoClienter
+	client         Clienter
 }
 
 var _ repository.Repositoryer = &Repository{}
 
+// GetUserRepository returns the user repository
 func (mongoRepository *Repository) GetUserRepository() repository.UserRepositoryer {
 	return mongoRepository.userRepository
 }
 
+// Close closes the mongo repository
 func (mongoRepository *Repository) Close() error {
 	if mongoRepository.client != nil {
 		return mongoRepository.client.Disconnect(context.Background())
 	}
-	return &repository.RepositoryError{
-		Message: "Repository client is nil.",
+	return &repository.Error{
+		Message: "Repository client is nil",
 	}
 }

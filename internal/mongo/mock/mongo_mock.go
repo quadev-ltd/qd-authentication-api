@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// SetupMockMongoServer sets up a mock mongo server
 func SetupMockMongoServer() (*memongo.Server, *mongo.Client, error) {
 	memongoOptions := &memongo.Options{
 		LogLevel:     4,

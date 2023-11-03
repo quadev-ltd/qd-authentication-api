@@ -11,6 +11,3 @@ smtp:
   port: 111
   username: example@email.com
   password: email-password
-rest:
-  host: localhost
-  port: 4444

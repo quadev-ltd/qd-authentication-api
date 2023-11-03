@@ -30,7 +30,7 @@ func TestRepository(test *testing.T) {
 
 		err := repository.Close()
 
-		assert.Equal(test, "Repository client is nil.", err.Error())
+		assert.Equal(test, "Repository client is nil", err.Error())
 		// TODO assert type
 	})
 

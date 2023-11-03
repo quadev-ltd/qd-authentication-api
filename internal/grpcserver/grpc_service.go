@@ -1,4 +1,4 @@
-package grpc_server
+package grpcserver
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
 	AuthenticationService authenticationService.AuthenticationServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
@@ -30,13 +31,14 @@ func getLoggerFromContext(ctx context.Context) log.Loggerer {
 	return nil
 }
 
+// GetPublicKey returns the public key
 func (service AuthenticationServiceServer) GetPublicKey(
 	ctx context.Context,
 	request *pb_authentication.GetPublicKeyRequest,
 ) (*pb_authentication.GetPublicKeyResponse, error) {
 	logger := getLoggerFromContext(ctx)
 	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context.")
+		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
 	publicKey, err := service.AuthenticationService.GetPublicKey()
 	if err != nil {
@@ -49,13 +51,14 @@ func (service AuthenticationServiceServer) GetPublicKey(
 	}, nil
 }
 
+// Register registers a new user
 func (service AuthenticationServiceServer) Register(
 	ctx context.Context,
 	request *pb_authentication.RegisterRequest,
 ) (*pb_authentication.RegisterResponse, error) {
 	logger := getLoggerFromContext(ctx)
 	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context.")
+		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
 	dateOfBirth := time.Unix(request.DateOfBirth.GetSeconds(), int64(request.DateOfBirth.GetNanos()))
 	registerError := service.AuthenticationService.Register(request.Email, request.Password, request.FirstName, request.LastName, &dateOfBirth)
@@ -74,44 +77,45 @@ func (service AuthenticationServiceServer) Register(
 		err := status.Errorf(codes.Internal, "Registration failed: internal server error")
 		return nil, err
 	}
-	logger.Info("Registration successful.")
+	logger.Info("Registration successful")
 	return &pb_authentication.RegisterResponse{
 		Success: true,
-		Message: "Registration successful.",
+		Message: "Registration successful",
 	}, nil
 }
 
+// VerifyEmail verifies the email
 func (service AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
 ) (*pb_authentication.VerifyEmailResponse, error) {
 	logger := getLoggerFromContext(ctx)
 	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context.")
+		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
 	verifyEmailError := service.AuthenticationService.VerifyEmail(request.VerificationToken)
 	if verifyEmailError == nil {
-		logger.Info("Email verified successfully.")
+		logger.Info("Email verified successfully")
 		return &pb_authentication.VerifyEmailResponse{
 			Success: true,
-			Message: "Email verified successfully.",
+			Message: "Email verified successfully",
 		}, nil
 	}
 	logger.Error(verifyEmailError, "Email verification failed")
-	if serviceErr, ok := verifyEmailError.(*authenticationService.ServiceError); ok {
+	if serviceErr, ok := verifyEmailError.(*authenticationService.Error); ok {
 		return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
-	} else {
-		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
+	return nil, status.Errorf(codes.Internal, "Internal server error")
 }
 
+// ResendEmailVerification resends the email verification
 func (service AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
 	request *pb_authentication.ResendEmailVerificationRequest,
 ) (*pb_authentication.ResendEmailVerificationResponse, error) {
 	logger := getLoggerFromContext(ctx)
 	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context.")
+		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
 	if !limiter.Allow() {
 		logger.Warn("Rate limit exceeded")
@@ -123,7 +127,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	}
 	email, error := service.AuthenticationService.VerifyTokenAndDecodeEmail(request.AuthToken)
 	if error != nil {
-		if serviceErr, ok := error.(*authenticationService.ServiceError); ok {
+		if serviceErr, ok := error.(*authenticationService.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(error, "Failed to verify JWT token")
@@ -131,7 +135,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	}
 	error = service.AuthenticationService.ResendEmailVerification(*email)
 	if error != nil {
-		if serviceErr, ok := error.(*authenticationService.ServiceError); ok {
+		if serviceErr, ok := error.(*authenticationService.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(error, "Failed to resend email verification")
@@ -144,13 +148,14 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	}, nil
 }
 
+// Authenticate authenticates a user
 func (service AuthenticationServiceServer) Authenticate(
 	ctx context.Context,
 	request *pb_authentication.AuthenticateRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
 	logger := getLoggerFromContext(ctx)
 	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context.")
+		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
 	authTokens, err := service.AuthenticationService.Authenticate(request.Email, request.Password)
 	if err != nil {
@@ -158,18 +163,18 @@ func (service AuthenticationServiceServer) Authenticate(
 		return nil, err
 	}
 	authenticateResponse := *convertAuthTokensToResponse(authTokens)
-	logger.Info("Authentication successful.")
+	logger.Info("Authentication successful")
 	return &authenticateResponse, nil
 }
 
 func handleAuthenticationError(err error, logger log.Loggerer) error {
 	switch err.(type) {
 	case *model.WrongEmailOrPassword:
-		logger.Error(err, "Invalid email or password.")
-		return status.Errorf(codes.Unauthenticated, "Invalid email or password.")
+		logger.Error(err, "Invalid email or password")
+		return status.Errorf(codes.Unauthenticated, "Invalid email or password")
 	default:
-		logger.Error(err, "Internal error.")
-		return status.Errorf(codes.Internal, "Internal server error.")
+		logger.Error(err, "Internal error")
+		return status.Errorf(codes.Internal, "Internal server error")
 	}
 }
 

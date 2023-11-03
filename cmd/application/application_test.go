@@ -40,11 +40,11 @@ func waitForServerUp(application Applicationer) {
 
 	for {
 		if time.Since(startTime) > maxWaitTime {
-			log.Error().Msg("Server didn't start within the specified time.")
+			log.Error().Msg("Server didn't start within the specified time")
 		}
 
 		if isServerUp(application.GetGRPCServerAddress()) {
-			log.Error().Msg("Server is up.")
+			log.Error().Msg("Server is up")
 			break
 		}
 
@@ -98,9 +98,9 @@ func startMockSMTPServer(mockSMTPServerHost string, mockSMTPServerPort string) *
 	return &smtpServer
 }
 
-func contextWithCorrelationId(correlationId string) context.Context {
+func contextWithCorrelationID(correlationID string) context.Context {
 	md := metadata.New(map[string]string{
-		logger.CorrelationIdKey: correlationId,
+		logger.CorrelationIDKey: correlationID,
 	})
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	return ctx
@@ -126,7 +126,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 	application := NewApplication(&config)
 	go func() {
-		application.StartServers()
+		application.StartServer()
 	}()
 	defer application.Close()
 
@@ -134,7 +134,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 	email := "test@test.com"
 	password := "test123"
-	correlationId := "1234567890"
+	correlationID := "1234567890"
 
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 
@@ -143,7 +143,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 		md := metadata.New(map[string]string{
-			logger.CorrelationIdKey: correlationId,
+			logger.CorrelationIDKey: correlationID,
 		})
 		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
@@ -162,7 +162,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 		md := metadata.New(map[string]string{
-			logger.CorrelationIdKey: correlationId,
+			logger.CorrelationIDKey: correlationID,
 		})
 		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
@@ -176,7 +176,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, registerResponse.Success, true)
-		assert.Equal(t, registerResponse.Message, "Registration successful.")
+		assert.Equal(t, registerResponse.Message, "Registration successful")
 	})
 
 	t.Run("Register_Failure_Already_Existing_User", func(t *testing.T) {
@@ -185,7 +185,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 		md := metadata.New(map[string]string{
-			logger.CorrelationIdKey: correlationId,
+			logger.CorrelationIDKey: correlationID,
 		})
 		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
@@ -208,7 +208,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 		registerResponse, err := client.VerifyEmail(
-			contextWithCorrelationId(correlationId),
+			contextWithCorrelationID(correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
 			})
@@ -224,7 +224,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := contextWithCorrelationId(correlationId)
+		ctx := contextWithCorrelationID(correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -262,7 +262,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := contextWithCorrelationId(correlationId)
+		ctx := contextWithCorrelationID(correlationID)
 
 		err = client.Connect(ctx)
 		if err != nil {
@@ -298,7 +298,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := contextWithCorrelationId(correlationId)
+		ctx := contextWithCorrelationID(correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -327,7 +327,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := contextWithCorrelationId(correlationId)
+		ctx := contextWithCorrelationID(correlationID)
 
 		err = client.Connect(ctx)
 		if err != nil {
@@ -353,7 +353,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, registerResponse)
-		assert.Equal(t, registerResponse.Message, "Email verified successfully.")
+		assert.Equal(t, registerResponse.Message, "Email verified successfully")
 		assert.Equal(t, registerResponse.Success, true)
 	})
 
@@ -362,7 +362,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := contextWithCorrelationId(correlationId)
+		ctx := contextWithCorrelationID(correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -388,6 +388,6 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
-		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password.", err.Error())
+		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password", err.Error())
 	})
 }

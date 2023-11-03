@@ -1,4 +1,4 @@
-package grpc_server
+package grpcserver
 
 import (
 	"context"
@@ -9,7 +9,10 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-const LoggerKey = "logger"
+type loggerKey string
+
+// LoggerKey is the key for the logger in the context
+const LoggerKey loggerKey = "logger"
 
 func loggerInterceptor(
 	ctx context.Context,
@@ -19,7 +22,7 @@ func loggerInterceptor(
 ) (interface{}, error) {
 	logger, err := log.NewLogger(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. Dubious request.")
+		return nil, status.Errorf(codes.Internal, "Internal server error. Dubious request")
 	}
 	newCtx := context.WithValue(ctx, LoggerKey, logger)
 	return handler(newCtx, req)

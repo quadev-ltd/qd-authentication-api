@@ -1,11 +1,10 @@
-package grpc_server
+package grpcserver
 
 import (
 	"context"
 	"errors"
 	loggerMock "qd_authentication_api/internal/log/mock"
 	"qd_authentication_api/internal/model"
-	validationErrorsMock "qd_authentication_api/internal/model/mock"
 	"qd_authentication_api/internal/service"
 	"qd_authentication_api/internal/service/mock"
 	"qd_authentication_api/pb/gen/go/pb_authentication"
@@ -52,7 +51,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		mockValidationError := validator.ValidationErrors{
-			&validationErrorsMock.CustomValidationError{
+			&CustomValidationError{
 				FieldName: "FieldName",
 			},
 		}
@@ -133,13 +132,13 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 		successfulResponse := &pb_authentication.RegisterResponse{
 			Success: true,
-			Message: "Registration successful.",
+			Message: "Registration successful",
 		}
 
 		authenticationServiceMock.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
-		loggerMock.EXPECT().Info("Registration successful.")
+		loggerMock.EXPECT().Info("Registration successful")
 
 		response, returnedError := server.Register(ctx, registerRequest)
 
@@ -188,7 +187,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			AuthenticationService: authenticationServiceMock,
 		}
 
-		mockVerifyEmailError := &service.ServiceError{Message: "some error"}
+		mockVerifyEmailError := &service.Error{Message: "some error"}
 
 		authenticationServiceMock.EXPECT().
 			VerifyEmail(gomock.Any()).
@@ -215,13 +214,13 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		successfulResponse := &pb_authentication.VerifyEmailResponse{
 			Success: true,
-			Message: "Email verified successfully.",
+			Message: "Email verified successfully",
 		}
 
 		authenticationServiceMock.EXPECT().
 			VerifyEmail(gomock.Any()).
 			Return(nil)
-		loggerMock.EXPECT().Info("Email verified successfully.")
+		loggerMock.EXPECT().Info("Email verified successfully")
 
 		response, returnedError := server.VerifyEmail(ctx, verifyEmailRequest)
 
@@ -244,12 +243,12 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		invalidEmailOrPasswordError := &model.WrongEmailOrPassword{
 			FieldName: "Email",
 		}
-		expectedError := status.Errorf(codes.Unauthenticated, "Invalid email or password.")
+		expectedError := status.Errorf(codes.Unauthenticated, "Invalid email or password")
 
 		authenticationServiceMock.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any()).
 			Return(nil, invalidEmailOrPasswordError)
-		loggerMock.EXPECT().Error(invalidEmailOrPasswordError, "Invalid email or password.")
+		loggerMock.EXPECT().Error(invalidEmailOrPasswordError, "Invalid email or password")
 
 		response, returnedError := server.Authenticate(ctx, authenticateRequest)
 
@@ -270,12 +269,12 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		authenticationError := errors.New("some error")
-		expectedError := status.Errorf(codes.Internal, "Internal server error.")
+		expectedError := status.Errorf(codes.Internal, "Internal server error")
 
 		authenticationServiceMock.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any()).
 			Return(nil, authenticationError)
-		loggerMock.EXPECT().Error(authenticationError, "Internal error.")
+		loggerMock.EXPECT().Error(authenticationError, "Internal error")
 
 		response, returnedError := server.Authenticate(ctx, authenticateRequest)
 
@@ -314,7 +313,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		authenticationServiceMock.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any()).
 			Return(authenticateResponse, nil)
-		loggerMock.EXPECT().Info("Authentication successful.")
+		loggerMock.EXPECT().Info("Authentication successful")
 
 		response, returnedError := server.Authenticate(ctx, authenticateRequest)
 
@@ -360,7 +359,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			AuthenticationService: authenticationServiceMock,
 		}
 
-		expectedError := &service.ServiceError{Message: "test error"}
+		expectedError := &service.Error{Message: "test error"}
 
 		authenticationServiceMock.EXPECT().
 			VerifyTokenAndDecodeEmail(gomock.Any()).
@@ -385,7 +384,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			AuthenticationService: authenticationServiceMock,
 		}
 
-		expectedError := &service.ServiceError{Message: "test error"}
+		expectedError := &service.Error{Message: "test error"}
 		testEmail := "example@email.com"
 		authenticationServiceMock.EXPECT().
 			VerifyTokenAndDecodeEmail(gomock.Any()).
