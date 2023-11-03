@@ -20,26 +20,20 @@ type SMTP struct {
 	Password string
 }
 
-type Application struct {
-	Name     string
-	Protocol string
-}
-
-type Authentication struct {
-	Key string
-}
-
 type DB struct {
 	URI string
 }
 
 type Config struct {
-	App            Application
-	REST           Address
-	GRPC           Address
-	DB             DB
-	SMTP           SMTP
-	Authentication Authentication
+	Verbose                   bool
+	Environment               string
+	App                       string
+	AuthenticationKey         string `mapstructure:"authentication_key"`
+	EmailVerificationEndpoint string `mapstructure:"email_verification_endpoint"`
+	GRPC                      Address
+	REST                      Address
+	DB                        DB
+	SMTP                      SMTP
 }
 
 func (config *Config) Load(path string) error {
@@ -59,6 +53,14 @@ func (config *Config) Load(path string) error {
 
 	if err := viper.Unmarshal(&config); err != nil {
 		return fmt.Errorf("Error unmarshaling configuration: %v", err)
+	}
+	if os.Getenv(VerboseKey) == "true" {
+		config.Verbose = true
+	} else {
+		config.Verbose = false
+	}
+	if os.Getenv(AppEnvironmentKey) != "" {
+		config.Environment = os.Getenv(AppEnvironmentKey)
 	}
 
 	return nil

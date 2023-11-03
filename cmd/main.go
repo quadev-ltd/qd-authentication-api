@@ -10,14 +10,13 @@ import (
 	"google.golang.org/grpc/grpclog"
 )
 
-func main() {
-	verbose := os.Getenv(config.VervoseKey)
-	environment := os.Getenv(config.AppEnvironmentKey)
-	if verbose == "true" {
+func setUpLogs(configurations *config.Config) {
+
+	if configurations.Verbose == true {
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stdout))
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
-		if environment == config.ProductionEnvironment {
+		if configurations.Environment == config.ProductionEnvironment {
 			zerolog.SetGlobalLevel(zerolog.WarnLevel)
 		} else {
 			zerolog.SetGlobalLevel(zerolog.DebugLevel)
@@ -25,11 +24,17 @@ func main() {
 	}
 
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Info().Msg("Starting authentication service...")
+}
+
+func main() {
 
 	var config config.Config
-	confiLocation := "./internal/config"
-	config.Load(confiLocation)
+	configLocation := "./internal/config"
+	config.Load(configLocation)
+
+	setUpLogs(&config)
+
+	log.Info().Msg("Starting authentication service...")
 	application := application.NewApplication(&config)
 	application.StartServers()
 

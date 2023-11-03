@@ -1,18 +1,16 @@
-app:
-  name: AppName
-  protocol: http/https
-authentication:
-  key: service_key
-rest:
-  host: hast_name
-  port: port_number
+app: AppName
+authentication_key: service_key
+email_verification_endpoint: http://localhost:2222/
 grpc:
   host: hast_name
   port: port_number
+db:
+  uri: mongo-db-uri
 smtp:
   host: smtp.host
   port: 111
   username: example@email.com
   password: email-password
-db:
-  uri: mongo-db-uri
+rest:
+  host: localhost
+  port: 4444

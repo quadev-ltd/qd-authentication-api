@@ -22,9 +22,9 @@ func (serviceFactory *ServiceFactory) CreateService(
 		return nil, err
 	}
 
-	baseUrl := fmt.Sprintf("%s://%s:%s", config.App.Protocol, config.REST.Host, config.REST.Port)
+	baseUrl := fmt.Sprintf("http://%s:%s", config.REST.Host, config.REST.Port)
 	emailServiceConfig := EmailServiceConfig{
-		AppName:  config.App.Name,
+		AppName:  config.App,
 		BaseUrl:  baseUrl,
 		From:     config.SMTP.Username,
 		Password: config.SMTP.Password,

@@ -2,7 +2,7 @@ package config
 
 const (
 	AppEnvironmentKey      = "APP_ENV"
-	VervoseKey             = "VERVOSE"
+	VerboseKey             = "VERVOSE"
 	DevelopmentEnvironment = "dev"
 	ProductionEnvironment  = "prod"
 )
