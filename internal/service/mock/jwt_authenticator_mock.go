@@ -35,6 +35,20 @@ func (m *MockJWTAthenticatorer) EXPECT() *MockJWTAthenticatorerMockRecorder {
 	return m.recorder
 }
 
+// GenerateNewKeyPair mocks base method.
+func (m *MockJWTAthenticatorer) GenerateNewKeyPair() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateNewKeyPair")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// GenerateNewKeyPair indicates an expected call of GenerateNewKeyPair.
+func (mr *MockJWTAthenticatorerMockRecorder) GenerateNewKeyPair() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateNewKeyPair", reflect.TypeOf((*MockJWTAthenticatorer)(nil).GenerateNewKeyPair))
+}
+
 // GetEmailFromToken mocks base method.
 func (m *MockJWTAthenticatorer) GetEmailFromToken(token *jwt.Token) (*string, error) {
 	m.ctrl.T.Helper()
@@ -48,6 +62,21 @@ func (m *MockJWTAthenticatorer) GetEmailFromToken(token *jwt.Token) (*string, er
 func (mr *MockJWTAthenticatorerMockRecorder) GetEmailFromToken(token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEmailFromToken", reflect.TypeOf((*MockJWTAthenticatorer)(nil).GetEmailFromToken), token)
+}
+
+// GetPublicKey mocks base method.
+func (m *MockJWTAthenticatorer) GetPublicKey() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPublicKey")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPublicKey indicates an expected call of GetPublicKey.
+func (mr *MockJWTAthenticatorerMockRecorder) GetPublicKey() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicKey", reflect.TypeOf((*MockJWTAthenticatorer)(nil).GetPublicKey))
 }
 
 // SignToken mocks base method.

@@ -3,6 +3,7 @@ package grpc_server
 import (
 	"context"
 	"errors"
+	loggerMock "qd_authentication_api/internal/log/mock"
 	"qd_authentication_api/internal/model"
 	validationErrorsMock "qd_authentication_api/internal/model/mock"
 	"qd_authentication_api/internal/service"
@@ -38,17 +39,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		Email:    "test@example.com",
 		Password: "password",
 	}
-
 	test.Run("Registration error wrong email or password", func(test *testing.T) {
-
-		// Create a new instance of the controller for managing mocks.
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		// Create a mock for your AuthenticationService.
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
-		// Create an instance of your gRPC server with the mock service.
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
 		}
@@ -59,75 +57,61 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			},
 		}
 
-		// Set up expectations on your mock service.
 		authenticationServiceMock.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(mockValidationError)
 
-		// Call the Register function on your gRPC server.
-		response, returnedError := server.Register(context.Background(), registerRequest)
+		response, returnedError := server.Register(ctx, registerRequest)
 
-		// Assert that the error returned by the server matches the expected error.
 		assert.Equal(test, "rpc error: code = InvalidArgument desc = Registration failed: FieldName", returnedError.Error())
 		assert.Nil(test, response)
 	})
 
 	test.Run("Registration internal server error", func(test *testing.T) {
-
-		// Create a new instance of the controller for managing mocks.
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		// Create a mock for your AuthenticationService.
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
-		// Create an instance of your gRPC server with the mock service.
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
 		}
 
-		// Define the error you want the Register function to return.
 		mockValidationError := errors.New("some error")
 
-		// Set up expectations on your mock service.
 		authenticationServiceMock.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(mockValidationError)
+		loggerMock.EXPECT().Error(mockValidationError, "Registration failed")
 
-		// Call the Register function on your gRPC server.
-		response, returnedError := server.Register(context.Background(), registerRequest)
+		response, returnedError := server.Register(ctx, registerRequest)
 
-		// Assert that the error returned by the server matches the expected error.
 		assert.Equal(test, "rpc error: code = Internal desc = Registration failed: internal server error", returnedError.Error())
 		assert.Nil(test, response)
 	})
 
 	test.Run("Registration error email in use", func(test *testing.T) {
-
-		// Create a new instance of the controller for managing mocks.
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		// Create a mock for your AuthenticationService.
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
-		// Create an instance of your gRPC server with the mock service.
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
 		}
 
-		// Define the error you want the Register function to return.
 		mockEmailInUseError := &model.EmailInUseError{Email: "test@example.com"}
 
-		// Set up expectations on your mock service.
 		authenticationServiceMock.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(mockEmailInUseError)
 
-		// Call the Register function on your gRPC server.
-		response, returnedError := server.Register(context.Background(), registerRequest)
+		response, returnedError := server.Register(ctx, registerRequest)
 
-		// Assert that the error returned by the server matches the expected error.
 		assert.Equal(
 			test,
 			"rpc error: code = InvalidArgument desc = Registration failed: email already in use",
@@ -137,29 +121,27 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Registration success", func(test *testing.T) {
-
-		// Create a new instance of the controller for managing mocks.
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		// Create a mock for your AuthenticationService.
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
-		// Create an instance of your gRPC server with the mock service.
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
 		}
 		successfulResponse := &pb_authentication.RegisterResponse{
 			Success: true,
-			Message: "Registration successful",
+			Message: "Registration successful.",
 		}
-		// Set up expectations on your mock service.
+
 		authenticationServiceMock.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
+		loggerMock.EXPECT().Info("Registration successful.")
 
-		// Call the Register function on your gRPC server.
-		response, returnedError := server.Register(context.Background(), registerRequest)
+		response, returnedError := server.Register(ctx, registerRequest)
 
 		assert.Nil(
 			test,
@@ -174,6 +156,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -184,8 +168,9 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		authenticationServiceMock.EXPECT().
 			VerifyEmail(gomock.Any()).
 			Return(mockVerifyEmailError)
+		loggerMock.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
-		response, returnedError := server.VerifyEmail(context.Background(), verifyEmailRequest)
+		response, returnedError := server.VerifyEmail(ctx, verifyEmailRequest)
 
 		assert.Equal(test, status.Error(codes.Internal, "Internal server error"), returnedError)
 		assert.Nil(test, response)
@@ -196,6 +181,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -206,8 +193,9 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		authenticationServiceMock.EXPECT().
 			VerifyEmail(gomock.Any()).
 			Return(mockVerifyEmailError)
+		loggerMock.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
-		response, returnedError := server.VerifyEmail(context.Background(), verifyEmailRequest)
+		response, returnedError := server.VerifyEmail(ctx, verifyEmailRequest)
 
 		assert.Equal(test, status.Error(codes.InvalidArgument, mockVerifyEmailError.Error()), returnedError)
 		assert.Nil(test, response)
@@ -218,6 +206,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -225,17 +215,16 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		successfulResponse := &pb_authentication.VerifyEmailResponse{
 			Success: true,
-			Message: "Email verified successfully",
+			Message: "Email verified successfully.",
 		}
 
 		authenticationServiceMock.EXPECT().
 			VerifyEmail(gomock.Any()).
 			Return(nil)
+		loggerMock.EXPECT().Info("Email verified successfully.")
 
-		// Call the VerifyEmail function on your gRPC server.
-		response, returnedError := server.VerifyEmail(context.Background(), verifyEmailRequest)
+		response, returnedError := server.VerifyEmail(ctx, verifyEmailRequest)
 
-		// Assert that there is no error returned, and the response matches the expected response.
 		assert.Nil(test, returnedError)
 		assert.Equal(test, successfulResponse, response)
 	})
@@ -245,6 +234,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -253,13 +244,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		invalidEmailOrPasswordError := &model.WrongEmailOrPassword{
 			FieldName: "Email",
 		}
-		expectedError := status.Errorf(codes.Unauthenticated, "Invalid email or password")
+		expectedError := status.Errorf(codes.Unauthenticated, "Invalid email or password.")
 
 		authenticationServiceMock.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any()).
 			Return(nil, invalidEmailOrPasswordError)
+		loggerMock.EXPECT().Error(invalidEmailOrPasswordError, "Invalid email or password.")
 
-		response, returnedError := server.Authenticate(context.Background(), authenticateRequest)
+		response, returnedError := server.Authenticate(ctx, authenticateRequest)
 
 		assert.Equal(test, expectedError.Error(), returnedError.Error())
 		assert.Nil(test, response)
@@ -270,19 +262,22 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
 		}
 
 		authenticationError := errors.New("some error")
-		expectedError := status.Errorf(codes.Internal, "Internal server error")
+		expectedError := status.Errorf(codes.Internal, "Internal server error.")
 
 		authenticationServiceMock.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any()).
 			Return(nil, authenticationError)
+		loggerMock.EXPECT().Error(authenticationError, "Internal error.")
 
-		response, returnedError := server.Authenticate(context.Background(), authenticateRequest)
+		response, returnedError := server.Authenticate(ctx, authenticateRequest)
 
 		assert.Equal(test, expectedError.Error(), returnedError.Error())
 		assert.Nil(test, response)
@@ -293,6 +288,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -317,8 +314,9 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		authenticationServiceMock.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any()).
 			Return(authenticateResponse, nil)
+		loggerMock.EXPECT().Info("Authentication successful.")
 
-		response, returnedError := server.Authenticate(context.Background(), authenticateRequest)
+		response, returnedError := server.Authenticate(ctx, authenticateRequest)
 
 		assert.Nil(test, returnedError)
 		assert.Equal(test, successfulResponse, response)
@@ -329,6 +327,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -339,8 +339,9 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		authenticationServiceMock.EXPECT().
 			VerifyTokenAndDecodeEmail(gomock.Any()).
 			Return(nil, expectedError)
+		loggerMock.EXPECT().Error(expectedError, "Failed to verify JWT token")
 
-		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
@@ -352,6 +353,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -363,7 +366,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			VerifyTokenAndDecodeEmail(gomock.Any()).
 			Return(nil, expectedError)
 
-		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
@@ -375,6 +378,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -389,7 +394,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			ResendEmailVerification(testEmail).
 			Return(expectedError)
 
-		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
@@ -401,6 +406,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -414,8 +421,9 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		authenticationServiceMock.EXPECT().
 			ResendEmailVerification(testEmail).
 			Return(expectedError)
+		loggerMock.EXPECT().Error(expectedError, "Failed to resend email verification")
 
-		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
@@ -427,6 +435,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer controller.Finish()
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		loggerMock := loggerMock.NewMockLoggerer(controller)
+		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
 			AuthenticationService: authenticationServiceMock,
@@ -439,8 +449,9 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		authenticationServiceMock.EXPECT().
 			ResendEmailVerification(testEmail).
 			Return(nil)
+		loggerMock.EXPECT().Info("Email verification sent successfully")
 
-		response, returnedError := server.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{})
+		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
 
 		assert.Nil(test, returnedError)
 		assert.Equal(test, true, response.Success)

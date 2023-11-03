@@ -50,6 +50,21 @@ func (mr *MockAuthenticationServicerMockRecorder) Authenticate(email, password i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockAuthenticationServicer)(nil).Authenticate), email, password)
 }
 
+// GetPublicKey mocks base method.
+func (m *MockAuthenticationServicer) GetPublicKey() (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPublicKey")
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPublicKey indicates an expected call of GetPublicKey.
+func (mr *MockAuthenticationServicerMockRecorder) GetPublicKey() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicKey", reflect.TypeOf((*MockAuthenticationServicer)(nil).GetPublicKey))
+}
+
 // Register mocks base method.
 func (m *MockAuthenticationServicer) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
 	m.ctrl.T.Helper()

@@ -1,21 +1,26 @@
-package mongo
+package mock
 
 import (
 	"context"
+	"runtime"
 
-	"github.com/benweissmann/memongo"
+	"github.com/tryvium-travels/memongo"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func SetupMockMongoServer() (*memongo.Server, *mongo.Client, error) {
-	// Start mongo server
-	mongoServer, err := memongo.StartWithOptions(
-		&memongo.Options{
-			LogLevel:     4,
-			MongoVersion: "4.0.5",
-		},
-	)
+	memongoOptions := &memongo.Options{
+		LogLevel:     4,
+		MongoVersion: "4.0.5",
+	}
+	if runtime.GOARCH == "arm64" {
+		if runtime.GOOS == "darwin" {
+			// Only set the custom url as workaround for arm64 macs
+			memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.0.tgz"
+		}
+	}
+	mongoServer, err := memongo.StartWithOptions(memongoOptions)
 	if err != nil {
 		return nil, nil, err
 	}

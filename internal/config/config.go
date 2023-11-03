@@ -2,9 +2,9 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -43,9 +43,9 @@ type Config struct {
 }
 
 func (config *Config) Load(path string) error {
-	env := os.Getenv("APP_ENV")
+	env := os.Getenv(AppEnvironmentKey)
 	if env == "" {
-		env = "dev"
+		env = DevelopmentEnvironment
 	}
 	viper.SetConfigName(fmt.Sprintf("config.%s", env))
 	viper.SetConfigType("yml")
@@ -54,7 +54,7 @@ func (config *Config) Load(path string) error {
 	// Read the configuration file
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Fatalf("Error loading configuration file: %v", err)
+		log.Err(fmt.Errorf("Error loading configuration file: %v", err))
 	}
 
 	if err := viper.Unmarshal(&config); err != nil {

@@ -150,7 +150,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Test successful registration
 		error := authenticationService.Register(testEmail, testPassword, testFirstName, testLastName, &testDateOfBirth)
 		assert.Error(test, error)
-		assert.Equal(test, mockedError.Error(), error.Error())
+		assert.Equal(test, "Error sending verification email: Test error", error.Error())
 	})
 
 	// Verify
@@ -218,7 +218,7 @@ func TestAuthenticationService(test *testing.T) {
 		resultError := authenticationService.VerifyEmail(verificationToken)
 
 		assert.Error(test, resultError)
-		assert.Equal(test, mockedError.Error(), resultError.Error())
+		assert.Equal(test, "Error getting user by verification token: Test error", resultError.Error())
 	})
 	test.Run("Verify_Token_not_found_error", func(test *testing.T) {
 		// Arrange
@@ -263,7 +263,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, resultError)
-		assert.Equal(test, "update error", resultError.Error())
+		assert.Equal(test, "Error updating user: update error", resultError.Error())
 	})
 
 	// Authenticate
@@ -287,7 +287,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, errorMessage, err.Error())
+		assert.Equal(test, "Error getting user by email: Database error", err.Error())
 		assert.Nil(test, user)
 	})
 	test.Run("Authenticate_User_Not_Found", func(test *testing.T) {
@@ -411,7 +411,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, email)
-		assert.Equal(test, mockedError.Error(), err.Error())
+		assert.Equal(test, "Error verifying token: Token verification failed", err.Error())
 	})
 
 	test.Run("VerifyTokenAndDecodeEmail_GetEmailFromToken_Error", func(test *testing.T) {
@@ -433,7 +433,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, email)
-		assert.Equal(test, mockedError.Error(), err.Error())
+		assert.Equal(test, "Error getting email from token: Error decoding email", err.Error())
 	})
 
 	test.Run("VerifyTokenAndDecodeEmail_Success", func(test *testing.T) {
@@ -469,16 +469,16 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createauthenticationService(controller)
 
-		expectedError := errors.New("User repository error")
+		mockedError := errors.New("User repository error")
 
-		mockRepo.EXPECT().GetByEmail(testEmail).Return(nil, expectedError)
+		mockRepo.EXPECT().GetByEmail(testEmail).Return(nil, mockedError)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(testEmail)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, expectedError, err)
+		assert.Equal(test, "Error getting user by email: User repository error", err.Error())
 	})
 
 	test.Run("ResendEmailVerification_GetByEmail_NotFound", func(test *testing.T) {
@@ -537,17 +537,17 @@ func TestAuthenticationService(test *testing.T) {
 			authenticationService := createauthenticationService(controller)
 
 		testUser := newUser()
-		expectedError := errors.New("Update error")
+		mockedError := errors.New("Update error")
 
 		mockRepo.EXPECT().GetByEmail(testEmail).Return(testUser, nil)
-		mockRepo.EXPECT().Update(testUser).Return(expectedError)
+		mockRepo.EXPECT().Update(testUser).Return(mockedError)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(testEmail)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, expectedError, err)
+		assert.Equal(test, "Error updating user: Update error", err.Error())
 	})
 
 	test.Run("ResendEmailVerification_SendEmail_Error", func(test *testing.T) {
@@ -560,18 +560,18 @@ func TestAuthenticationService(test *testing.T) {
 			authenticationService := createauthenticationService(controller)
 
 		testUser := newUser()
-		expectedError := errors.New("Email service error")
+		mockedError := errors.New("Email service error")
 
 		mockRepo.EXPECT().GetByEmail(testEmail).Return(testUser, nil)
 		mockRepo.EXPECT().Update(testUser).Return(nil)
-		mockEmail.EXPECT().SendVerificationMail(testEmail, testUser.FirstName, gomock.Any()).Return(expectedError)
+		mockEmail.EXPECT().SendVerificationMail(testEmail, testUser.FirstName, gomock.Any()).Return(mockedError)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(testEmail)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, expectedError, err)
+		assert.Equal(test, "Error sending verification email: Email service error", err.Error())
 	})
 
 	test.Run("ResendEmailVerification_Success", func(test *testing.T) {

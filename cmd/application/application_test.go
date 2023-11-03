@@ -3,22 +3,26 @@ package application
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"qd_authentication_api/internal/config"
+	logger "qd_authentication_api/internal/log"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/pb/gen/go/pb_authentication"
+	"runtime"
 	"testing"
 	"time"
 
-	"github.com/benweissmann/memongo"
 	"github.com/mhale/smtpd"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/tryvium-travels/memongo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 func isServerUp(addr string) bool {
@@ -36,11 +40,11 @@ func waitForServerUp(application Applicationer) {
 
 	for {
 		if time.Since(startTime) > maxWaitTime {
-			log.Fatal("Server didn't start within the specified time.")
+			log.Error().Msg("Server didn't start within the specified time.")
 		}
 
 		if isServerUp(application.GetGRPCServerAddress()) {
-			log.Println("Server is up.")
+			log.Error().Msg("Server is up.")
 			break
 		}
 
@@ -49,12 +53,17 @@ func waitForServerUp(application Applicationer) {
 }
 
 func startMockMongoServer() (*memongo.Server, error) {
-	mongoServer, err := memongo.StartWithOptions(
-		&memongo.Options{
-			LogLevel:     10,
-			MongoVersion: "4.0.5",
-		},
-	)
+	memongoOptions := &memongo.Options{
+		LogLevel:     10,
+		MongoVersion: "4.0.5",
+	}
+	if runtime.GOARCH == "arm64" {
+		if runtime.GOOS == "darwin" {
+			// Only set the custom url as workaround for arm64 macs
+			memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.0.tgz"
+		}
+	}
+	mongoServer, err := memongo.StartWithOptions(memongoOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -80,19 +89,28 @@ func startMockSMTPServer(mockSMTPServerHost string, mockSMTPServerPort string) *
 	}
 
 	go func() {
-		log.Printf("Starting mock SMTP server %s... ", fmt.Sprintf("%s:%s", mockSMTPServerHost, mockSMTPServerPort))
+		log.Info().Msg(fmt.Sprintf("Starting mock SMTP server %s... ", fmt.Sprintf("%s:%s", mockSMTPServerHost, mockSMTPServerPort)))
 		err := smtpServer.ListenAndServe()
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 	}()
 	return &smtpServer
 }
 
+func contextWithCorrelationId(correlationId string) context.Context {
+	md := metadata.New(map[string]string{
+		logger.CorrelationIdKey: correlationId,
+	})
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
+	return ctx
+}
+
 var jwtToken string
 
 func TestRegisterUserJourneys(t *testing.T) {
-	os.Setenv("APP_ENV", "test")
+	zerolog.SetGlobalLevel(zerolog.Disabled)
+	os.Setenv(config.AppEnvironmentKey, "test")
 
 	mongoServer, err := startMockMongoServer()
 	assert.NoError(t, err)
@@ -116,13 +134,37 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 	email := "test@test.com"
 	password := "test123"
+	correlationId := "1234567890"
+
+	t.Run("Get_Public_Key_Success", func(t *testing.T) {
+
+		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		assert.NoError(t, err)
+
+		client := pb_authentication.NewAuthenticationServiceClient(connection)
+		md := metadata.New(map[string]string{
+			logger.CorrelationIdKey: correlationId,
+		})
+		ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+		getPublicKeyResponse, err := client.GetPublicKey(ctx, &pb_authentication.GetPublicKeyRequest{})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, getPublicKeyResponse)
+		assert.NotNil(t, getPublicKeyResponse.PublicKey)
+		assert.Contains(t, getPublicKeyResponse.PublicKey, "BEGIN RSA PUBLIC KEY")
+		assert.Contains(t, getPublicKeyResponse.PublicKey, "END RSA PUBLIC KEY")
+	})
 
 	t.Run("Register_Success", func(t *testing.T) {
 		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
-		ctx := context.Background()
+		md := metadata.New(map[string]string{
+			logger.CorrelationIdKey: correlationId,
+		})
+		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 		registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
 			Email:     email,
@@ -134,7 +176,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, registerResponse.Success, true)
-		assert.Equal(t, registerResponse.Message, "Registration successful")
+		assert.Equal(t, registerResponse.Message, "Registration successful.")
 	})
 
 	t.Run("Register_Failure_Already_Existing_User", func(t *testing.T) {
@@ -142,7 +184,10 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
-		ctx := context.Background()
+		md := metadata.New(map[string]string{
+			logger.CorrelationIdKey: correlationId,
+		})
+		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 		registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
 			Email:     email,
@@ -162,11 +207,11 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
-		ctx := context.Background()
-
-		registerResponse, err := client.VerifyEmail(ctx, &pb_authentication.VerifyEmailRequest{
-			VerificationToken: "1234567890",
-		})
+		registerResponse, err := client.VerifyEmail(
+			contextWithCorrelationId(correlationId),
+			&pb_authentication.VerifyEmailRequest{
+				VerificationToken: "1234567890",
+			})
 
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
@@ -176,20 +221,21 @@ func TestRegisterUserJourneys(t *testing.T) {
 	t.Run("Authenticate_Success", func(t *testing.T) {
 		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 
-		err = client.Connect(context.Background())
+		ctx := contextWithCorrelationId(correlationId)
+		err = client.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
-		defer client.Disconnect(context.Background())
+		defer client.Disconnect(ctx)
 
 		collection := client.Database("qd_authentication").Collection("user")
 		var foundUser model.User
-		err = collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&foundUser)
+		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 
 		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
@@ -197,7 +243,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.Authenticate(context.Background(), &pb_authentication.AuthenticateRequest{
+		registerResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: password,
 		})
@@ -213,20 +259,22 @@ func TestRegisterUserJourneys(t *testing.T) {
 	t.Run("ResendVerificationEmail_Success", func(t *testing.T) {
 		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 
-		err = client.Connect(context.Background())
+		ctx := contextWithCorrelationId(correlationId)
+
+		err = client.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
-		defer client.Disconnect(context.Background())
+		defer client.Disconnect(ctx)
 
 		collection := client.Database("qd_authentication").Collection("user")
 		var foundUser model.User
-		err = collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&foundUser)
+		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 
 		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
@@ -234,7 +282,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(context.Background(), &pb_authentication.ResendEmailVerificationRequest{
+		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{
 			AuthToken: jwtToken,
 		})
 
@@ -247,14 +295,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 	t.Run("ResendVerificationEmail_JWT_Error", func(t *testing.T) {
 		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 
-		err = client.Connect(context.Background())
+		ctx := contextWithCorrelationId(correlationId)
+		err = client.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
-		defer client.Disconnect(context.Background())
+		defer client.Disconnect(ctx)
 
 		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
 		assert.NoError(t, err)
@@ -262,7 +311,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
-			context.Background(),
+			ctx,
 			&pb_authentication.ResendEmailVerificationRequest{
 				AuthToken: "jwtToken",
 			},
@@ -276,20 +325,21 @@ func TestRegisterUserJourneys(t *testing.T) {
 	t.Run("Verify_Email_Success", func(t *testing.T) {
 		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
+		ctx := contextWithCorrelationId(correlationId)
 
-		err = client.Connect(context.Background())
+		err = client.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
-		defer client.Disconnect(context.Background())
+		defer client.Disconnect(ctx)
 
 		collection := client.Database("qd_authentication").Collection("user")
 		var foundUser model.User
-		err = collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&foundUser)
+		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 
 		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
@@ -297,33 +347,33 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.VerifyEmail(context.Background(), &pb_authentication.VerifyEmailRequest{
+		registerResponse, err := grpcClient.VerifyEmail(ctx, &pb_authentication.VerifyEmailRequest{
 			VerificationToken: foundUser.VerificationToken,
 		})
 
 		assert.NoError(t, err)
 		assert.NotNil(t, registerResponse)
-		assert.Equal(t, registerResponse.Message, "Email verified successfully")
+		assert.Equal(t, registerResponse.Message, "Email verified successfully.")
 		assert.Equal(t, registerResponse.Success, true)
 	})
 
 	t.Run("Authenticate_Error", func(t *testing.T) {
 		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
-
-		err = client.Connect(context.Background())
+		ctx := contextWithCorrelationId(correlationId)
+		err = client.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
-		defer client.Disconnect(context.Background())
+		defer client.Disconnect(ctx)
 
 		collection := client.Database("qd_authentication").Collection("user")
 		var foundUser model.User
-		err = collection.FindOne(context.Background(), bson.M{"email": email}).Decode(&foundUser)
+		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
-			log.Fatal(err)
+			log.Err(err)
 		}
 
 		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
@@ -331,13 +381,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.Authenticate(context.Background(), &pb_authentication.AuthenticateRequest{
+		registerResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: "password",
 		})
 
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
-		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password", err.Error())
+		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password.", err.Error())
 	})
 }

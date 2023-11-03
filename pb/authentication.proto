@@ -9,15 +9,26 @@ option go_package = "./gen/go/pb_authentication";
 
 
 service AuthenticationService {
+    rpc GetPublicKey(GetPublicKeyRequest) returns (GetPublicKeyResponse) {
+        option (google.api.http) = {
+            get: "/public-key"
+        };
+    }
     rpc Register(RegisterRequest) returns (RegisterResponse);
     rpc VerifyEmail(VerifyEmailRequest) returns (VerifyEmailResponse) {
         option (google.api.http) = {
             get: "/verify/{verification_token}"
         };
     }
-    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
     rpc ResendEmailVerification(ResendEmailVerificationRequest) returns (ResendEmailVerificationResponse);
+    rpc Authenticate(AuthenticateRequest) returns (AuthenticateResponse);
 }
+
+message GetPublicKeyResponse {
+    string public_key = 1;
+}
+
+message GetPublicKeyRequest {}
 
 message RegisterRequest {
     string email = 1;
@@ -41,6 +52,15 @@ message VerifyEmailResponse {
     string message = 2;
 }
 
+message ResendEmailVerificationRequest {
+    string auth_token = 1;
+}
+
+message ResendEmailVerificationResponse {
+    bool success = 1;
+    string message = 2;
+}
+
 message AuthenticateRequest {
     string email = 1;
     string password = 2;
@@ -54,11 +74,5 @@ message AuthenticateResponse {
     string user_email = 5;
 }
 
-message ResendEmailVerificationRequest {
-    string auth_token = 1;
-}
 
-message ResendEmailVerificationResponse {
-    bool success = 1;
-    string message = 2;
-}
+

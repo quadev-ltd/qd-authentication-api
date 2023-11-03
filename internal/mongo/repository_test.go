@@ -1,4 +1,4 @@
-package repository
+package mongo
 
 import (
 	"context"
@@ -31,6 +31,7 @@ func TestRepository(test *testing.T) {
 		err := repository.Close()
 
 		assert.Equal(test, "Repository client is nil.", err.Error())
+		// TODO assert type
 	})
 
 	test.Run("Close_Success", func(test *testing.T) {

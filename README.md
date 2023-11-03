@@ -8,7 +8,7 @@ For example:
 
 ## Endpoint testing
 End to end testing. The test suite `cmd/application/application_test.go` provides a set of end to end test to verify that the primary journeys are working correctly.
-Mongo DB and SMTP server are mocked using `github.com/benweissmann/memongo` and `github.com/mhale/smtpd`.
+Mongo DB and SMTP server are mocked using `github.com/tryvium-travels/memongo` and `github.com/mhale/smtpd`.
 
 ## GRPC
 Run `buf generate` in `/pb/` to generate the protobuf files and GRPC and GRPC Gateway implementations 
@@ -18,12 +18,14 @@ GRPC_Gateway docs:
 https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
 <!-- TODOs -->
 <!--
+    Errors and logs
     Add JWT at registration response
     Add unit tests
         JWTAuthenticator
         authentication_service_test.go
+        GetPublicKey journey
+        GenerateKeyFiles
     Test expiration dates in tokens
-    Errors and logs
     Add token refresh endpooint
     Add forgot password
     Add change password

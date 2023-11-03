@@ -24,7 +24,9 @@ func (grpcServerFactory *GRPCServerFactory) Create(
 	authenticationServiceGRPCServer := AuthenticationServiceServer{
 		AuthenticationService: authenticationService,
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(loggerInterceptor),
+	)
 	pb_authentication.RegisterAuthenticationServiceServer(grpcServer, authenticationServiceGRPCServer)
 	// Create a listener for the gRPC server which eventually will start accepting connections when server is served
 	grpcListener, err := net.Listen("tcp", grpcServerAddress)

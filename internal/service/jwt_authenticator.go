@@ -14,26 +14,33 @@ import (
 )
 
 type JWTAthenticatorer interface {
+	GenerateNewKeyPair() error
+	GetPublicKey() (string, error)
 	SignToken(email string, expiry time.Time) (*string, error)
 	VerifyToken(token string) (*jwt.Token, error)
 	GetEmailFromToken(token *jwt.Token) (*string, error)
 }
 
 type JWTAuthenticator struct {
-	privateKey *rsa.PrivateKey
-	publicKey  *rsa.PublicKey
+	fileLocation string
+	privateKey   *rsa.PrivateKey
+	publicKey    *rsa.PublicKey
 }
 
 var _ JWTAthenticatorer = &JWTAuthenticator{}
 
-const EmailClaim = "email"
-const ExpiryClaim = "expiry"
-const PublicKeyFileName = "public.pem"
-const PrivateKeyFileName = "private.pem"
+const (
+	EmailClaim         = "email"
+	ExpiryClaim        = "expiry"
+	PublicKeyFileName  = "public.pem"
+	PrivateKeyFileName = "private.pem"
+	PublicKeyType      = "RSA PUBLIC KEY"
+	PrivateKeyType     = "RSA PRIVATE KEY"
+)
 
 func createKeysFolderIfNotExists(fileLocation string) error {
 	if _, err := os.Stat(fileLocation); os.IsNotExist(err) {
-		err := os.Mkdir(fileLocation, 0755)
+		err := os.Mkdir(fileLocation, 0700)
 		if err != nil {
 			return err
 		}
@@ -84,7 +91,7 @@ func savePrivateKeyToFile(privateKey *rsa.PrivateKey, filename string) error {
 
 	privateKeyBytes := x509.MarshalPKCS1PrivateKey(privateKey)
 	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
+		Type:  PrivateKeyType,
 		Bytes: privateKeyBytes,
 	})
 
@@ -104,7 +111,7 @@ func savePublicKeyToFile(publicKey *rsa.PublicKey, filename string) error {
 		return err
 	}
 	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
+		Type:  PublicKeyType,
 		Bytes: publicKeyBytes,
 	})
 
@@ -152,8 +159,9 @@ func NewJWTAuthenticator(fileLocation string) (JWTAthenticatorer, error) {
 			return nil, err
 		}
 		return &JWTAuthenticator{
-			privateKey: privateKey,
-			publicKey:  publicKey,
+			privateKey:   privateKey,
+			publicKey:    publicKey,
+			fileLocation: fileLocation,
 		}, nil
 	} else if err != nil {
 		return nil, err
@@ -165,6 +173,28 @@ func NewJWTAuthenticator(fileLocation string) (JWTAthenticatorer, error) {
 		privateKey: privateKey,
 		publicKey:  publicKey,
 	}, nil
+}
+
+func (authenticator *JWTAuthenticator) GenerateNewKeyPair() error {
+	privateKey, publicKey, err := generateKeyFiles(authenticator.fileLocation)
+	if err != nil {
+		return err
+	}
+	authenticator.privateKey = privateKey
+	authenticator.publicKey = publicKey
+	return nil
+}
+
+func (authenticator *JWTAuthenticator) GetPublicKey() (string, error) {
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(authenticator.publicKey)
+	if err != nil {
+		return "", fmt.Errorf("Failed to marshal public key: %v", err)
+	}
+	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  PublicKeyType,
+		Bytes: publicKeyBytes,
+	})
+	return string(publicKeyPEM), nil
 }
 
 func (authenticator *JWTAuthenticator) SignToken(email string, expiry time.Time) (*string, error) {

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/internal/repository"
 	"time"
@@ -14,6 +15,7 @@ const RefreshTokenExpiry = 7 * 24 * time.Hour   // Refresh token expiry set to 7
 const VerificationTokenExpiry = 24 * time.Hour  // Verification token expiry set to 24 hours
 
 type AuthenticationServicer interface {
+	GetPublicKey() (string, error)
 	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
 	VerifyEmail(verificationToken string) error
 	Authenticate(email, password string) (*model.AuthTokensResponse, error)
@@ -41,23 +43,27 @@ func NewAuthenticationService(
 	}
 }
 
+func (service *AuthenticationService) GetPublicKey() (string, error) {
+	return service.jwtAuthenticator.GetPublicKey()
+}
+
 func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
-	existingUser, error := service.userRepository.GetByEmail(email)
-	if error != nil {
-		return error
+	existingUser, err := service.userRepository.GetByEmail(email)
+	if err != nil {
+		return fmt.Errorf("Error getting user by email: %v", err)
 	}
 	if existingUser != nil {
 		return &model.EmailInUseError{Email: email}
 	}
 
-	hashedPassword, salt, error := generateHash(password)
-	if error != nil {
-		return error
+	hashedPassword, salt, err := generateHash(password)
+	if err != nil {
+		return fmt.Errorf("Error generating password hash: %v", err)
 	}
 
-	verificationToken, error := generateVerificationToken()
-	if error != nil {
-		return error
+	verificationToken, err := generateVerificationToken()
+	if err != nil {
+		return fmt.Errorf("Error generating verification token: %v", err)
 	}
 
 	verificationTokentExpiryDate := time.Now().Add(VerificationTokenExpiry)
@@ -76,26 +82,26 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 	}
 
 	// Validate the user object
-	if error := model.ValidateUser(user); error != nil {
-		return error
+	if err := model.ValidateUser(user); err != nil {
+		return err
 	}
 
 	// Create the user in the repository
-	if error := service.userRepository.Create(user); error != nil {
-		return error
+	if err := service.userRepository.Create(user); err != nil {
+		return fmt.Errorf("Error creating user: %v", err)
 	}
 
-	if error := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); error != nil {
-		return error
+	if err := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); err != nil {
+		return fmt.Errorf("Error sending verification email: %v", err)
 	}
 
 	return nil
 }
 
 func (service *AuthenticationService) VerifyEmail(verificationToken string) error {
-	user, error := service.userRepository.GetByVerificationToken(verificationToken)
-	if error != nil {
-		return error
+	user, err := service.userRepository.GetByVerificationToken(verificationToken)
+	if err != nil {
+		return fmt.Errorf("Error getting user by verification token: %v", err)
 	}
 	if user == nil {
 		return &ServiceError{Message: "Invalid verification token"}
@@ -110,8 +116,8 @@ func (service *AuthenticationService) VerifyEmail(verificationToken string) erro
 	}
 	user.AccountStatus = model.AccountStatusVerified
 
-	if error := service.userRepository.Update(user); error != nil {
-		return error
+	if err := service.userRepository.Update(user); err != nil {
+		return fmt.Errorf("Error updating user: %v", err)
 	}
 
 	return nil
@@ -120,7 +126,7 @@ func (service *AuthenticationService) VerifyEmail(verificationToken string) erro
 func (service *AuthenticationService) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
 	user, resultError := service.userRepository.GetByEmail(email)
 	if resultError != nil {
-		return nil, resultError
+		return nil, fmt.Errorf("Error getting user by email: %v", resultError)
 	}
 
 	if user == nil {
@@ -160,21 +166,21 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 }
 
 func (service *AuthenticationService) VerifyTokenAndDecodeEmail(token string) (*string, error) {
-	jwtToken, error := service.jwtAuthenticator.VerifyToken(token)
-	if error != nil {
-		return nil, error
+	jwtToken, err := service.jwtAuthenticator.VerifyToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("Error verifying token: %v", err)
 	}
-	email, error := service.jwtAuthenticator.GetEmailFromToken(jwtToken)
-	if error != nil {
-		return nil, error
+	email, err := service.jwtAuthenticator.GetEmailFromToken(jwtToken)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting email from token: %v", err)
 	}
 	return email, nil
 }
 
 func (service *AuthenticationService) ResendEmailVerification(email string) error {
-	user, error := service.userRepository.GetByEmail(email)
-	if error != nil {
-		return error
+	user, err := service.userRepository.GetByEmail(email)
+	if err != nil {
+		return fmt.Errorf("Error getting user by email: %v", err)
 	}
 	if user == nil {
 		return &ServiceError{Message: "Invalid email"}
@@ -183,19 +189,19 @@ func (service *AuthenticationService) ResendEmailVerification(email string) erro
 		return &ServiceError{Message: "Email already verified"}
 	}
 
-	verificationToken, error := generateVerificationToken()
-	if error != nil {
-		return error
+	verificationToken, err := generateVerificationToken()
+	if err != nil {
+		return fmt.Errorf("Error generating verification token: %v", err)
 	}
 	user.VerificationToken = verificationToken
 	user.VerificationTokenExpiryDate = time.Now().Add(VerificationTokenExpiry)
 
-	if error := service.userRepository.Update(user); error != nil {
-		return error
+	if err := service.userRepository.Update(user); err != nil {
+		return fmt.Errorf("Error updating user: %v", err)
 	}
 
-	if error := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); error != nil {
-		return error
+	if err := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); err != nil {
+		return fmt.Errorf("Error sending verification email: %v", err)
 	}
 
 	return nil

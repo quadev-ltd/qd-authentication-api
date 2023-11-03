@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"qd_authentication_api/internal/config"
-	mongoRepository "qd_authentication_api/internal/repository"
+	mongo "qd_authentication_api/internal/mongo"
 )
 
 type ServiceFactoryer interface {
@@ -17,7 +17,7 @@ var _ ServiceFactoryer = &ServiceFactory{}
 func (serviceFactory *ServiceFactory) CreateService(
 	config *config.Config,
 ) (Servicer, error) {
-	repository, err := (&mongoRepository.RepositoryFactory{}).CreateRepository(config)
+	repository, err := (&mongo.RepositoryFactory{}).CreateRepository(config)
 	if err != nil {
 		return nil, err
 	}
