@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	pkgConfig "qd_authentication_api/pkg/config"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,11 +16,11 @@ const (
 func TestLoad(t *testing.T) {
 	// Setup
 	cfg := &Config{}
-	os.Setenv(AppEnvironmentKey, "test")
-	os.Setenv(VerboseKey, "false")
+	os.Setenv(pkgConfig.AppEnvironmentKey, "test")
+	os.Setenv(pkgConfig.VerboseKey, "false")
 
-	defer os.Unsetenv(AppEnvironmentKey)
-	defer os.Unsetenv(VerboseKey)
+	defer os.Unsetenv(pkgConfig.AppEnvironmentKey)
+	defer os.Unsetenv(pkgConfig.VerboseKey)
 
 	err := cfg.Load(MockConfigPath)
 	assert.NoError(t, err, "expected no error from Load")

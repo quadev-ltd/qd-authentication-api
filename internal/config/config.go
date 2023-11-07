@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	pkgConfig "qd_authentication_api/pkg/config"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -38,9 +40,9 @@ type Config struct {
 
 // Load loads the configuration from the given path yml file
 func (config *Config) Load(path string) error {
-	env := os.Getenv(AppEnvironmentKey)
+	env := os.Getenv(pkgConfig.AppEnvironmentKey)
 	if env == "" {
-		env = DevelopmentEnvironment
+		env = pkgConfig.DevelopmentEnvironment
 	}
 	viper.SetConfigName(fmt.Sprintf("config.%s", env))
 	viper.SetConfigType("yml")
@@ -55,13 +57,13 @@ func (config *Config) Load(path string) error {
 	if err := viper.Unmarshal(&config); err != nil {
 		return fmt.Errorf("Error unmarshaling configuration: %v", err)
 	}
-	if os.Getenv(VerboseKey) == "true" {
+	if os.Getenv(pkgConfig.VerboseKey) == "true" {
 		config.Verbose = true
 	} else {
 		config.Verbose = false
 	}
-	if os.Getenv(AppEnvironmentKey) != "" {
-		config.Environment = os.Getenv(AppEnvironmentKey)
+	if os.Getenv(pkgConfig.AppEnvironmentKey) != "" {
+		config.Environment = os.Getenv(pkgConfig.AppEnvironmentKey)
 	}
 
 	return nil

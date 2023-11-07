@@ -1,13 +1,13 @@
-package grpcserver
+package service
 
 import (
 	"context"
 	"errors"
-	loggerMock "qd_authentication_api/internal/log/mock"
 	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/service"
 	"qd_authentication_api/internal/service/mock"
 	"qd_authentication_api/pb/gen/go/pb_authentication"
+	"qd_authentication_api/pkg/log"
+	loggerMock "qd_authentication_api/pkg/log/mock"
 	"testing"
 	"time"
 
@@ -18,6 +18,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// TODO: remove duplicated code
 
 func TestAuthenticationServiceServer(test *testing.T) {
 	// Create a sample registerRequest for testing.
@@ -44,14 +46,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		mockValidationError := validator.ValidationErrors{
-			&CustomValidationError{
+			&mock.CustomValidationError{
 				FieldName: "FieldName",
 			},
 		}
@@ -72,10 +74,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		mockValidationError := errors.New("some error")
@@ -97,10 +99,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		mockEmailInUseError := &model.EmailInUseError{Email: "test@example.com"}
@@ -125,10 +127,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 		successfulResponse := &pb_authentication.RegisterResponse{
 			Success: true,
@@ -156,10 +158,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		mockVerifyEmailError := errors.New("some verification error")
@@ -181,13 +183,13 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
-		mockVerifyEmailError := &service.Error{Message: "some error"}
+		mockVerifyEmailError := &Error{Message: "some error"}
 
 		authenticationServiceMock.EXPECT().
 			VerifyEmail(gomock.Any()).
@@ -206,10 +208,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		successfulResponse := &pb_authentication.VerifyEmailResponse{
@@ -234,10 +236,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		invalidEmailOrPasswordError := &model.WrongEmailOrPassword{
@@ -262,10 +264,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		authenticationError := errors.New("some error")
@@ -288,10 +290,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		authenticateResponse := &model.AuthTokensResponse{
@@ -327,10 +329,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		expectedError := errors.New("test error")
@@ -353,13 +355,13 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
-		expectedError := &service.Error{Message: "test error"}
+		expectedError := &Error{Message: "test error"}
 
 		authenticationServiceMock.EXPECT().
 			VerifyTokenAndDecodeEmail(gomock.Any()).
@@ -378,13 +380,13 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
-		expectedError := &service.Error{Message: "test error"}
+		expectedError := &Error{Message: "test error"}
 		testEmail := "example@email.com"
 		authenticationServiceMock.EXPECT().
 			VerifyTokenAndDecodeEmail(gomock.Any()).
@@ -406,10 +408,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		expectedError := errors.New("test error")
@@ -435,10 +437,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 		loggerMock := loggerMock.NewMockLoggerer(controller)
-		ctx := context.WithValue(context.Background(), LoggerKey, loggerMock)
+		ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 		server := AuthenticationServiceServer{
-			AuthenticationService: authenticationServiceMock,
+			authenticationService: authenticationServiceMock,
 		}
 
 		testEmail := "example@email.com"

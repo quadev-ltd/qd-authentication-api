@@ -6,9 +6,10 @@ import (
 	"net"
 	"os"
 	"qd_authentication_api/internal/config"
-	logger "qd_authentication_api/internal/log"
 	"qd_authentication_api/internal/model"
 	"qd_authentication_api/pb/gen/go/pb_authentication"
+	pkgConfig "qd_authentication_api/pkg/config"
+	pkgLogger "qd_authentication_api/pkg/log"
 	"runtime"
 	"testing"
 	"time"
@@ -100,7 +101,7 @@ func startMockSMTPServer(mockSMTPServerHost string, mockSMTPServerPort string) *
 
 func contextWithCorrelationID(correlationID string) context.Context {
 	md := metadata.New(map[string]string{
-		logger.CorrelationIDKey: correlationID,
+		pkgLogger.CorrelationIDKey: correlationID,
 	})
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	return ctx
@@ -109,8 +110,12 @@ func contextWithCorrelationID(correlationID string) context.Context {
 var jwtToken string
 
 func TestRegisterUserJourneys(t *testing.T) {
+	email := "test@test.com"
+	password := "test123"
+	correlationID := "1234567890"
+
 	zerolog.SetGlobalLevel(zerolog.Disabled)
-	os.Setenv(config.AppEnvironmentKey, "test")
+	os.Setenv(pkgConfig.AppEnvironmentKey, "test")
 
 	mongoServer, err := startMockMongoServer()
 	assert.NoError(t, err)
@@ -132,22 +137,17 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 	waitForServerUp(application)
 
-	email := "test@test.com"
-	password := "test123"
-	correlationID := "1234567890"
-
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 
 		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
-		md := metadata.New(map[string]string{
-			logger.CorrelationIDKey: correlationID,
-		})
-		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-		getPublicKeyResponse, err := client.GetPublicKey(ctx, &pb_authentication.GetPublicKeyRequest{})
+		getPublicKeyResponse, err := client.GetPublicKey(
+			contextWithCorrelationID(correlationID),
+			&pb_authentication.GetPublicKeyRequest{},
+		)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, getPublicKeyResponse)
@@ -161,18 +161,16 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
-		md := metadata.New(map[string]string{
-			logger.CorrelationIDKey: correlationID,
-		})
-		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-		registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
-			Email:     email,
-			Password:  password,
-			FirstName: "John",
-			LastName:  "Doe",
-			// Populate other fields as needed
-		})
+		registerResponse, err := client.Register(
+			contextWithCorrelationID(correlationID),
+			&pb_authentication.RegisterRequest{
+				Email:     email,
+				Password:  password,
+				FirstName: "John",
+				LastName:  "Doe",
+				// Populate other fields as needed
+			})
 
 		assert.NoError(t, err)
 		assert.Equal(t, registerResponse.Success, true)
@@ -184,18 +182,16 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
-		md := metadata.New(map[string]string{
-			logger.CorrelationIDKey: correlationID,
-		})
-		ctx := metadata.NewOutgoingContext(context.Background(), md)
 
-		registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
-			Email:     email,
-			Password:  password,
-			FirstName: "John",
-			LastName:  "Doe",
-			// Populate other fields as needed
-		})
+		registerResponse, err := client.Register(
+			contextWithCorrelationID(correlationID),
+			&pb_authentication.RegisterRequest{
+				Email:     email,
+				Password:  password,
+				FirstName: "John",
+				LastName:  "Doe",
+				// Populate other fields as needed
+			})
 
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)

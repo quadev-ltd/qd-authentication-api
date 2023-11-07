@@ -4,7 +4,6 @@ go 1.20
 
 require (
 	github.com/go-playground/validator/v10 v10.13.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/mhale/smtpd v0.8.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/viper v1.15.0
@@ -13,18 +12,17 @@ require (
 	go.mongodb.org/mongo-driver v1.11.6
 	golang.org/x/crypto v0.14.0
 	golang.org/x/time v0.3.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20230913181813-007df8e322eb
 	google.golang.org/grpc v1.58.1
 )
 
 require (
-	github.com/golang/glog v1.1.2 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.16.0 // indirect
-	google.golang.org/genproto v0.0.0-20230913181813-007df8e322eb // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
 require (
@@ -35,7 +33,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/golang/mock v1.6.0
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect

@@ -1,13 +1,12 @@
-package grpcserver
+package service
 
 import (
 	"context"
 	"fmt"
-	"qd_authentication_api/internal/log"
 	"qd_authentication_api/internal/model"
-	authenticationService "qd_authentication_api/internal/service"
 	"qd_authentication_api/internal/util"
 	"qd_authentication_api/pb/gen/go/pb_authentication"
+	"qd_authentication_api/pkg/log"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -18,14 +17,23 @@ import (
 
 // AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
-	AuthenticationService authenticationService.AuthenticationServicer
+	authenticationService AuthenticationServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
+}
+
+// NewAuthenticationServiceServer creates a new authentication service server
+func NewAuthenticationServiceServer(
+	authenticationService AuthenticationServicer,
+) *AuthenticationServiceServer {
+	return &AuthenticationServiceServer{
+		authenticationService: authenticationService,
+	}
 }
 
 var _ pb_authentication.AuthenticationServiceServer = &AuthenticationServiceServer{}
 
 func getLoggerFromContext(ctx context.Context) log.Loggerer {
-	if logger, ok := ctx.Value(LoggerKey).(log.Loggerer); ok {
+	if logger, ok := ctx.Value(log.LoggerKey).(log.Loggerer); ok {
 		return logger
 	}
 	return nil
@@ -40,7 +48,7 @@ func (service AuthenticationServiceServer) GetPublicKey(
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
-	publicKey, err := service.AuthenticationService.GetPublicKey()
+	publicKey, err := service.authenticationService.GetPublicKey()
 	if err != nil {
 		logger.Error(err, "Failed to get public key")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -61,7 +69,7 @@ func (service AuthenticationServiceServer) Register(
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
 	dateOfBirth := time.Unix(request.DateOfBirth.GetSeconds(), int64(request.DateOfBirth.GetNanos()))
-	registerError := service.AuthenticationService.Register(request.Email, request.Password, request.FirstName, request.LastName, &dateOfBirth)
+	registerError := service.authenticationService.Register(request.Email, request.Password, request.FirstName, request.LastName, &dateOfBirth)
 	if registerError != nil {
 		_, isValidationError := registerError.(validator.ValidationErrors)
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
@@ -93,7 +101,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
-	verifyEmailError := service.AuthenticationService.VerifyEmail(request.VerificationToken)
+	verifyEmailError := service.authenticationService.VerifyEmail(request.VerificationToken)
 	if verifyEmailError == nil {
 		logger.Info("Email verified successfully")
 		return &pb_authentication.VerifyEmailResponse{
@@ -102,7 +110,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 		}, nil
 	}
 	logger.Error(verifyEmailError, "Email verification failed")
-	if serviceErr, ok := verifyEmailError.(*authenticationService.Error); ok {
+	if serviceErr, ok := verifyEmailError.(*Error); ok {
 		return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 	}
 	return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -125,17 +133,17 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	email, error := service.AuthenticationService.VerifyTokenAndDecodeEmail(request.AuthToken)
+	email, error := service.authenticationService.VerifyTokenAndDecodeEmail(request.AuthToken)
 	if error != nil {
-		if serviceErr, ok := error.(*authenticationService.Error); ok {
+		if serviceErr, ok := error.(*Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(error, "Failed to verify JWT token")
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
-	error = service.AuthenticationService.ResendEmailVerification(*email)
+	error = service.authenticationService.ResendEmailVerification(*email)
 	if error != nil {
-		if serviceErr, ok := error.(*authenticationService.Error); ok {
+		if serviceErr, ok := error.(*Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(error, "Failed to resend email verification")
@@ -157,7 +165,7 @@ func (service AuthenticationServiceServer) Authenticate(
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
-	authTokens, err := service.AuthenticationService.Authenticate(request.Email, request.Password)
+	authTokens, err := service.authenticationService.Authenticate(request.Email, request.Password)
 	if err != nil {
 		err = handleAuthenticationError(err, logger)
 		return nil, err

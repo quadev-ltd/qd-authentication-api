@@ -1,4 +1,4 @@
-package grpcserver
+package mock
 
 import (
 	"reflect"
