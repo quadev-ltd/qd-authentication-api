@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"log"
-	"qd_authentication_api/pb/gen/go/pb_authentication"
+	"qd-authentication-api/pb/gen/go/pb_authentication"
 
 	"google.golang.org/grpc"
 )

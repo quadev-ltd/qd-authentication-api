@@ -2,8 +2,8 @@ package main
 
 import (
 	"os"
-	"qd_authentication_api/internal/application"
-	"qd_authentication_api/internal/config"
+	"qd-authentication-api/internal/application"
+	"qd-authentication-api/internal/config"
 
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc/grpclog"

@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/repository"
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/repository"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"

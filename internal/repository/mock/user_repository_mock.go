@@ -5,7 +5,7 @@
 package mock
 
 import (
-	model "qd_authentication_api/internal/model"
+	model "qd-authentication-api/internal/model"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"

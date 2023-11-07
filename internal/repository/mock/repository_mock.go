@@ -6,7 +6,7 @@ package mock
 
 import (
 	context "context"
-	repository "qd_authentication_api/internal/repository"
+	repository "qd-authentication-api/internal/repository"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"

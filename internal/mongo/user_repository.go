@@ -3,8 +3,8 @@ package mongo
 import (
 	"context"
 	"fmt"
-	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/repository"
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/repository"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"

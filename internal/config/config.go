@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	pkgConfig "qd_authentication_api/pkg/config"
+	pkgConfig "github.com/gustavo-m-franco/qd-common/pkg/config"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"

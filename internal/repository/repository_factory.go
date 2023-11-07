@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"qd_authentication_api/internal/config"
+	"qd-authentication-api/internal/config"
 )
 
 // Factoryer is the interface for the repository factory

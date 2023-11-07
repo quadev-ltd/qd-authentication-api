@@ -2,8 +2,8 @@ package mongo
 
 import (
 	"context"
-	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/mongo/mock"
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/mongo/mock"
 	"testing"
 	"time"
 

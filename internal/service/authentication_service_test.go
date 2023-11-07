@@ -2,9 +2,9 @@ package service
 
 import (
 	"errors"
-	"qd_authentication_api/internal/model"
-	userRepositoryMock "qd_authentication_api/internal/repository/mock"
-	serviceMock "qd_authentication_api/internal/service/mock"
+	"qd-authentication-api/internal/model"
+	userRepositoryMock "qd-authentication-api/internal/repository/mock"
+	serviceMock "qd-authentication-api/internal/service/mock"
 	"testing"
 	"time"
 

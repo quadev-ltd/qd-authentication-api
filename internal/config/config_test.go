@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	pkgConfig "qd_authentication_api/pkg/config"
+	pkgConfig "github.com/gustavo-m-franco/qd-common/pkg/config"
 
 	"github.com/stretchr/testify/assert"
 )

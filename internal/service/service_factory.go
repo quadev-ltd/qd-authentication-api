@@ -1,8 +1,8 @@
 package service
 
 import (
-	"qd_authentication_api/internal/config"
-	mongo "qd_authentication_api/internal/mongo"
+	"qd-authentication-api/internal/config"
+	mongo "qd-authentication-api/internal/mongo"
 )
 
 // Factoryer is a factory for creating a service

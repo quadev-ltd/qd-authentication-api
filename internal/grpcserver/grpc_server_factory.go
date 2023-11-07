@@ -2,10 +2,11 @@ package grpcserver
 
 import (
 	"net"
-	"qd_authentication_api/internal/service"
-	"qd_authentication_api/pb/gen/go/pb_authentication"
-	"qd_authentication_api/pkg/grpcserver"
-	"qd_authentication_api/pkg/log"
+	"qd-authentication-api/internal/service"
+	"qd-authentication-api/pb/gen/go/pb_authentication"
+
+	"github.com/gustavo-m-franco/qd-common/pkg/grpcserver"
+	"github.com/gustavo-m-franco/qd-common/pkg/log"
 
 	"google.golang.org/grpc"
 )

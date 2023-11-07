@@ -2,8 +2,8 @@ package mongo
 
 import (
 	"context"
-	"qd_authentication_api/internal/config"
-	"qd_authentication_api/internal/repository"
+	"qd-authentication-api/internal/config"
+	"qd-authentication-api/internal/repository"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"qd_authentication_api/internal/repository"
+	"qd-authentication-api/internal/repository"
 )
 
 // Servicer is the interface for the service

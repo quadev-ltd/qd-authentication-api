@@ -1,21 +1,22 @@
-module qd_authentication_api
+module qd-authentication-api
 
-go 1.20
+go 1.21.2
 
 require (
 	github.com/go-playground/validator/v10 v10.13.0
 	github.com/mhale/smtpd v0.8.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/tryvium-travels/memongo v0.10.0
 	go.mongodb.org/mongo-driver v1.11.6
 	golang.org/x/crypto v0.14.0
 	golang.org/x/time v0.3.0
-	google.golang.org/grpc v1.58.1
+	google.golang.org/grpc v1.59.0
 )
 
 require (
+	github.com/gustavo-m-franco/qd-common v0.0.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -3,13 +3,15 @@ package service
 import (
 	"context"
 	"errors"
-	"qd_authentication_api/internal/model"
-	"qd_authentication_api/internal/service/mock"
-	"qd_authentication_api/pb/gen/go/pb_authentication"
-	"qd_authentication_api/pkg/log"
-	loggerMock "qd_authentication_api/pkg/log/mock"
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/service/mock"
+	"qd-authentication-api/pb/gen/go/pb_authentication"
 	"testing"
 	"time"
+
+	"github.com/gustavo-m-franco/qd-common/pkg/log"
+
+	loggerMock "github.com/gustavo-m-franco/qd-common/pkg/log/mock"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"

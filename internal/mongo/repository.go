@@ -2,7 +2,7 @@ package mongo
 
 import (
 	"context"
-	"qd_authentication_api/internal/repository"
+	"qd-authentication-api/internal/repository"
 )
 
 // Clienter specific client interface

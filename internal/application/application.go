@@ -2,12 +2,13 @@ package application
 
 import (
 	"fmt"
-	"qd_authentication_api/internal/config"
-	grpcFactory "qd_authentication_api/internal/grpcserver"
-	"qd_authentication_api/internal/service"
-	"qd_authentication_api/pkg/grpcserver"
+	"qd-authentication-api/internal/config"
+	grpcFactory "qd-authentication-api/internal/grpcserver"
+	"qd-authentication-api/internal/service"
 
-	"qd_authentication_api/pkg/log"
+	"github.com/gustavo-m-franco/qd-common/pkg/grpcserver"
+
+	"github.com/gustavo-m-franco/qd-common/pkg/log"
 )
 
 // Applicationer provides the main functions to start the application

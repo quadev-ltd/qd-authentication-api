@@ -1,8 +1,8 @@
 package service
 
 import (
-	repositoryMock "qd_authentication_api/internal/repository/mock"
-	"qd_authentication_api/internal/service/mock"
+	repositoryMock "qd-authentication-api/internal/repository/mock"
+	"qd-authentication-api/internal/service/mock"
 	"testing"
 
 	"github.com/golang/mock/gomock"

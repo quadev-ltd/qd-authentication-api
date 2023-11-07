@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"qd_authentication_api/internal/model"
+	"qd-authentication-api/internal/model"
 )
 
 // UserRepositoryer is the interface for the user repository
