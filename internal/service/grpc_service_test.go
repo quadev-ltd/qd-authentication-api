@@ -61,7 +61,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		authenticationServiceMock.EXPECT().
-			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(mockValidationError)
 
 		response, returnedError := server.Register(ctx, registerRequest)
@@ -85,7 +85,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mockValidationError := errors.New("some error")
 
 		authenticationServiceMock.EXPECT().
-			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(mockValidationError)
 		loggerMock.EXPECT().Error(mockValidationError, "Registration failed")
 
@@ -110,7 +110,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mockEmailInUseError := &model.EmailInUseError{Email: "test@example.com"}
 
 		authenticationServiceMock.EXPECT().
-			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(mockEmailInUseError)
 
 		response, returnedError := server.Register(ctx, registerRequest)
@@ -140,7 +140,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		authenticationServiceMock.EXPECT().
-			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil)
 		loggerMock.EXPECT().Info("Registration successful")
 
@@ -169,7 +169,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mockVerifyEmailError := errors.New("some verification error")
 
 		authenticationServiceMock.EXPECT().
-			VerifyEmail(gomock.Any()).
+			VerifyEmail(gomock.Any(), gomock.Any()).
 			Return(mockVerifyEmailError)
 		loggerMock.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
@@ -194,7 +194,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mockVerifyEmailError := &Error{Message: "some error"}
 
 		authenticationServiceMock.EXPECT().
-			VerifyEmail(gomock.Any()).
+			VerifyEmail(gomock.Any(), gomock.Any()).
 			Return(mockVerifyEmailError)
 		loggerMock.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
@@ -222,7 +222,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		authenticationServiceMock.EXPECT().
-			VerifyEmail(gomock.Any()).
+			VerifyEmail(gomock.Any(), gomock.Any()).
 			Return(nil)
 		loggerMock.EXPECT().Info("Email verified successfully")
 
@@ -250,7 +250,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		expectedError := status.Errorf(codes.Unauthenticated, "Invalid email or password")
 
 		authenticationServiceMock.EXPECT().
-			Authenticate(gomock.Any(), gomock.Any()).
+			Authenticate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, invalidEmailOrPasswordError)
 		loggerMock.EXPECT().Error(invalidEmailOrPasswordError, "Invalid email or password")
 
@@ -276,7 +276,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		expectedError := status.Errorf(codes.Internal, "Internal server error")
 
 		authenticationServiceMock.EXPECT().
-			Authenticate(gomock.Any(), gomock.Any()).
+			Authenticate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, authenticationError)
 		loggerMock.EXPECT().Error(authenticationError, "Internal error")
 
@@ -315,7 +315,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		authenticationServiceMock.EXPECT().
-			Authenticate(gomock.Any(), gomock.Any()).
+			Authenticate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(authenticateResponse, nil)
 		loggerMock.EXPECT().Info("Authentication successful")
 
@@ -340,7 +340,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		expectedError := errors.New("test error")
 
 		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any()).
+			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
 			Return(nil, expectedError)
 		loggerMock.EXPECT().Error(expectedError, "Failed to verify JWT token")
 
@@ -366,7 +366,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		expectedError := &Error{Message: "test error"}
 
 		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any()).
+			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
 			Return(nil, expectedError)
 
 		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
@@ -391,10 +391,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		expectedError := &Error{Message: "test error"}
 		testEmail := "example@email.com"
 		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any()).
+			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
 			Return(&testEmail, nil)
 		authenticationServiceMock.EXPECT().
-			ResendEmailVerification(testEmail).
+			ResendEmailVerification(gomock.Any(), testEmail).
 			Return(expectedError)
 
 		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
@@ -419,10 +419,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		expectedError := errors.New("test error")
 		testEmail := "example@email.com"
 		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any()).
+			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
 			Return(&testEmail, nil)
 		authenticationServiceMock.EXPECT().
-			ResendEmailVerification(testEmail).
+			ResendEmailVerification(gomock.Any(), testEmail).
 			Return(expectedError)
 		loggerMock.EXPECT().Error(expectedError, "Failed to resend email verification")
 
@@ -447,10 +447,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		testEmail := "example@email.com"
 		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any()).
+			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
 			Return(&testEmail, nil)
 		authenticationServiceMock.EXPECT().
-			ResendEmailVerification(testEmail).
+			ResendEmailVerification(gomock.Any(), testEmail).
 			Return(nil)
 		loggerMock.EXPECT().Info("Email verification sent successfully")
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,7 +17,7 @@ import (
 // JWTAthenticatorer is an interface for JWTAuthenticator
 type JWTAthenticatorer interface {
 	GenerateNewKeyPair() error
-	GetPublicKey() (string, error)
+	GetPublicKey(ctx context.Context) (string, error)
 	SignToken(email string, expiry time.Time) (*string, error)
 	VerifyToken(token string) (*jwt.Token, error)
 	GetEmailFromToken(token *jwt.Token) (*string, error)
@@ -191,7 +192,7 @@ func (authenticator *JWTAuthenticator) GenerateNewKeyPair() error {
 }
 
 // GetPublicKey gets the public key
-func (authenticator *JWTAuthenticator) GetPublicKey() (string, error) {
+func (authenticator *JWTAuthenticator) GetPublicKey(ctx context.Context) (string, error) {
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(authenticator.publicKey)
 	if err != nil {
 		return "", fmt.Errorf("Failed to marshal public key: %v", err)

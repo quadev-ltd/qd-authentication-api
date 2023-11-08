@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"net/smtp"
 )
@@ -17,7 +18,7 @@ type EmailServiceConfig struct {
 
 // EmailServicer is the interface for the email service
 type EmailServicer interface {
-	SendVerificationMail(dest string, userName, verificationToken string) error
+	SendVerificationMail(ctx context.Context, dest string, userName, verificationToken string) error
 }
 
 // EmailService is the implementation of the email service
@@ -52,15 +53,15 @@ func (service *EmailService) sendMail(dest string, subject string, body string) 
 }
 
 // CreateVerificationEmailContent creates the content of the verification email
-func (service *EmailService) CreateVerificationEmailContent(destination string, userName, verificationToken string) (string, string) {
+func (service *EmailService) CreateVerificationEmailContent(ctx context.Context, destination string, userName, verificationToken string) (string, string) {
 	subject := fmt.Sprintf("Welcome to %s", service.config.AppName)
 	body := fmt.Sprintf("Hi %s,\nYou've just signed up to %s!\nWe need to verify your email.\nPlease click on the following link to verify your account:\n%s\n\nThanks.", userName, service.config.AppName, service.config.EmailVerificationEndpoint+"/verify/"+verificationToken)
 	return subject, body
 }
 
 // SendVerificationMail sends a verification email to the given destination
-func (service *EmailService) SendVerificationMail(destination string, userName, verificationToken string) error {
-	subject, body := service.CreateVerificationEmailContent(destination, userName, verificationToken)
+func (service *EmailService) SendVerificationMail(ctx context.Context, destination, userName, verificationToken string) error {
+	subject, body := service.CreateVerificationEmailContent(ctx, destination, userName, verificationToken)
 	error := service.sendMail(destination, subject, body)
 	return error
 }

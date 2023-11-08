@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
@@ -19,12 +20,12 @@ const (
 
 // AuthenticationServicer is the interface for the authentication service
 type AuthenticationServicer interface {
-	GetPublicKey() (string, error)
-	Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error
-	VerifyEmail(verificationToken string) error
-	Authenticate(email, password string) (*model.AuthTokensResponse, error)
-	VerifyTokenAndDecodeEmail(token string) (*string, error)
-	ResendEmailVerification(email string) error
+	GetPublicKey(ctx context.Context) (string, error)
+	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error
+	VerifyEmail(ctx context.Context, verificationToken string) error
+	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
+	VerifyTokenAndDecodeEmail(ctx context.Context, token string) (*string, error)
+	ResendEmailVerification(ctx context.Context, email string) error
 }
 
 // AuthenticationService is the implementation of the authentication service
@@ -49,14 +50,15 @@ func NewAuthenticationService(
 	}
 }
 
-// GetPublicKey gets the public key
-func (service *AuthenticationService) GetPublicKey() (string, error) {
-	return service.jwtAuthenticator.GetPublicKey()
+// GetPublicKey ctx context.Contextgets the public key
+func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string, error) {
+	return service.jwtAuthenticator.GetPublicKey(ctx)
 }
 
+// TODO pass an object DTO instead of all the parameters
 // Register registers a new user
-func (service *AuthenticationService) Register(email, password, firstName, lastName string, dateOfBirth *time.Time) error {
-	existingUser, err := service.userRepository.GetByEmail(email)
+func (service *AuthenticationService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
+	existingUser, err := service.userRepository.GetByEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("Error getting user by email: %v", err)
 	}
@@ -95,11 +97,11 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 	}
 
 	// Create the user in the repository
-	if err := service.userRepository.Create(user); err != nil {
+	if err := service.userRepository.Create(ctx, user); err != nil {
 		return fmt.Errorf("Error creating user: %v", err)
 	}
 
-	if err := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); err != nil {
+	if err := service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, user.VerificationToken); err != nil {
 		return fmt.Errorf("Error sending verification email: %v", err)
 	}
 
@@ -107,8 +109,8 @@ func (service *AuthenticationService) Register(email, password, firstName, lastN
 }
 
 // VerifyEmail verifies a user's email
-func (service *AuthenticationService) VerifyEmail(verificationToken string) error {
-	user, err := service.userRepository.GetByVerificationToken(verificationToken)
+func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificationToken string) error {
+	user, err := service.userRepository.GetByVerificationToken(ctx, verificationToken)
 	if err != nil {
 		return fmt.Errorf("Error getting user by verification token: %v", err)
 	}
@@ -125,7 +127,7 @@ func (service *AuthenticationService) VerifyEmail(verificationToken string) erro
 	}
 	user.AccountStatus = model.AccountStatusVerified
 
-	if err := service.userRepository.Update(user); err != nil {
+	if err := service.userRepository.Update(ctx, user); err != nil {
 		return fmt.Errorf("Error updating user: %v", err)
 	}
 
@@ -133,8 +135,8 @@ func (service *AuthenticationService) VerifyEmail(verificationToken string) erro
 }
 
 // Authenticate authenticates a user and provides a token
-func (service *AuthenticationService) Authenticate(email, password string) (*model.AuthTokensResponse, error) {
-	user, resultError := service.userRepository.GetByEmail(email)
+func (service *AuthenticationService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
+	user, resultError := service.userRepository.GetByEmail(ctx, email)
 	if resultError != nil {
 		return nil, fmt.Errorf("Error getting user by email: %v", resultError)
 	}
@@ -176,7 +178,10 @@ func (service *AuthenticationService) Authenticate(email, password string) (*mod
 }
 
 // VerifyTokenAndDecodeEmail verifies a token and decodes the email
-func (service *AuthenticationService) VerifyTokenAndDecodeEmail(token string) (*string, error) {
+func (service *AuthenticationService) VerifyTokenAndDecodeEmail(
+	ctx context.Context,
+	token string,
+) (*string, error) {
 	jwtToken, err := service.jwtAuthenticator.VerifyToken(token)
 	if err != nil {
 		return nil, fmt.Errorf("Error verifying token: %v", err)
@@ -189,8 +194,11 @@ func (service *AuthenticationService) VerifyTokenAndDecodeEmail(token string) (*
 }
 
 // ResendEmailVerification resends a verification email
-func (service *AuthenticationService) ResendEmailVerification(email string) error {
-	user, err := service.userRepository.GetByEmail(email)
+func (service *AuthenticationService) ResendEmailVerification(
+	ctx context.Context,
+	email string,
+) error {
+	user, err := service.userRepository.GetByEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("Error getting user by email: %v", err)
 	}
@@ -208,11 +216,16 @@ func (service *AuthenticationService) ResendEmailVerification(email string) erro
 	user.VerificationToken = verificationToken
 	user.VerificationTokenExpiryDate = time.Now().Add(VerificationTokenExpiry)
 
-	if err := service.userRepository.Update(user); err != nil {
+	if err := service.userRepository.Update(ctx, user); err != nil {
 		return fmt.Errorf("Error updating user: %v", err)
 	}
 
-	if err := service.emailService.SendVerificationMail(user.Email, user.FirstName, user.VerificationToken); err != nil {
+	if err := service.emailService.SendVerificationMail(
+		ctx,
+		user.Email,
+		user.FirstName,
+		user.VerificationToken,
+	); err != nil {
 		return fmt.Errorf("Error sending verification email: %v", err)
 	}
 

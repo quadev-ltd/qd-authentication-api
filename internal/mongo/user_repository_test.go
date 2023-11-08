@@ -36,11 +36,11 @@ func TestMongoUserRepository(test *testing.T) {
 		user := newUser()
 
 		// Test Create
-		error = repo.Create(user)
+		error = repo.Create(context.Background(), user)
 		assert.NoError(test, error)
 
 		// Test GetByEmail
-		foundUser, error := repo.GetByEmail(user.Email)
+		foundUser, error := repo.GetByEmail(context.Background(), user.Email)
 		assert.NoError(test, error)
 		assert.NotNil(test, foundUser)
 		assert.Equal(test, user.Email, foundUser.Email)
@@ -54,7 +54,7 @@ func TestMongoUserRepository(test *testing.T) {
 
 		// Test GetByEmail
 		email := "notfound@example.com"
-		user, error := repo.GetByEmail(email)
+		user, error := repo.GetByEmail(context.Background(), email)
 		assert.Nil(test, error)
 		assert.Nil(test, user)
 	})
@@ -68,11 +68,11 @@ func TestMongoUserRepository(test *testing.T) {
 		user := newUser()
 
 		// Test Create
-		error = repo.Create(user)
+		error = repo.Create(context.Background(), user)
 		assert.NoError(test, error)
 
 		// Test GetUserByVerificationToken
-		foundUser, error := repo.GetByVerificationToken(user.VerificationToken)
+		foundUser, error := repo.GetByVerificationToken(context.Background(), user.VerificationToken)
 		assert.NoError(test, error)
 		assert.NotNil(test, foundUser)
 		assert.Equal(test, user.VerificationToken, foundUser.VerificationToken)
@@ -83,15 +83,15 @@ func TestMongoUserRepository(test *testing.T) {
 		defer mongoServer.Stop()
 		repo := NewUserRepository(client)
 		user := newUser()
-		err = repo.Create(user)
+		err = repo.Create(context.Background(), user)
 		assert.NoError(test, err)
 
 		user.AccountStatus = model.AccountStatusUnverified
 
-		err = repo.Update(user)
+		err = repo.Update(context.Background(), user)
 		assert.NoError(test, err)
 
-		foundUser, err := repo.GetByEmail(user.Email)
+		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundUser)
 		assert.Equal(test, user.AccountStatus, foundUser.AccountStatus)
@@ -106,7 +106,7 @@ func TestMongoUserRepository(test *testing.T) {
 		user := newUser()
 
 		// Test Update
-		error = repo.Update(user)
+		error = repo.Update(context.Background(), user)
 		assert.Error(test, error)
 		assert.Equal(test, "No account was found", error.Error())
 		// Assert error type
