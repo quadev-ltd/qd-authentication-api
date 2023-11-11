@@ -107,7 +107,7 @@ var jwtToken string
 
 func TestRegisterUserJourneys(t *testing.T) {
 	email := "test@test.com"
-	password := "test123"
+	password := "Password123!"
 	correlationID := "1234567890"
 
 	zerolog.SetGlobalLevel(zerolog.Disabled)

@@ -2,11 +2,11 @@ package main
 
 import (
 	"os"
+
+	"google.golang.org/grpc/grpclog"
+
 	"qd-authentication-api/internal/application"
 	"qd-authentication-api/internal/config"
-
-	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc/grpclog"
 )
 
 func main() {
@@ -19,7 +19,6 @@ func main() {
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stdout))
 	}
 
-	log.Info().Msg("Starting authentication service..")
 	application := application.NewApplication(&configurations)
 	application.StartServer()
 

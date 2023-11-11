@@ -57,7 +57,7 @@ func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string,
 	return service.jwtAuthenticator.GetPublicKey(ctx)
 }
 
-// TODO pass an object DTO instead of all the parameters
+// TODO pass an object DTO instead of all the parameters and check input validation
 // Register registers a new user
 func (service *AuthenticationService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
 	existingUser, err := service.userRepository.GetByEmail(ctx, email)
@@ -66,6 +66,11 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	}
 	if existingUser != nil {
 		return &model.EmailInUseError{Email: email}
+	}
+	if !model.IsPasswordComplex(password) {
+		return &NoComplexPasswordError{
+			Message: "Password does not meet complexity requirements",
+		}
 	}
 
 	hashedPassword, salt, err := generateHash(password)
@@ -104,10 +109,9 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	}
 
 	if err := service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, user.VerificationToken); err != nil {
-		// TODO: Unit test this
 		logger := log.GetLoggerFromContext(ctx)
 		logger.Error(err, "Error sending verification email")
-		return &Error{Message: "Error sending verification email"}
+		return &SendEmailError{Message: "Error sending verification email"}
 	}
 
 	return nil

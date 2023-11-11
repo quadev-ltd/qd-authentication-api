@@ -30,7 +30,6 @@ func initialiseTest(test *testing.T) (
 	AuthenticationServiceServer,
 ) {
 	controller := gomock.NewController(test)
-	defer controller.Finish()
 
 	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
 	loggerMock := loggerMock.NewMockLoggerer(controller)
@@ -62,7 +61,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		Email:    "test@example.com",
 		Password: "password",
 	}
-	test.Run("Registration error wrong email or password", func(test *testing.T) {
+	test.Run("Registration_Error_Validation", func(test *testing.T) {
 		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
@@ -82,7 +81,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, response)
 	})
 
-	test.Run("Registration internal server error", func(test *testing.T) {
+	test.Run("Registration_Internal_Server_Error", func(test *testing.T) {
 		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
@@ -99,7 +98,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, response)
 	})
 
-	test.Run("Registration error email in use", func(test *testing.T) {
+	test.Run("Registration_Error_Email_In_Use", func(test *testing.T) {
 		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
@@ -119,7 +118,28 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, response)
 	})
 
-	test.Run("Registration success", func(test *testing.T) {
+	test.Run("Registration_Error_Email_Not_Sent", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+
+		mockServiceError := &SendEmailError{Message: "some error"}
+
+		authenticationServiceMock.EXPECT().
+			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(mockServiceError)
+		loggerMock.EXPECT().Info("Registration successful")
+
+		response, returnedError := server.Register(ctx, registerRequest)
+
+		assert.NoError(
+			test,
+			returnedError,
+		)
+		assert.Equal(test, response.Message, "Registration successful. However, verification email failed to send")
+		assert.True(test, response.Success)
+	})
+
+	test.Run("Registration_Success", func(test *testing.T) {
 		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		successfulResponse := &pb_authentication.RegisterResponse{

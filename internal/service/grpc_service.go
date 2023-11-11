@@ -74,8 +74,9 @@ func (service AuthenticationServiceServer) Register(
 	if registerError != nil {
 		_, isValidationError := registerError.(validator.ValidationErrors)
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
-		_, isSeriveError := registerError.(*Error)
-		if isValidationError {
+		_, isNoComplexPasswordError := registerError.(*NoComplexPasswordError)
+		_, isEmailError := registerError.(*SendEmailError)
+		if isValidationError || isNoComplexPasswordError {
 			err := status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
 			return nil, err
 		}
@@ -83,7 +84,7 @@ func (service AuthenticationServiceServer) Register(
 			err := status.Errorf(codes.InvalidArgument, "Registration failed: email already in use")
 			return nil, err
 		}
-		if isSeriveError {
+		if isEmailError {
 			logger.Info("Registration successful")
 			return &pb_authentication.RegisterResponse{
 				Success: true,

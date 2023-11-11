@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 func newUser() *User {
@@ -25,13 +26,13 @@ func newUser() *User {
 }
 
 func TestValidateUser(t *testing.T) {
-	t.Run("Valid User", func(t *testing.T) {
+	t.Run("Valid_User", func(t *testing.T) {
 		// Valid user
 		user := newUser()
 		err := ValidateUser(user)
 		assert.Nil(t, err)
 	})
-	t.Run("User without verification token", func(t *testing.T) {
+	t.Run("User_Without_Verification_Token", func(t *testing.T) {
 		user := newUser()
 		user.VerificationToken = ""
 		err := ValidateUser(user)
@@ -40,14 +41,14 @@ func TestValidateUser(t *testing.T) {
 		errors := err.(validator.ValidationErrors)
 		assert.Len(t, errors, 1)
 	})
-	t.Run("Valid User With No Login Date", func(t *testing.T) {
+	t.Run("Valid_User_With_No_Login_Date", func(t *testing.T) {
 		// Valid user
 		user := newUser()
 		user.LastLoginDate = time.Time{}
 		err := ValidateUser(user)
 		assert.Nil(t, err)
 	})
-	t.Run("Invalid Email", func(t *testing.T) {
+	t.Run("Invalid_Email", func(t *testing.T) {
 		user := newUser()
 		user.Email = "test-example.com"
 		resultError := ValidateUser(user)
@@ -56,7 +57,7 @@ func TestValidateUser(t *testing.T) {
 		errors := resultError.(validator.ValidationErrors)
 		assert.Len(t, errors, 1)
 	})
-	t.Run("Invalid User Names", func(t *testing.T) {
+	t.Run("Invalid_User_Names", func(t *testing.T) {
 		user := newUser()
 		user.FirstName = "F"
 		user.LastName = "L"
@@ -67,7 +68,7 @@ func TestValidateUser(t *testing.T) {
 		errors := err.(validator.ValidationErrors)
 		assert.Len(t, errors, 2)
 	})
-	t.Run("Missing Birth Date", func(t *testing.T) {
+	t.Run("Missing_Birth_Date", func(t *testing.T) {
 		user := newUser()
 		user.DateOfBirth = time.Time{}
 		user.RegistrationDate = time.Time{}
@@ -78,7 +79,7 @@ func TestValidateUser(t *testing.T) {
 		errors := err.(validator.ValidationErrors)
 		assert.Len(t, errors, 2)
 	})
-	t.Run("Missing Token Verifiction Token Expiry Date", func(t *testing.T) {
+	t.Run("Missing_Token_Verifiction_Token_Expiry_Date", func(t *testing.T) {
 		user := newUser()
 		user.VerificationTokenExpiryDate = time.Time{}
 		err := ValidateUser(user)
@@ -87,7 +88,7 @@ func TestValidateUser(t *testing.T) {
 		errors := err.(validator.ValidationErrors)
 		assert.Len(t, errors, 1)
 	})
-	t.Run("Birth Date In Future", func(t *testing.T) {
+	t.Run("Birth_Date_In_Future", func(t *testing.T) {
 		user := newUser()
 		user.DateOfBirth = time.Now().Add(24 * time.Hour)
 		resultError := ValidateUser(user)
@@ -96,4 +97,55 @@ func TestValidateUser(t *testing.T) {
 		errors := resultError.(validator.ValidationErrors)
 		assert.Len(t, errors, 1)
 	})
+}
+
+type PasswordValidationTestSuite struct {
+	suite.Suite
+}
+
+type TestCase struct {
+	name     string
+	password string
+	result   bool
+}
+
+func (suite *PasswordValidationTestSuite) UseCaseTable() {
+	testCases := []TestCase{
+		{
+			name:     "Valid_Password",
+			password: "Test1234!",
+			result:   true,
+		},
+		{
+			name:     "No_Number",
+			password: "Test!",
+			result:   true,
+		},
+		{
+			name:     "No_Upcase",
+			password: "test1234!",
+			result:   true,
+		},
+		{
+			name:     "No_Lowcase",
+			password: "TEST1234!",
+			result:   true,
+		},
+		{
+			name:     "No_Symbol",
+			password: "Test1234",
+			result:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			isPasswordComplex := IsPasswordComplex(tc.password)
+			assert.Equal(suite.T(), tc.result, isPasswordComplex)
+		})
+	}
+}
+
+func TestPasswordValidation(t *testing.T) {
+	suite.Run(t, new(PasswordValidationTestSuite))
 }

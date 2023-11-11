@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"time"
+	"unicode"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -34,6 +35,7 @@ const (
 // ValidateUser validates the userproperties
 func ValidateUser(user *User) error {
 	validate := validator.New()
+	// Registering a custom validation for date of birth
 	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
 		asTime, ok := fl.Field().Interface().(time.Time)
 		if !ok {
@@ -47,6 +49,37 @@ func ValidateUser(user *User) error {
 		return error
 	}
 	return nil
+}
+
+// IsPasswordComplex checks if the password meets complexity requirements
+func IsPasswordComplex(password string) bool {
+	var (
+		hasMinLen      = false
+		hasUpper       = false
+		hasLower       = false
+		hasNumber      = false
+		hasSpecialChar = false
+	)
+
+	const minLen = 8
+	if len(password) >= minLen {
+		hasMinLen = true
+	}
+
+	for _, char := range password {
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsNumber(char):
+			hasNumber = true
+		case unicode.IsPunct(char) || unicode.IsSymbol(char):
+			hasSpecialChar = true
+		}
+	}
+
+	return hasMinLen && hasUpper && hasLower && hasNumber && hasSpecialChar
 }
 
 // EmailInUseError is a Custom email error type

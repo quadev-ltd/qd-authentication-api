@@ -25,7 +25,7 @@ func main() {
 
 	registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
 		Email:     "gusfran17@gmail.com",
-		Password:  "password123",
+		Password:  "Password123!",
 		FirstName: "John",
 		LastName:  "Doe",
 		// Populate other fields as needed
