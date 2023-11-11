@@ -35,7 +35,7 @@ type Config struct {
 	EmailVerificationEndpoint string `mapstructure:"email_verification_endpoint"`
 	GRPC                      address
 	DB                        db
-	SMTP                      smtp
+	Email					  address
 }
 
 // Load loads the configuration from the given path yml file

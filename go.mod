@@ -16,13 +16,14 @@ require (
 )
 
 require (
-	github.com/gustavo-m-franco/qd-common v0.0.2 // indirect
+	github.com/gustavo-m-franco/qd-common v0.0.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb // indirect
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 

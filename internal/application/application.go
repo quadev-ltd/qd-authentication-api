@@ -2,13 +2,13 @@ package application
 
 import (
 	"fmt"
+
+	"github.com/gustavo-m-franco/qd-common/pkg/grpcserver"
+	"github.com/gustavo-m-franco/qd-common/pkg/log"
+
 	"qd-authentication-api/internal/config"
 	grpcFactory "qd-authentication-api/internal/grpcserver"
 	"qd-authentication-api/internal/service"
-
-	"github.com/gustavo-m-franco/qd-common/pkg/grpcserver"
-
-	"github.com/gustavo-m-franco/qd-common/pkg/log"
 )
 
 // Applicationer provides the main functions to start the application
@@ -61,13 +61,11 @@ func New(grpcServiceServer grpcserver.GRPCServicer, grpcServerAddress string, se
 
 // StartServer starts the gRPC server
 func (application *Application) StartServer() {
-	go func() {
-		application.logger.Info(fmt.Sprintf("Starting gRPC server on %s:...", application.grpcServerAddress))
-		err := application.grpcServiceServer.Serve()
-		if err != nil {
-			application.logger.Error(err, "Failed to serve grpc server")
-		}
-	}()
+	application.logger.Info(fmt.Sprintf("Starting gRPC server on %s:...", application.grpcServerAddress))
+	err := application.grpcServiceServer.Serve()
+	if err != nil {
+		application.logger.Error(err, "Failed to serve grpc server")
+	}
 }
 
 // Close closes the gRPC server and services used by the application

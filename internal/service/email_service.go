@@ -3,17 +3,20 @@ package service
 import (
 	"context"
 	"fmt"
-	"net/smtp"
+	"time"
+
+	pkgLogger "github.com/gustavo-m-franco/qd-common/pkg/log"
+	"google.golang.org/grpc"
+
+	"qd-authentication-api/pb/gen/go/pb_email"
 )
 
 // EmailServiceConfig constains the configuration for the email service
 type EmailServiceConfig struct {
 	AppName                   string
 	EmailVerificationEndpoint string
-	From                      string
-	Password                  string
-	Host                      string
-	Port                      string
+	GRPCHost                  string
+	GRPCPort                  string
 }
 
 // EmailServicer is the interface for the email service
@@ -38,18 +41,40 @@ func NewEmailService(config EmailServiceConfig, sender SMTPServicer) *EmailServi
 	}
 }
 
-func (service *EmailService) sendMail(dest string, subject string, body string) error {
-	message := "From: " + service.config.From + "\n" +
-		"To: " + dest + "\n" +
-		"Subject: " + subject + "\n\n" +
-		body
-	config := service.config
-	auth := smtp.PlainAuth("", config.From, config.Password, config.Host)
-	resultError := smtp.SendMail(
-		fmt.Sprintf("%s:%s", config.Host, config.Port),
-		auth,
-		config.From, []string{dest}, []byte(message))
-	return resultError
+func (service *EmailService) sendMail(ctx context.Context, dest string, subject string, body string) error {
+	emailServiceGRPCAddress := fmt.Sprintf("%s:%s", service.config.GRPCHost, service.config.GRPCPort)
+	conn, err := grpc.Dial(emailServiceGRPCAddress, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		return fmt.Errorf("Could not connect to email service: %v", err)
+	}
+	defer conn.Close()
+
+	emailClient := pb_email.NewEmailServiceClient(conn)
+
+	req := &pb_email.SendEmailRequest{
+		To:      dest,
+		Subject: subject,
+		Body:    body,
+	}
+
+	correlationID, error := pkgLogger.GetCorrelationIDFromContext(ctx)
+	if error != nil {
+		return fmt.Errorf("Error getting correlation ID from context: %v", error)
+	}
+	newOutgoingCtx := pkgLogger.AddCorrelationIDToContext(ctx, *correlationID)
+	clientCtx, cancel := context.WithTimeout(newOutgoingCtx, time.Second*10)
+	defer cancel()
+
+	res, err := emailClient.SendEmail(clientCtx, req)
+	if err != nil {
+		return fmt.Errorf("Error sending email via gRPC: %v", err)
+	}
+
+	if !res.GetSuccess() {
+		return fmt.Errorf("Failed to send email: %s", res.GetMessage())
+	}
+
+	return nil
 }
 
 // CreateVerificationEmailContent creates the content of the verification email
@@ -62,6 +87,6 @@ func (service *EmailService) CreateVerificationEmailContent(ctx context.Context,
 // SendVerificationMail sends a verification email to the given destination
 func (service *EmailService) SendVerificationMail(ctx context.Context, destination, userName, verificationToken string) error {
 	subject, body := service.CreateVerificationEmailContent(ctx, destination, userName, verificationToken)
-	error := service.sendMail(destination, subject, body)
+	error := service.sendMail(ctx, destination, subject, body)
 	return error
 }

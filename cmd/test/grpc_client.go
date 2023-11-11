@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"log"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
 
+	pkgLogger "github.com/gustavo-m-franco/qd-common/pkg/log"
 	"google.golang.org/grpc"
+
+	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
 func main() {
-	conn, err := grpc.Dial("localhost:8081", grpc.WithInsecure()) // Connect to your gRPC server
+	conn, err := grpc.Dial("localhost:9090", grpc.WithInsecure()) // Connect to your gRPC server
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
@@ -17,7 +19,7 @@ func main() {
 	client := pb_authentication.NewAuthenticationServiceClient(conn)
 
 	// You can now use the client to call your gRPC methods
-	ctx := context.Background()
+	ctx := pkgLogger.AddCorrelationIDToContext(context.Background(), "1234567890")
 
 	// Registration
 

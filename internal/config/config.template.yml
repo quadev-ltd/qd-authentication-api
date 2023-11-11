@@ -6,8 +6,6 @@ grpc:
   port: port_number
 db:
   uri: mongo-db-uri
-smtp:
-  host: smtp.host
-  port: 111
-  username: example@email.com
-  password: email-password
+email:
+  host: localhost
+  port: 1111

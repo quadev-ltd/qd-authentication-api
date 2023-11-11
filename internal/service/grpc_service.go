@@ -3,17 +3,17 @@ package service
 import (
 	"context"
 	"fmt"
-	"qd-authentication-api/internal/model"
-	"qd-authentication-api/internal/util"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
 	"time"
 
-	"github.com/gustavo-m-franco/qd-common/pkg/log"
-
 	"github.com/go-playground/validator/v10"
+	"github.com/gustavo-m-franco/qd-common/pkg/log"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/util"
+	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
 // AuthenticationServiceServer is the implementation of the authentication service
@@ -33,19 +33,12 @@ func NewAuthenticationServiceServer(
 
 var _ pb_authentication.AuthenticationServiceServer = &AuthenticationServiceServer{}
 
-func getLoggerFromContext(ctx context.Context) log.Loggerer {
-	if logger, ok := ctx.Value(log.LoggerKey).(log.Loggerer); ok {
-		return logger
-	}
-	return nil
-}
-
 // GetPublicKey returns the public key
 func (service AuthenticationServiceServer) GetPublicKey(
 	ctx context.Context,
 	request *pb_authentication.GetPublicKeyRequest,
 ) (*pb_authentication.GetPublicKeyResponse, error) {
-	logger := getLoggerFromContext(ctx)
+	logger := log.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -65,7 +58,7 @@ func (service AuthenticationServiceServer) Register(
 	ctx context.Context,
 	request *pb_authentication.RegisterRequest,
 ) (*pb_authentication.RegisterResponse, error) {
-	logger := getLoggerFromContext(ctx)
+	logger := log.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -81,6 +74,7 @@ func (service AuthenticationServiceServer) Register(
 	if registerError != nil {
 		_, isValidationError := registerError.(validator.ValidationErrors)
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
+		_, isSeriveError := registerError.(*Error)
 		if isValidationError {
 			err := status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
 			return nil, err
@@ -88,6 +82,13 @@ func (service AuthenticationServiceServer) Register(
 		if isEmailInUseError {
 			err := status.Errorf(codes.InvalidArgument, "Registration failed: email already in use")
 			return nil, err
+		}
+		if isSeriveError {
+			logger.Info("Registration successful")
+			return &pb_authentication.RegisterResponse{
+				Success: true,
+				Message: "Registration successful. However, verification email failed to send",
+			}, nil
 		}
 		logger.Error(registerError, "Registration failed")
 		err := status.Errorf(codes.Internal, "Registration failed: internal server error")
@@ -105,7 +106,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
 ) (*pb_authentication.VerifyEmailResponse, error) {
-	logger := getLoggerFromContext(ctx)
+	logger := log.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -129,7 +130,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
 	request *pb_authentication.ResendEmailVerificationRequest,
 ) (*pb_authentication.ResendEmailVerificationResponse, error) {
-	logger := getLoggerFromContext(ctx)
+	logger := log.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -169,7 +170,7 @@ func (service AuthenticationServiceServer) Authenticate(
 	ctx context.Context,
 	request *pb_authentication.AuthenticateRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
-	logger := getLoggerFromContext(ctx)
+	logger := log.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}

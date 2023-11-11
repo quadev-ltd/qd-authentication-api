@@ -5,17 +5,12 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"qd-authentication-api/internal/config"
-	"qd-authentication-api/internal/model"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
 	"runtime"
 	"testing"
 	"time"
 
 	pkgConfig "github.com/gustavo-m-franco/qd-common/pkg/config"
 	pkgLogger "github.com/gustavo-m-franco/qd-common/pkg/log"
-
-	"github.com/mhale/smtpd"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +20,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"qd-authentication-api/internal/config"
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/pb/gen/go/pb_authentication"
+	"qd-authentication-api/pb/gen/go/pb_email"
 )
 
 func isServerUp(addr string) bool {
@@ -72,32 +72,36 @@ func startMockMongoServer() (*memongo.Server, error) {
 	return mongoServer, nil
 }
 
-func startMockSMTPServer(mockSMTPServerHost string, mockSMTPServerPort string) *smtpd.Server {
-	authMechanisms := map[string]bool{
-		"PLAIN": true,
+// MockEmailServiceServer is a mock implementation of the EmailServiceServer
+type MockEmailServiceServer struct {
+	pb_email.UnimplementedEmailServiceServer
+}
+
+const wrongEmail = "wrong@email.com"
+
+// SendEmail mocks the SendEmail method
+func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.SendEmailRequest) (*pb_email.SendEmailResponse, error) {
+	if req.To == wrongEmail {
+		return &pb_email.SendEmailResponse{Success: false, Message: "Email not sent"}, fmt.Errorf("Email not sent")
 	}
-	smtpServer := smtpd.Server{
-		Addr:     fmt.Sprintf("%s:%s", mockSMTPServerHost, mockSMTPServerPort),
-		Appname:  "Mock SMTP Server",
-		Hostname: mockSMTPServerPort,
-		Handler: func(remoteAddress net.Addr, from string, to []string, data []byte) error {
-			return nil
-		},
-		AuthHandler: func(remoteAddress net.Addr, mechanism string, username []byte, password []byte, shared []byte) (bool, error) {
-			return true, nil
-		},
-		AuthRequired: true,
-		AuthMechs:    authMechanisms,
+	return &pb_email.SendEmailResponse{Success: true, Message: "Mocked email sent"}, nil
+}
+
+func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string) (*grpc.Server, net.Listener) {
+	lis, err := net.Listen("tcp", emailGRPCAddress)
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
 	}
+	mockServer := grpc.NewServer()
+	pb_email.RegisterEmailServiceServer(mockServer, &MockEmailServiceServer{})
 
 	go func() {
-		log.Info().Msg(fmt.Sprintf("Starting mock SMTP server %s... ", fmt.Sprintf("%s:%s", mockSMTPServerHost, mockSMTPServerPort)))
-		err := smtpServer.ListenAndServe()
-		if err != nil {
-			log.Err(err)
+		if err := mockServer.Serve(lis); err != nil {
+			t.Errorf("mock server failed to serve: %v", err)
 		}
 	}()
-	return &smtpServer
+
+	return mockServer, lis
 }
 
 func contextWithCorrelationID(correlationID string) context.Context {
@@ -127,8 +131,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 	config.Load("../../internal/config")
 	config.DB.URI = mongoServer.URI()
 
-	smtpServer := startMockSMTPServer(config.SMTP.Host, config.SMTP.Port)
-	defer smtpServer.Close()
+	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf("%s:%s", config.Email.Host, config.Email.Port))
+	defer mockEmailServer.Stop()
 
 	application := NewApplication(&config)
 	go func() {
@@ -197,6 +201,27 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
 		assert.Equal(t, err.Error(), "rpc error: code = InvalidArgument desc = Registration failed: email already in use")
+	})
+
+	t.Run("Register_Failure_Send_Email_Error", func(t *testing.T) {
+		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		assert.NoError(t, err)
+
+		client := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		registerResponse, err := client.Register(
+			contextWithCorrelationID(correlationID),
+			&pb_authentication.RegisterRequest{
+				Email:     wrongEmail,
+				Password:  password,
+				FirstName: "John",
+				LastName:  "Doe",
+				// Populate other fields as needed
+			})
+
+		assert.NoError(t, err)
+		assert.Equal(t, "Registration successful. However, verification email failed to send", registerResponse.Message)
+		assert.Equal(t, registerResponse.Success, true)
 	})
 
 	t.Run("Verify_Email_Error_Wrong_Token", func(t *testing.T) {

@@ -3,15 +3,18 @@ package service
 import (
 	"context"
 	"errors"
-	"qd-authentication-api/internal/model"
-	userRepositoryMock "qd-authentication-api/internal/repository/mock"
-	serviceMock "qd-authentication-api/internal/service/mock"
 	"testing"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/golang/mock/gomock"
+	"github.com/gustavo-m-franco/qd-common/pkg/log"
+	loggerMock "github.com/gustavo-m-franco/qd-common/pkg/log/mock"
 	"github.com/stretchr/testify/assert"
+
+	"qd-authentication-api/internal/model"
+	userRepositoryMock "qd-authentication-api/internal/repository/mock"
+	serviceMock "qd-authentication-api/internal/service/mock"
 )
 
 const (
@@ -171,6 +174,7 @@ func TestAuthenticationService(test *testing.T) {
 			mockEmail,
 			_,
 			authenticationService := createauthenticationService(controller)
+		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
 		mockRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
@@ -180,10 +184,12 @@ func TestAuthenticationService(test *testing.T) {
 			testFirstName,
 			gomock.Any(),
 		).Return(mockedError)
+		logMock.EXPECT().Error(mockedError, "Error sending verification email")
 
+		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 		// Test successful registration
 		error := authenticationService.Register(
-			context.Background(),
+			ctx,
 			testEmail,
 			testPassword,
 			testFirstName,
@@ -191,7 +197,8 @@ func TestAuthenticationService(test *testing.T) {
 			&testDateOfBirth,
 		)
 		assert.Error(test, error)
-		assert.Equal(test, "Error sending verification email: Test error", error.Error())
+		assert.IsType(test, &Error{}, error)
+		assert.Equal(test, "Error sending verification email", error.Error())
 	})
 
 	// Verify

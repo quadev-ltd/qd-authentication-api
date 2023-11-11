@@ -27,10 +27,8 @@ func (serviceFactory *Factory) CreateService(
 	emailServiceConfig := EmailServiceConfig{
 		AppName:                   config.App,
 		EmailVerificationEndpoint: config.EmailVerificationEndpoint,
-		From:                      config.SMTP.Username,
-		Password:                  config.SMTP.Password,
-		Host:                      config.SMTP.Host,
-		Port:                      config.SMTP.Port,
+		GRPCHost:                  config.Email.Host,
+		GRPCPort:                  config.Email.Port,
 	}
 	emailService := NewEmailService(emailServiceConfig, &SMTPService{})
 	jwtAuthenticator, err := NewJWTAuthenticator("./keys")

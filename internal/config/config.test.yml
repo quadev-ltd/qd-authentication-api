@@ -6,8 +6,6 @@ grpc:
   port: 3333
 db:
   uri: mongodb+srv://password:user@cluster.test.mongodb.net/test
-smtp:
+email:
   host: localhost
   port: 1111
-  username: test@test.com
-  password: test_password

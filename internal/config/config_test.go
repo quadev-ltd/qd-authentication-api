@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	pkgConfig "github.com/gustavo-m-franco/qd-common/pkg/config"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,10 +31,8 @@ func TestLoad(t *testing.T) {
 	assert.Equal(t, "localhost", cfg.GRPC.Host)
 	assert.Equal(t, "mongodb+srv://password:user@cluster.test.mongodb.net/test", cfg.DB.URI)
 	assert.Equal(t, "3333", cfg.GRPC.Port)
-	assert.Equal(t, "localhost", cfg.SMTP.Host)
-	assert.Equal(t, "1111", cfg.SMTP.Port)
-	assert.Equal(t, "test@test.com", cfg.SMTP.Username)
-	assert.Equal(t, "test_password", cfg.SMTP.Password)
+	assert.Equal(t, "localhost", cfg.Email.Host)
+	assert.Equal(t, "1111", cfg.Email.Port)
 
 	assert.False(t, cfg.Verbose)
 	assert.Equal(t, "test", cfg.Environment)

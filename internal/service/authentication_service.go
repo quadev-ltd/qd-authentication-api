@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
-	"qd-authentication-api/internal/model"
-	"qd-authentication-api/internal/repository"
 	"time"
 
+	"github.com/gustavo-m-franco/qd-common/pkg/log"
 	"golang.org/x/crypto/bcrypt"
+
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/repository"
 )
 
 // TODO: Analyse best expiry times for tokens
@@ -102,7 +104,10 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	}
 
 	if err := service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, user.VerificationToken); err != nil {
-		return fmt.Errorf("Error sending verification email: %v", err)
+		// TODO: Unit test this
+		logger := log.GetLoggerFromContext(ctx)
+		logger.Error(err, "Error sending verification email")
+		return &Error{Message: "Error sending verification email"}
 	}
 
 	return nil
