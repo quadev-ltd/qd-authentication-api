@@ -58,6 +58,7 @@ func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string,
 }
 
 // TODO pass an object DTO instead of all the parameters and check input validation
+
 // Register registers a new user
 func (service *AuthenticationService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
 	existingUser, err := service.userRepository.GetByEmail(ctx, email)

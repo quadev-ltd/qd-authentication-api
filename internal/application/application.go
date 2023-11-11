@@ -50,6 +50,7 @@ func NewApplication(config *config.Config) Applicationer {
 	return New(grpcServiceServer, grpcServerAddress, service, logger)
 }
 
+// New creates a new application with raw parameters
 func New(grpcServiceServer grpcserver.GRPCServicer, grpcServerAddress string, service service.Servicer, logger log.Loggerer) Applicationer {
 	return &Application{
 		grpcServiceServer: grpcServiceServer,

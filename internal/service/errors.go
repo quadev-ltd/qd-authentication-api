@@ -10,22 +10,22 @@ func (e *Error) Error() string {
 	return e.Message
 }
 
-// Error is the error type for the service
+// NoComplexPasswordError is the error type for the service
 type NoComplexPasswordError struct {
 	Message string
 }
 
-// Error returns the error message
+// NoComplexPasswordError returns the error message
 func (e *NoComplexPasswordError) Error() string {
 	return e.Message
 }
 
-// Error is the error type for the service
+// SendEmailError is the error type for the service
 type SendEmailError struct {
 	Message string
 }
 
-// Error returns the error message
+// SendEmailError returns the error message
 func (e *SendEmailError) Error() string {
 	return e.Message
 }
