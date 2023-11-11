@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+
+	repositoryTypes "qd-authentication-api/internal/repository"
 )
 
 type MockClient struct {
@@ -30,8 +32,10 @@ func TestRepository(test *testing.T) {
 
 		err := repository.Close()
 
+		assert.Error(test, err)
 		assert.Equal(test, "Repository client is nil", err.Error())
-		// TODO assert type
+		assert.IsType(test, &repositoryTypes.Error{}, err)
+
 	})
 
 	test.Run("Close_Success", func(test *testing.T) {

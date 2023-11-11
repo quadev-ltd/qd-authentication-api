@@ -10,7 +10,7 @@ import (
 	"time"
 
 	pkgConfig "github.com/gustavo-m-franco/qd-common/pkg/config"
-	pkgLogger "github.com/gustavo-m-franco/qd-common/pkg/log"
+	pkgLog "github.com/gustavo-m-franco/qd-common/pkg/log"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 
 	"qd-authentication-api/internal/config"
 	"qd-authentication-api/internal/model"
@@ -36,17 +35,17 @@ func isServerUp(addr string) bool {
 	return true
 }
 
-func waitForServerUp(application Applicationer) {
+func waitForServerUp(test *testing.T, application Applicationer) {
 	maxWaitTime := 10 * time.Second
 	startTime := time.Now()
 
 	for {
 		if time.Since(startTime) > maxWaitTime {
-			log.Error().Msg("Server didn't start within the specified time")
+			test.Fatalf("Server didn't start within the specified time")
 		}
 
 		if isServerUp(application.GetGRPCServerAddress()) {
-			log.Error().Msg("Server is up")
+			test.Log("Server is up")
 			break
 		}
 
@@ -54,7 +53,7 @@ func waitForServerUp(application Applicationer) {
 	}
 }
 
-func startMockMongoServer() (*memongo.Server, error) {
+func startMockMongoServer(test *testing.T) *memongo.Server {
 	memongoOptions := &memongo.Options{
 		LogLevel:     10,
 		MongoVersion: "4.0.5",
@@ -67,9 +66,9 @@ func startMockMongoServer() (*memongo.Server, error) {
 	}
 	mongoServer, err := memongo.StartWithOptions(memongoOptions)
 	if err != nil {
-		return nil, err
+		test.Fatalf("Failed to start mock mongo server: %v", err)
 	}
-	return mongoServer, nil
+	return mongoServer
 }
 
 // MockEmailServiceServer is a mock implementation of the EmailServiceServer
@@ -104,14 +103,6 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string) (*grpc.S
 	return mockServer, lis
 }
 
-func contextWithCorrelationID(correlationID string) context.Context {
-	md := metadata.New(map[string]string{
-		pkgLogger.CorrelationIDKey: correlationID,
-	})
-	ctx := metadata.NewOutgoingContext(context.Background(), md)
-	return ctx
-}
-
 var jwtToken string
 
 func TestRegisterUserJourneys(t *testing.T) {
@@ -122,9 +113,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	os.Setenv(pkgConfig.AppEnvironmentKey, "test")
 
-	mongoServer, err := startMockMongoServer()
-	assert.NoError(t, err)
-	assert.NotNil(t, mongoServer)
+	mongoServer := startMockMongoServer(t)
 	defer mongoServer.Stop()
 
 	var config config.Config
@@ -140,7 +129,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	}()
 	defer application.Close()
 
-	waitForServerUp(application)
+	waitForServerUp(t, application)
 
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 
@@ -150,7 +139,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		getPublicKeyResponse, err := client.GetPublicKey(
-			contextWithCorrelationID(correlationID),
+			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.GetPublicKeyRequest{},
 		)
 
@@ -168,7 +157,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			contextWithCorrelationID(correlationID),
+			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.RegisterRequest{
 				Email:     email,
 				Password:  password,
@@ -189,7 +178,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			contextWithCorrelationID(correlationID),
+			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.RegisterRequest{
 				Email:     email,
 				Password:  password,
@@ -210,7 +199,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			contextWithCorrelationID(correlationID),
+			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.RegisterRequest{
 				Email:     wrongEmail,
 				Password:  password,
@@ -230,7 +219,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 		registerResponse, err := client.VerifyEmail(
-			contextWithCorrelationID(correlationID),
+			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
 			})
@@ -246,7 +235,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := contextWithCorrelationID(correlationID)
+		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -284,8 +273,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := contextWithCorrelationID(correlationID)
-
+		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -320,7 +308,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := contextWithCorrelationID(correlationID)
+		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -349,7 +337,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := contextWithCorrelationID(correlationID)
+		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
 
 		err = client.Connect(ctx)
 		if err != nil {
@@ -384,7 +372,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := contextWithCorrelationID(correlationID)
+		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
