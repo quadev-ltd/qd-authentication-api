@@ -3,9 +3,9 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
-	pkgConfig "github.com/gustavo-m-franco/qd-common/pkg/config"
-
+	pkgConfig "github.com/quadev-ltd/qd-common/pkg/config"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
@@ -34,7 +34,7 @@ type Config struct {
 	AuthenticationKey         string `mapstructure:"authentication_key"`
 	EmailVerificationEndpoint string `mapstructure:"email_verification_endpoint"`
 	GRPC                      address
-	DB                        db
+	AuthenticationDB          db `mapstructure:"authentication_db"`
 	Email                     address
 }
 
@@ -42,11 +42,20 @@ type Config struct {
 func (config *Config) Load(path string) error {
 	env := os.Getenv(pkgConfig.AppEnvironmentKey)
 	if env == "" {
-		env = pkgConfig.DevelopmentEnvironment
+		env = pkgConfig.LocalEnvironment
 	}
+	config.Environment = env
+
+	// Set the file name of the configurations file (if any)
 	viper.SetConfigName(fmt.Sprintf("config.%s", env))
 	viper.SetConfigType("yml")
 	viper.AddConfigPath(path)
+
+	// Bind environment variables (if any, they take priority)
+	prefix := fmt.Sprintf("%s_ENV", strings.ToUpper(env))
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix(prefix)                             // replace YOUR_PREFIX with your actual prefix
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // Replace dots with underscores in env var names
 
 	// Read the configuration file
 	err := viper.ReadInConfig()
@@ -57,14 +66,11 @@ func (config *Config) Load(path string) error {
 	if err := viper.Unmarshal(&config); err != nil {
 		return fmt.Errorf("Error unmarshaling configuration: %v", err)
 	}
+
 	if os.Getenv(pkgConfig.VerboseKey) == "true" {
 		config.Verbose = true
 	} else {
 		config.Verbose = false
 	}
-	if os.Getenv(pkgConfig.AppEnvironmentKey) != "" {
-		config.Environment = os.Getenv(pkgConfig.AppEnvironmentKey)
-	}
-
 	return nil
 }

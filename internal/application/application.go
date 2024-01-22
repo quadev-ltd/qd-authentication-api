@@ -3,8 +3,8 @@ package application
 import (
 	"fmt"
 
-	"github.com/gustavo-m-franco/qd-common/pkg/grpcserver"
-	"github.com/gustavo-m-franco/qd-common/pkg/log"
+	"github.com/quadev-ltd/qd-common/pkg/grpcserver"
+	"github.com/quadev-ltd/qd-common/pkg/log"
 
 	"qd-authentication-api/internal/config"
 	grpcFactory "qd-authentication-api/internal/grpcserver"
@@ -34,6 +34,7 @@ func NewApplication(config *config.Config) Applicationer {
 	service, err := (&service.Factory{}).CreateService(config)
 	if err != nil {
 		logger.Error(err, "Failed to create authentication service")
+		return nil
 	}
 
 	grpcServerAddress := fmt.Sprintf("%s:%s", config.GRPC.Host, config.GRPC.Port)
@@ -44,7 +45,8 @@ func NewApplication(config *config.Config) Applicationer {
 	)
 
 	if err != nil {
-		logger.Error(err, "Failed to create grpc server")
+		logger.Error(err, "Failed to create GRPC Service Server")
+		return nil
 	}
 
 	return New(grpcServiceServer, grpcServerAddress, service, logger)

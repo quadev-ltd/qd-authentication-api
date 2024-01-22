@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gustavo-m-franco/qd-common/pkg/log"
+	"github.com/quadev-ltd/qd-common/pkg/log"
 	"golang.org/x/crypto/bcrypt"
 
 	"qd-authentication-api/internal/model"

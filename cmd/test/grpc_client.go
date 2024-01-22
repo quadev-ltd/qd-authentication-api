@@ -2,18 +2,19 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
-	pkgLogger "github.com/gustavo-m-franco/qd-common/pkg/log"
-	"google.golang.org/grpc"
+	pkgLogger "github.com/quadev-ltd/qd-common/pkg/log"
+	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 
 	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
 func main() {
-	conn, err := grpc.Dial("localhost:9090", grpc.WithInsecure()) // Connect to your gRPC server
+	conn, err := commonTLS.CreateGRPCConnection("qd.authentication.api:9090")
 	if err != nil {
-		log.Fatalf("Failed to connect: %v", err)
+		log.Fatal(fmt.Errorf("Could not connect to email service: %v", err))
 	}
 	defer conn.Close()
 	client := pb_authentication.NewAuthenticationServiceClient(conn)

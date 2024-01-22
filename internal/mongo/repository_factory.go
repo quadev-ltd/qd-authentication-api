@@ -18,7 +18,7 @@ var _ repository.Factoryer = &RepositoryFactory{}
 func (repositoryFactory *RepositoryFactory) CreateRepository(
 	config *config.Config,
 ) (repository.Repositoryer, error) {
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.DB.URI))
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.AuthenticationDB.URI))
 	if err != nil {
 		return nil, err
 	}

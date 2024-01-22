@@ -2,10 +2,10 @@ app: QuaDevAuthenticationTest
 authentication_key: test_key
 email_verification_endpoint: http://localhost:2222/
 grpc:
-  host: localhost
+  host: qd.authentication.api
   port: 3333
-db:
+authentication_db:
   uri: mongodb+srv://password:user@cluster.test.mongodb.net/test
 email:
-  host: localhost
+  host: qd.email.api
   port: 1111

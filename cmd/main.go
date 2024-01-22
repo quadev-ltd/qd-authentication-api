@@ -20,7 +20,10 @@ func main() {
 	}
 
 	application := application.NewApplication(&configurations)
-	application.StartServer()
+	if application == nil {
+		return
+	}
 
+	application.StartServer()
 	defer application.Close()
 }

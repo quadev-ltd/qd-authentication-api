@@ -1,6 +1,14 @@
 # QuaDev Authentication Service
 A GRPC API and a private and public key JWT-based authentication microservice, utilizing Atlas Mongo. This is hosted on AWS ECS and secured within a AWS VPC. The gateway of this VPC is protected by JWT-based authentication.
 
+# Set up
+Set up host redirections in `/etc/hosts` file:
+```
+127.0.0.1    	qd.authentication.api
+```
+Add corresponding certificates in `/certs` folder in the root  
+run `go run cmd/maing.go` to start the service.
+
 ## Tests
 Gomock is used to create mocks for service unit testing, and Testify is used s assertion library and to provide a better layout and organization of test results. Mocks can easily be updated when services are changed.
 For example:
@@ -23,9 +31,11 @@ To activate commit hooks use the following command:
 And make `githooks/pre-commit` executable.
 To avoid running hooks do `git commit --no-verify`
 
+
 ##  TODOs
 <!-- TODOs -->
 <!--
+    STUDY CONNECTION TO EMAIL SERVICE THROUGH TLS
     Add JWT at registration response
     Add unit tests
         JWTAuthenticator

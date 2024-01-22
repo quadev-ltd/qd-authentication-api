@@ -3,6 +3,8 @@ config.dev.yml
 
 # Keys
 *.pem
+/certs/*
+!/certs/san.cnf
 
 # Compiled Object files, Static and Dynamic libs (Shared Objects)
 *.o

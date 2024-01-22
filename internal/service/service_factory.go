@@ -1,13 +1,17 @@
 package service
 
 import (
+	"fmt"
+
+	"github.com/rs/zerolog/log"
+
 	"qd-authentication-api/internal/config"
 	mongo "qd-authentication-api/internal/mongo"
 )
 
 // Factoryer is a factory for creating a service
 type Factoryer interface {
-	CreateService(config *config.Config) (Servicer, error)
+	CreateService(*config.Config) (Servicer, error)
 }
 
 // Factory is the implementation of the service factory
@@ -21,6 +25,11 @@ func (serviceFactory *Factory) CreateService(
 ) (Servicer, error) {
 	repository, err := (&mongo.RepositoryFactory{}).CreateRepository(config)
 	if err != nil {
+		log.Error().Msg(fmt.Sprintf(
+			"Failed to create repository. connectionrstring: %s environment: %s",
+			config.AuthenticationDB.URI,
+			config.Environment,
+		))
 		return nil, err
 	}
 
@@ -30,7 +39,7 @@ func (serviceFactory *Factory) CreateService(
 		GRPCHost:                  config.Email.Host,
 		GRPCPort:                  config.Email.Port,
 	}
-	emailService := NewEmailService(emailServiceConfig, &SMTPService{})
+	emailService := NewEmailService(emailServiceConfig)
 	jwtAuthenticator, err := NewJWTAuthenticator("./keys")
 	if err != nil {
 		return nil, err

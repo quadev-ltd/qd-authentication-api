@@ -9,8 +9,8 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
-	"github.com/gustavo-m-franco/qd-common/pkg/log"
-	loggerMock "github.com/gustavo-m-franco/qd-common/pkg/log/mock"
+	"github.com/quadev-ltd/qd-common/pkg/log"
+	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	"github.com/stretchr/testify/assert"
 
 	"qd-authentication-api/internal/model"

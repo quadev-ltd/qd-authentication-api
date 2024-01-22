@@ -4,7 +4,7 @@ email_verification_endpoint: http://localhost:2222/
 grpc:
   host: hast_name
   port: port_number
-db:
+authentication_db:
   uri: mongo-db-uri
 email:
   host: localhost

@@ -4,7 +4,6 @@ go 1.21.2
 
 require (
 	github.com/go-playground/validator/v10 v10.13.0
-	github.com/mhale/smtpd v0.8.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.4
@@ -16,14 +15,13 @@ require (
 )
 
 require (
-	github.com/gustavo-m-franco/qd-common v0.0.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/quadev-ltd/qd-common v0.0.16 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb // indirect
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	pkgLogger "github.com/gustavo-m-franco/qd-common/pkg/log"
-	"google.golang.org/grpc"
+	pkgLogger "github.com/quadev-ltd/qd-common/pkg/log"
+	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 
 	"qd-authentication-api/pb/gen/go/pb_email"
 )
@@ -27,23 +27,22 @@ type EmailServicer interface {
 // EmailService is the implementation of the email service
 type EmailService struct {
 	config EmailServiceConfig
-	sender SMTPServicer
 }
 
 var _ EmailServicer = &EmailService{}
 
 // NewEmailService creates a new email service
-func NewEmailService(config EmailServiceConfig, sender SMTPServicer) *EmailService {
+func NewEmailService(config EmailServiceConfig) *EmailService {
 
 	return &EmailService{
 		config: config,
-		sender: &SMTPService{},
 	}
 }
 
 func (service *EmailService) sendMail(ctx context.Context, dest string, subject string, body string) error {
 	emailServiceGRPCAddress := fmt.Sprintf("%s:%s", service.config.GRPCHost, service.config.GRPCPort)
-	conn, err := grpc.Dial(emailServiceGRPCAddress, grpc.WithInsecure(), grpc.WithBlock())
+
+	conn, err := commonTLS.CreateGRPCConnection(emailServiceGRPCAddress)
 	if err != nil {
 		return fmt.Errorf("Could not connect to email service: %v", err)
 	}

@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"os"
@@ -9,8 +10,10 @@ import (
 	"testing"
 	"time"
 
-	pkgConfig "github.com/gustavo-m-franco/qd-common/pkg/config"
-	pkgLog "github.com/gustavo-m-franco/qd-common/pkg/log"
+	pkgConfig "github.com/quadev-ltd/qd-common/pkg/config"
+	pkgLog "github.com/quadev-ltd/qd-common/pkg/log"
+	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
+	commonUtil "github.com/quadev-ltd/qd-common/pkg/util"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -26,9 +29,20 @@ import (
 	"qd-authentication-api/pb/gen/go/pb_email"
 )
 
-func isServerUp(addr string) bool {
-	conn, err := net.Dial("tcp", addr)
+const wrongEmail = "wrong@email.com"
+
+var jwtToken string
+
+func isServerUp(test *testing.T, addr string) bool {
+	tlsConfig, err := commonTLS.CreateTLSConfig()
 	if err != nil {
+		test.Logf("Could not create CA certificate pool: %v", err)
+		return false
+	}
+
+	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	if err != nil {
+		test.Logf("Could not connect to server: %v", err)
 		return false
 	}
 	conn.Close()
@@ -44,7 +58,7 @@ func waitForServerUp(test *testing.T, application Applicationer) {
 			test.Fatalf("Server didn't start within the specified time")
 		}
 
-		if isServerUp(application.GetGRPCServerAddress()) {
+		if isServerUp(test, application.GetGRPCServerAddress()) {
 			test.Log("Server is up")
 			break
 		}
@@ -76,8 +90,6 @@ type MockEmailServiceServer struct {
 	pb_email.UnimplementedEmailServiceServer
 }
 
-const wrongEmail = "wrong@email.com"
-
 // SendEmail mocks the SendEmail method
 func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.SendEmailRequest) (*pb_email.SendEmailResponse, error) {
 	if req.To == wrongEmail {
@@ -87,7 +99,10 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 }
 
 func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string) (*grpc.Server, net.Listener) {
-	lis, err := net.Listen("tcp", emailGRPCAddress)
+	const certFilePath = "certs/qd.email.api.crt"
+	const keyFilePath = "certs/qd.email.api.key"
+
+	listener, err := commonTLS.CreateTLSListener(emailGRPCAddress, certFilePath, keyFilePath)
 	if err != nil {
 		t.Fatalf("failed to listen: %v", err)
 	}
@@ -95,36 +110,45 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string) (*grpc.S
 	pb_email.RegisterEmailServiceServer(mockServer, &MockEmailServiceServer{})
 
 	go func() {
-		if err := mockServer.Serve(lis); err != nil {
+		if err := mockServer.Serve(listener); err != nil {
 			t.Errorf("mock server failed to serve: %v", err)
 		}
 	}()
 
-	return mockServer, lis
+	return mockServer, listener
 }
-
-var jwtToken string
 
 func TestRegisterUserJourneys(t *testing.T) {
 	email := "test@test.com"
 	password := "Password123!"
 	correlationID := "1234567890"
 
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	// Logs configurations
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	os.Setenv(pkgConfig.AppEnvironmentKey, "test")
 
 	mongoServer := startMockMongoServer(t)
 	defer mongoServer.Stop()
 
+	// Save current working directory and change it
+	originalWD, err := commonUtil.ChangeCurrentWorkingDirectory("../..")
+	if err != nil {
+		t.Fatalf("Failed to change working directory: %s", err)
+	}
+	// Defer the reset of the working directory
+	defer os.Chdir(*originalWD)
+
 	var config config.Config
-	config.Load("../../internal/config")
-	config.DB.URI = mongoServer.URI()
+	config.Load("internal/config")
+
+	config.AuthenticationDB.URI = mongoServer.URI()
 
 	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf("%s:%s", config.Email.Host, config.Email.Port))
 	defer mockEmailServer.Stop()
 
 	application := NewApplication(&config)
 	go func() {
+		fmt.Fprintf(os.Stdout, "Starting server on %v\n", application)
 		application.StartServer()
 	}()
 	defer application.Close()
@@ -133,7 +157,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -151,7 +175,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Success", func(t *testing.T) {
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -172,7 +196,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Failure_Already_Existing_User", func(t *testing.T) {
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -193,7 +217,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Failure_Send_Email_Error", func(t *testing.T) {
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -214,7 +238,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Verify_Email_Error_Wrong_Token", func(t *testing.T) {
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -249,7 +273,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -287,7 +311,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -315,7 +339,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		}
 		defer client.Disconnect(ctx)
 
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -352,7 +376,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -386,7 +410,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := grpc.Dial(application.GetGRPCServerAddress(), grpc.WithInsecure())
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress())
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
