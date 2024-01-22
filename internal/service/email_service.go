@@ -17,6 +17,7 @@ type EmailServiceConfig struct {
 	EmailVerificationEndpoint string
 	GRPCHost                  string
 	GRPCPort                  string
+	TLSEnabled                bool
 }
 
 // EmailServicer is the interface for the email service
@@ -42,7 +43,7 @@ func NewEmailService(config EmailServiceConfig) *EmailService {
 func (service *EmailService) sendMail(ctx context.Context, dest string, subject string, body string) error {
 	emailServiceGRPCAddress := fmt.Sprintf("%s:%s", service.config.GRPCHost, service.config.GRPCPort)
 
-	conn, err := commonTLS.CreateGRPCConnection(emailServiceGRPCAddress)
+	conn, err := commonTLS.CreateGRPCConnection(emailServiceGRPCAddress, service.config.TLSEnabled)
 	if err != nil {
 		return fmt.Errorf("Could not connect to email service: %v", err)
 	}

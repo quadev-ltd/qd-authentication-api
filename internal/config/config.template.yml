@@ -1,5 +1,6 @@
 app: AppName
 authentication_key: service_key
+tls_enabled: true
 email_verification_endpoint: http://localhost:2222/
 grpc:
   host: hast_name

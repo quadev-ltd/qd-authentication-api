@@ -34,7 +34,8 @@ type Config struct {
 	AuthenticationKey         string `mapstructure:"authentication_key"`
 	EmailVerificationEndpoint string `mapstructure:"email_verification_endpoint"`
 	GRPC                      address
-	AuthenticationDB          db `mapstructure:"authentication_db"`
+	AuthenticationDB          db   `mapstructure:"authentication_db"`
+	TLSEnabled                bool `mapstructure:"tls_enabled"`
 	Email                     address
 }
 

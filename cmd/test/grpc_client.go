@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	pkgLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
@@ -12,7 +13,9 @@ import (
 )
 
 func main() {
-	conn, err := commonTLS.CreateGRPCConnection("qd.authentication.api:9090")
+	// get env variables
+	tlsEnabled := os.Getenv("TLS_ENABLED")
+	conn, err := commonTLS.CreateGRPCConnection("qd.authentication.api:9090", tlsEnabled == "true")
 	if err != nil {
 		log.Fatal(fmt.Errorf("Could not connect to email service: %v", err))
 	}

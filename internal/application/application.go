@@ -30,6 +30,11 @@ type Application struct {
 func NewApplication(config *config.Config) Applicationer {
 	logFactory := log.NewLogFactory(config.Environment)
 	logger := logFactory.NewLogger()
+	if config.TLSEnabled {
+		logger.Info("TLS is enabled")
+	} else {
+		logger.Info("TLS is disabled")
+	}
 
 	service, err := (&service.Factory{}).CreateService(config)
 	if err != nil {
@@ -42,6 +47,7 @@ func NewApplication(config *config.Config) Applicationer {
 		grpcServerAddress,
 		service.GetAuthenticationService(),
 		logFactory,
+		config.TLSEnabled,
 	)
 
 	if err != nil {

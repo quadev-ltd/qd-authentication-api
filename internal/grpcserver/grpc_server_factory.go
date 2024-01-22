@@ -18,6 +18,7 @@ type Factoryer interface {
 		grpcServerAddress string,
 		authenticationService service.AuthenticationServicer,
 		logFactory log.Factoryer,
+		tlsEnabled bool,
 	) (grpcserver.GRPCServicer, error)
 }
 
@@ -31,12 +32,13 @@ func (grpcServerFactory *Factory) Create(
 	grpcServerAddress string,
 	authenticationService service.AuthenticationServicer,
 	logFactory log.Factoryer,
+	tlsEnabled bool,
 ) (grpcserver.GRPCServicer, error) {
 	// TODO: Set domain info in the config file
 	const certFilePath = "certs/qd.authentication.api.crt"
 	const keyFilePath = "certs/qd.authentication.api.key"
 
-	grpcListener, err := commonTLS.CreateTLSListener(grpcServerAddress, certFilePath, keyFilePath)
+	grpcListener, err := commonTLS.CreateTLSListener(grpcServerAddress, certFilePath, keyFilePath, tlsEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to listen: %v", err)
 	}

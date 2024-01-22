@@ -18,7 +18,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/quadev-ltd/qd-common v0.0.16 // indirect
+	github.com/quadev-ltd/qd-common v0.0.18 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	golang.org/x/net v0.16.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230913181813-007df8e322eb // indirect

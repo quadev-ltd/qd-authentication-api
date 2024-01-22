@@ -196,6 +196,10 @@ github.com/quadev-ltd/qd-common v0.0.15 h1:GNHFbe9zomsL8WCChvuWuw++54MxkBGjHd82E
 github.com/quadev-ltd/qd-common v0.0.15/go.mod h1:l0F+lI0D+h/LQsINuisbjBvCzwO/7c1FB8pucageG7A=
 github.com/quadev-ltd/qd-common v0.0.16 h1:RdsX4KCTjwuAHoLSmuxbvbGFJS7igi3NNQsgWkaBI7g=
 github.com/quadev-ltd/qd-common v0.0.16/go.mod h1:l0F+lI0D+h/LQsINuisbjBvCzwO/7c1FB8pucageG7A=
+github.com/quadev-ltd/qd-common v0.0.17 h1:ItrYQNLFyUVLCwYLWlIHQ2X5VPpWCRHrJHcw8t6Uwuo=
+github.com/quadev-ltd/qd-common v0.0.17/go.mod h1:l0F+lI0D+h/LQsINuisbjBvCzwO/7c1FB8pucageG7A=
+github.com/quadev-ltd/qd-common v0.0.18 h1:mVqDILlIwpeaVkz04iol0oJ19J8dzZZ92ZnxGy3UP30=
+github.com/quadev-ltd/qd-common v0.0.18/go.mod h1:l0F+lI0D+h/LQsINuisbjBvCzwO/7c1FB8pucageG7A=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=

@@ -38,6 +38,7 @@ func (serviceFactory *Factory) CreateService(
 		EmailVerificationEndpoint: config.EmailVerificationEndpoint,
 		GRPCHost:                  config.Email.Host,
 		GRPCPort:                  config.Email.Port,
+		TLSEnabled:                config.TLSEnabled,
 	}
 	emailService := NewEmailService(emailServiceConfig)
 	jwtAuthenticator, err := NewJWTAuthenticator("./keys")

@@ -29,6 +29,7 @@ func TestLoad(t *testing.T) {
 		// Assertions
 		assert.Equal(t, "QuaDevAuthenticationTest", cfg.App)
 		assert.Equal(t, "test_key", cfg.AuthenticationKey)
+		assert.Equal(t, true, cfg.TLSEnabled)
 		assert.Equal(t, "http://localhost:2222/", cfg.EmailVerificationEndpoint)
 		assert.Equal(t, "qd.authentication.api", cfg.GRPC.Host)
 		assert.Equal(t, "mongodb+srv://password:user@cluster.test.mongodb.net/test", cfg.AuthenticationDB.URI)
