@@ -4,7 +4,3 @@ plugins:
     out: .
   - plugin: go-grpc
     out: .
-  # - plugin: grpc-gateway
-  #   out: .
-  #   opt:
-  #     - generate_unbound_methods=true

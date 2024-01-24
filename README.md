@@ -18,18 +18,24 @@ For example:
 End to end testing. The test suite `cmd/application/application_test.go` provides a set of end to end test to verify that the primary journeys are working correctly.
 Mongo DB and SMTP server are mocked using `github.com/tryvium-travels/memongo` and `github.com/mhale/smtpd`.
 
-## GRPC
-Run `buf generate` in `/pb/` to generate the protobuf files and GRPC and GRPC Gateway implementations 
-Run `buf generate --path ./google/api` if path need to be declared for imports.
-Flags `-v --debug` will provide more details on the execution.
-GRPC_Gateway docs:
-https://medium.com/swlh/rest-over-grpc-with-grpc-gateway-for-go-9584bfcbb835
-
-## Git Hooks
+## Hooks: Linting and formatting
+To enable linting and formatting on each commit we use the following dependencies:
+```
+golang.org/x/tools/cmd/goimports@latest
+golang.org/x/lint/golint@latest
+```
 To activate commit hooks use the following command:
 ```git config core.hooksPath githooks/```
 And make `githooks/pre-commit` executable.
 To avoid running hooks do `git commit --no-verify`
+
+## GRPC
+To generate the grpc code:
+- Follow the steps in https://buf.build/docs/installation to install buf.
+- In the root of the repository, run `git submodule update --init --recursive`.
+- Then, in `/pb/`, run `buf generate` to generate the protobuf files.  
+> note: Flags `-v --debug` will provide more details on the execution.
+
 
 
 ##  TODOs

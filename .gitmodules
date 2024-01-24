@@ -1,0 +1,3 @@
+[submodule "pb/qd-protobuf-definitions"]
+	path = pb/qd-protobuf-definitions
+	url = https://github.com/quadev-ltd/qd-protobuf-definitions
