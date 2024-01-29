@@ -13,6 +13,7 @@ import (
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	"github.com/stretchr/testify/assert"
 
+	jwtSignerMock "qd-authentication-api/internal/jwt/mock"
 	"qd-authentication-api/internal/model"
 	userRepositoryMock "qd-authentication-api/internal/repository/mock"
 	serviceMock "qd-authentication-api/internal/service/mock"
@@ -54,7 +55,7 @@ func newUser() *model.User {
 // 	controller            *gomock.Controller
 // 	mockRepo              *userRepositoryMock.MockUserRepositoryer
 // 	mockEmail             *serviceMock.MockEmailServicer
-// 	mockJWTAuthenticator  *serviceMock.MockJWTAthenticatorer
+// 	mockJWTSigner  *jwtSignerMock.MockJWTSignerer
 // 	authenticationService AuthenticationServicer
 // }
 
@@ -62,8 +63,8 @@ func newUser() *model.User {
 // 	suite.controller = gomock.NewController(suite.T())
 // 	suite.mockRepo = userRepositoryMock.NewMockUserRepositoryer(suite.controller)
 // 	suite.mockEmail = serviceMock.NewMockEmailServicer(suite.controller)
-// 	suite.mockJWTAuthenticator = serviceMock.NewMockJWTAthenticatorer(suite.controller)
-// 	suite.authenticationService = NewAuthenticationService(suite.mockEmail, suite.mockRepo, suite.mockJWTAuthenticator)
+// 	suite.mockJWTSigner = serviceMock.NewMockJWTAthenticatorer(suite.controller)
+// 	suite.authenticationService = NewAuthenticationService(suite.mockEmail, suite.mockRepo, suite.mockJWTSigner)
 // }
 
 // func (suite *AuthenticationServiceTestSuite) TearDownTest() {
@@ -128,15 +129,15 @@ func newUser() *model.User {
 func createAuthenticationService(controller *gomock.Controller) (
 	*userRepositoryMock.MockUserRepositoryer,
 	serviceMock.MockEmailServicer,
-	serviceMock.MockJWTAthenticatorer,
+	jwtSignerMock.MockJWTSignerer,
 	AuthenticationServicer,
 ) {
 	mockRepo := userRepositoryMock.NewMockUserRepositoryer(controller)
 	mockEmail := serviceMock.NewMockEmailServicer(controller)
-	mockJWTAuthenticator := serviceMock.NewMockJWTAthenticatorer(controller)
-	authenticationService := NewAuthenticationService(mockEmail, mockRepo, mockJWTAuthenticator)
+	mockJWTSigner := jwtSignerMock.NewMockJWTSignerer(controller)
+	authenticationService := NewAuthenticationService(mockEmail, mockRepo, mockJWTSigner)
 
-	return mockRepo, *mockEmail, *mockJWTAuthenticator, authenticationService
+	return mockRepo, *mockEmail, *mockJWTSigner, authenticationService
 }
 
 func TestAuthenticationService(test *testing.T) {
@@ -499,7 +500,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mockRepo,
 			_,
-			mockJWTAuthenticator,
+			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
 
 		user := newUser()
@@ -507,7 +508,7 @@ func TestAuthenticationService(test *testing.T) {
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 
 		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
-		mockJWTAuthenticator.EXPECT().SignToken(
+		mockJWTSigner.EXPECT().SignToken(
 			gomock.Any(),
 			gomock.Any(),
 		).Return(nil, errors.New("some error"))
@@ -527,7 +528,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mockRepo,
 			_,
-			mockJWTAuthenticator,
+			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
 
 		user := newUser()
@@ -535,8 +536,8 @@ func TestAuthenticationService(test *testing.T) {
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 
 		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
-		mockJWTAuthenticator.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&token, nil)
-		mockJWTAuthenticator.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
+		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&token, nil)
+		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
 
 		// Act
 		resultUser, resultError := authenticationService.Authenticate(context.Background(), testEmail, testPassword)
@@ -553,12 +554,12 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, _, mockJWTAuthenticator, authenticationService := createAuthenticationService(controller)
+		_, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
 
 		token := "invalid-token"
 		mockedError := errors.New("Token verification failed")
 
-		mockJWTAuthenticator.EXPECT().VerifyToken(token).Return(nil, mockedError)
+		mockJWTSigner.EXPECT().VerifyToken(token).Return(nil, mockedError)
 
 		// Act
 		email, err := authenticationService.VerifyTokenAndDecodeEmail(context.Background(), token)
@@ -574,13 +575,13 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, _, mockJWTAuthenticator, authenticationService := createAuthenticationService(controller)
+		_, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
 
 		token := "valid-token"
 		mockedError := errors.New("Error decoding email")
 
-		mockJWTAuthenticator.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
-		mockJWTAuthenticator.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, mockedError)
+		mockJWTSigner.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
+		mockJWTSigner.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, mockedError)
 
 		// Act
 		email, err := authenticationService.VerifyTokenAndDecodeEmail(context.Background(), token)
@@ -596,13 +597,13 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, _, mockJWTAuthenticator, authenticationService := createAuthenticationService(controller)
+		_, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
 
 		exampleEmail := "example@email.com"
 		token := "valid-token"
 		jwtToken := jwt.Token{}
-		mockJWTAuthenticator.EXPECT().VerifyToken(token).Return(&jwtToken, nil)
-		mockJWTAuthenticator.EXPECT().GetEmailFromToken(&jwtToken).Return(&exampleEmail, nil)
+		mockJWTSigner.EXPECT().VerifyToken(token).Return(&jwtToken, nil)
+		mockJWTSigner.EXPECT().GetEmailFromToken(&jwtToken).Return(&exampleEmail, nil)
 
 		// Act
 		email, err := authenticationService.VerifyTokenAndDecodeEmail(context.Background(), token)

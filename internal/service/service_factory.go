@@ -6,6 +6,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"qd-authentication-api/internal/config"
+	"qd-authentication-api/internal/jwt"
 	mongo "qd-authentication-api/internal/mongo"
 )
 
@@ -41,7 +42,7 @@ func (serviceFactory *Factory) CreateService(
 		TLSEnabled:                config.TLSEnabled,
 	}
 	emailService := NewEmailService(emailServiceConfig)
-	jwtAuthenticator, err := NewJWTAuthenticator("./keys")
+	jwtAuthenticator, err := jwt.NewJWTSigner("./keys")
 	if err != nil {
 		return nil, err
 	}

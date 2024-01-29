@@ -43,6 +43,7 @@ func initialiseTest(test *testing.T) (
 }
 
 func TestAuthenticationServiceServer(test *testing.T) {
+
 	// Create a sample registerRequest for testing.
 	registerRequest := &pb_authentication.RegisterRequest{
 		Email:       "test@example.com",
@@ -113,6 +114,27 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(
 			test,
 			"rpc error: code = InvalidArgument desc = Registration failed: email already in use",
+			returnedError.Error(),
+		)
+		assert.Nil(test, response)
+	})
+
+	test.Run("Registration_Error_Date_Of_Birth_Not_Provided", func(test *testing.T) {
+		registerRequestNoDOB := &pb_authentication.RegisterRequest{
+			Email:     "test@example.com",
+			Password:  "password",
+			FirstName: "John",
+			LastName:  "Doe",
+		}
+
+		controller, _, _, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+
+		response, returnedError := server.Register(ctx, registerRequestNoDOB)
+
+		assert.Equal(
+			test,
+			"rpc error: code = InvalidArgument desc = Date of birth was not provided",
 			returnedError.Error(),
 		)
 		assert.Nil(test, response)

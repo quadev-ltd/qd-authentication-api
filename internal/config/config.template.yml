@@ -1,7 +1,7 @@
 app: AppName
 authentication_key: service_key
 tls_enabled: true
-email_verification_endpoint: http://localhost:2222/
+email_verification_endpoint: http://qd.api.gateway:9000/
 grpc:
   host: hast_name
   port: port_number

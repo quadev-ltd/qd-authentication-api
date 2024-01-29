@@ -11,7 +11,7 @@ func TestCreateVerificationEmailContent(test *testing.T) {
 	emailService := &EmailService{
 		config: EmailServiceConfig{
 			AppName:                   "MyApp",
-			EmailVerificationEndpoint: "http://myapp.com",
+			EmailVerificationEndpoint: "http://myapp.com/",
 		},
 	}
 
@@ -20,7 +20,7 @@ func TestCreateVerificationEmailContent(test *testing.T) {
 	token := "abcd1234"
 
 	expectedSubject := "Welcome to MyApp"
-	expectedBody := "Hi Test,\nYou've just signed up to MyApp!\nWe need to verify your email.\nPlease click on the following link to verify your account:\nhttp://myapp.com/verify/abcd1234\n\nThanks."
+	expectedBody := "Hi Test,\nYou've just signed up to MyApp!\nWe need to verify your email.\nPlease click on the following link to verify your account:\nhttp://myapp.com/user/email/abcd1234\n\nThanks."
 
 	subject, body := emailService.CreateVerificationEmailContent(context.Background(), dest, userName, token)
 

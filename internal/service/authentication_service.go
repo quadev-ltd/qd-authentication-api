@@ -8,8 +8,10 @@ import (
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	"golang.org/x/crypto/bcrypt"
 
+	"qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
+	"qd-authentication-api/internal/util"
 )
 
 // TODO: Analyse best expiry times for tokens
@@ -34,7 +36,7 @@ type AuthenticationServicer interface {
 type AuthenticationService struct {
 	emailService     EmailServicer
 	userRepository   repository.UserRepositoryer
-	jwtAuthenticator JWTAthenticatorer
+	jwtAuthenticator jwt.JWTSignerer
 }
 
 var _ AuthenticationServicer = &AuthenticationService{}
@@ -43,7 +45,7 @@ var _ AuthenticationServicer = &AuthenticationService{}
 func NewAuthenticationService(
 	emailService EmailServicer,
 	userRepository repository.UserRepositoryer,
-	jwtAuthenticator JWTAthenticatorer,
+	jwtAuthenticator jwt.JWTSignerer,
 ) AuthenticationServicer {
 	return &AuthenticationService{
 		userRepository:   userRepository,
@@ -54,6 +56,8 @@ func NewAuthenticationService(
 
 // GetPublicKey ctx context.Contextgets the public key
 func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string, error) {
+	logger := log.GetLoggerFromContext(ctx)
+	logger.Info("Retrieving public key")
 	return service.jwtAuthenticator.GetPublicKey(ctx)
 }
 
@@ -74,12 +78,12 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 		}
 	}
 
-	hashedPassword, salt, err := generateHash(password)
+	hashedPassword, salt, err := util.GenerateHash(password)
 	if err != nil {
 		return fmt.Errorf("Error generating password hash: %v", err)
 	}
 
-	verificationToken, err := generateVerificationToken()
+	verificationToken, err := util.GenerateVerificationToken()
 	if err != nil {
 		return fmt.Errorf("Error generating verification token: %v", err)
 	}
@@ -219,7 +223,7 @@ func (service *AuthenticationService) ResendEmailVerification(
 		return &Error{Message: "Email already verified"}
 	}
 
-	verificationToken, err := generateVerificationToken()
+	verificationToken, err := util.GenerateVerificationToken()
 	if err != nil {
 		return fmt.Errorf("Error generating verification token: %v", err)
 	}

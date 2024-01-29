@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	pkgLogger "github.com/quadev-ltd/qd-common/pkg/log"
+	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 
 	"qd-authentication-api/pb/gen/go/pb_email"
@@ -57,11 +57,11 @@ func (service *EmailService) sendMail(ctx context.Context, dest string, subject 
 		Body:    body,
 	}
 
-	correlationID, error := pkgLogger.GetCorrelationIDFromContext(ctx)
+	correlationID, error := commonLogger.GetCorrelationIDFromContext(ctx)
 	if error != nil {
 		return fmt.Errorf("Error getting correlation ID from context: %v", error)
 	}
-	newOutgoingCtx := pkgLogger.AddCorrelationIDToContext(ctx, *correlationID)
+	newOutgoingCtx := commonLogger.AddCorrelationIDToContext(ctx, *correlationID)
 	clientCtx, cancel := context.WithTimeout(newOutgoingCtx, time.Second*10)
 	defer cancel()
 
@@ -80,7 +80,8 @@ func (service *EmailService) sendMail(ctx context.Context, dest string, subject 
 // CreateVerificationEmailContent creates the content of the verification email
 func (service *EmailService) CreateVerificationEmailContent(ctx context.Context, destination string, userName, verificationToken string) (string, string) {
 	subject := fmt.Sprintf("Welcome to %s", service.config.AppName)
-	body := fmt.Sprintf("Hi %s,\nYou've just signed up to %s!\nWe need to verify your email.\nPlease click on the following link to verify your account:\n%s\n\nThanks.", userName, service.config.AppName, service.config.EmailVerificationEndpoint+"/verify/"+verificationToken)
+	emailVerificationLink := fmt.Sprintf("%s%s%s", service.config.EmailVerificationEndpoint, "user/email/", verificationToken)
+	body := fmt.Sprintf("Hi %s,\nYou've just signed up to %s!\nWe need to verify your email.\nPlease click on the following link to verify your account:\n%s\n\nThanks.", userName, service.config.AppName, emailVerificationLink)
 	return subject, body
 }
 

@@ -1,7 +1,7 @@
 app: qd_authentication
 authentication_key: QuaDevAuthentication@2023
 tls_enabled: true
-email_verification_endpoint: http://localhost:8080/
+email_verification_endpoint: http://qd.api.gateway:9000/
 grpc:
   host: qd.authentication.api
   port: 9090

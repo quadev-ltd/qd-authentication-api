@@ -3,11 +3,12 @@ package mongo
 import (
 	"context"
 	"fmt"
-	"qd-authentication-api/internal/model"
-	"qd-authentication-api/internal/repository"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/repository"
 )
 
 // UserRepository is a mongo specific user repository
@@ -82,7 +83,13 @@ func (userRepository *UserRepository) GetByVerificationToken(
 func (userRepository *UserRepository) Update(ctx context.Context, user *model.User) error {
 	collection := userRepository.getCollection()
 	filter := bson.M{"email": user.Email}
-	update := bson.M{"$set": bson.M{"accountstatus": user.AccountStatus}}
+	update := bson.M{
+		"$set": bson.M{
+			"accountstatus":               user.AccountStatus,
+			"verificationtoken":           user.VerificationToken,
+			"verificationtokenexpirydate": user.VerificationTokenExpiryDate,
+		},
+	}
 
 	updateResult, resultError := collection.UpdateOne(ctx, filter, update)
 	if resultError != nil {

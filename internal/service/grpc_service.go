@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/quadev-ltd/qd-common/pkg/log"
+	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,7 +38,7 @@ func (service AuthenticationServiceServer) GetPublicKey(
 	ctx context.Context,
 	request *pb_authentication.GetPublicKeyRequest,
 ) (*pb_authentication.GetPublicKeyResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
+	logger := commonLogger.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -58,18 +58,26 @@ func (service AuthenticationServiceServer) Register(
 	ctx context.Context,
 	request *pb_authentication.RegisterRequest,
 ) (*pb_authentication.RegisterResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
+	logger := commonLogger.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
-	dateOfBirth := time.Unix(request.DateOfBirth.GetSeconds(), int64(request.DateOfBirth.GetNanos()))
+
+	var dateOfBirth *time.Time
+	if request.DateOfBirth != nil {
+		dateOfBirthValue := time.Unix(request.DateOfBirth.GetSeconds(), int64(request.DateOfBirth.GetNanos()))
+		dateOfBirth = &dateOfBirthValue
+	} else {
+		return nil, status.Errorf(codes.InvalidArgument, "Date of birth was not provided")
+	}
+
 	registerError := service.authenticationService.Register(
 		ctx,
 		request.Email,
 		request.Password,
 		request.FirstName,
 		request.LastName,
-		&dateOfBirth,
+		dateOfBirth,
 	)
 	if registerError != nil {
 		_, isValidationError := registerError.(validator.ValidationErrors)
@@ -107,7 +115,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
 ) (*pb_authentication.VerifyEmailResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
+	logger := commonLogger.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -131,7 +139,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
 	request *pb_authentication.ResendEmailVerificationRequest,
 ) (*pb_authentication.ResendEmailVerificationResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
+	logger := commonLogger.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -171,7 +179,7 @@ func (service AuthenticationServiceServer) Authenticate(
 	ctx context.Context,
 	request *pb_authentication.AuthenticateRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
+	logger := commonLogger.GetLoggerFromContext(ctx)
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
@@ -185,7 +193,7 @@ func (service AuthenticationServiceServer) Authenticate(
 	return &authenticateResponse, nil
 }
 
-func handleAuthenticationError(err error, logger log.Loggerer) error {
+func handleAuthenticationError(err error, logger commonLogger.Loggerer) error {
 	switch err.(type) {
 	case *model.WrongEmailOrPassword:
 		logger.Error(err, "Invalid email or password")

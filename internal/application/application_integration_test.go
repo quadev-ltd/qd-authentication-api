@@ -11,7 +11,7 @@ import (
 	"time"
 
 	pkgConfig "github.com/quadev-ltd/qd-common/pkg/config"
-	pkgLog "github.com/quadev-ltd/qd-common/pkg/log"
+	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 	commonUtil "github.com/quadev-ltd/qd-common/pkg/util"
 	"github.com/rs/zerolog"
@@ -22,6 +22,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"qd-authentication-api/internal/config"
 	"qd-authentication-api/internal/model"
@@ -130,6 +131,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 	email := "test@test.com"
 	password := "Password123!"
 	correlationID := "1234567890"
+	dateOfBirth := timestamppb.New(time.Now().AddDate(-20, 0, 0))
+	registerRequest := &pb_authentication.RegisterRequest{
+		Email:       email,
+		Password:    password,
+		FirstName:   "John",
+		LastName:    "Doe",
+		DateOfBirth: dateOfBirth,
+	}
 
 	// Logs configurations
 	zerolog.SetGlobalLevel(zerolog.Disabled)
@@ -171,7 +180,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		getPublicKeyResponse, err := client.GetPublicKey(
-			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.GetPublicKeyRequest{},
 		)
 
@@ -189,14 +198,9 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
-			&pb_authentication.RegisterRequest{
-				Email:     email,
-				Password:  password,
-				FirstName: "John",
-				LastName:  "Doe",
-				// Populate other fields as needed
-			})
+			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
+			registerRequest,
+		)
 
 		assert.NoError(t, err)
 		assert.Equal(t, registerResponse.Success, true)
@@ -210,14 +214,9 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
-			&pb_authentication.RegisterRequest{
-				Email:     email,
-				Password:  password,
-				FirstName: "John",
-				LastName:  "Doe",
-				// Populate other fields as needed
-			})
+			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
+			registerRequest,
+		)
 
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
@@ -231,13 +230,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.RegisterRequest{
-				Email:     wrongEmail,
-				Password:  password,
-				FirstName: "John",
-				LastName:  "Doe",
-				// Populate other fields as needed
+				Email:       wrongEmail,
+				Password:    password,
+				FirstName:   "John",
+				LastName:    "Doe",
+				DateOfBirth: dateOfBirth,
 			})
 
 		assert.NoError(t, err)
@@ -251,7 +250,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 		registerResponse, err := client.VerifyEmail(
-			pkgLog.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
 			})
@@ -267,7 +266,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -305,7 +304,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -340,7 +339,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -369,7 +368,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
 
 		err = client.Connect(ctx)
 		if err != nil {
@@ -404,7 +403,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := pkgLog.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
