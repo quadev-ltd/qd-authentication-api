@@ -1,5 +1,7 @@
 # Config
 config.dev.yml
+config.prod.yml
+config.local.yml
 
 # Keys
 *.pem
