@@ -1,12 +1,7 @@
 app: AppName
 authentication_key: service_key
-tls_enabled: true
-email_verification_endpoint: http://qd.api.gateway:9000/
-grpc:
-  host: hast_name
-  port: port_number
 authentication_db:
   uri: mongo-db-uri
-email:
-  host: localhost
-  port: 1111
+aws:
+  key: aws_key
+  secret: aws_secret

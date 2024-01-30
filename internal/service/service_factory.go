@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 
+	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
 	"github.com/rs/zerolog/log"
 
 	"qd-authentication-api/internal/config"
@@ -12,7 +13,7 @@ import (
 
 // Factoryer is a factory for creating a service
 type Factoryer interface {
-	CreateService(*config.Config) (Servicer, error)
+	CreateService(*config.Config, *commonConfig.Config) (Servicer, error)
 }
 
 // Factory is the implementation of the service factory
@@ -23,6 +24,7 @@ var _ Factoryer = &Factory{}
 // CreateService creates a service
 func (serviceFactory *Factory) CreateService(
 	config *config.Config,
+	centralConfig *commonConfig.Config,
 ) (Servicer, error) {
 	repository, err := (&mongo.RepositoryFactory{}).CreateRepository(config)
 	if err != nil {
@@ -36,10 +38,10 @@ func (serviceFactory *Factory) CreateService(
 
 	emailServiceConfig := EmailServiceConfig{
 		AppName:                   config.App,
-		EmailVerificationEndpoint: config.EmailVerificationEndpoint,
-		GRPCHost:                  config.Email.Host,
-		GRPCPort:                  config.Email.Port,
-		TLSEnabled:                config.TLSEnabled,
+		EmailVerificationEndpoint: centralConfig.EmailVerificationEndpoint,
+		GRPCHost:                  centralConfig.EmailService.Host,
+		GRPCPort:                  centralConfig.EmailService.Port,
+		TLSEnabled:                centralConfig.TLSEnabled,
 	}
 	emailService := NewEmailService(emailServiceConfig)
 	jwtAuthenticator, err := jwt.NewJWTSigner("./keys")

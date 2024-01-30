@@ -61,7 +61,7 @@ func (service *EmailService) sendMail(ctx context.Context, dest string, subject 
 	if error != nil {
 		return fmt.Errorf("Error getting correlation ID from context: %v", error)
 	}
-	newOutgoingCtx := commonLogger.AddCorrelationIDToContext(ctx, *correlationID)
+	newOutgoingCtx := commonLogger.AddCorrelationIDToOutgoingContext(ctx, *correlationID)
 	clientCtx, cancel := context.WithTimeout(newOutgoingCtx, time.Second*10)
 	defer cancel()
 

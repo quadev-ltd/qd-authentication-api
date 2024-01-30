@@ -23,7 +23,7 @@ func main() {
 	client := pb_authentication.NewAuthenticationServiceClient(conn)
 
 	// You can now use the client to call your gRPC methods
-	ctx := commonLogger.AddCorrelationIDToContext(context.Background(), "1234567890")
+	ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), "1234567890")
 
 	// // // // Registration
 

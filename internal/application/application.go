@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 
+	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
 	"github.com/quadev-ltd/qd-common/pkg/grpcserver"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 
@@ -27,27 +28,31 @@ type Application struct {
 }
 
 // NewApplication creates a new application
-func NewApplication(config *config.Config) Applicationer {
+func NewApplication(config *config.Config, centralConfig *commonConfig.Config) Applicationer {
 	logFactory := log.NewLogFactory(config.Environment)
 	logger := logFactory.NewLogger()
-	if config.TLSEnabled {
+	if centralConfig.TLSEnabled {
 		logger.Info("TLS is enabled")
 	} else {
 		logger.Info("TLS is disabled")
 	}
 
-	service, err := (&service.Factory{}).CreateService(config)
+	service, err := (&service.Factory{}).CreateService(config, centralConfig)
 	if err != nil {
 		logger.Error(err, "Failed to create authentication service")
 		return nil
 	}
 
-	grpcServerAddress := fmt.Sprintf("%s:%s", config.GRPC.Host, config.GRPC.Port)
+	grpcServerAddress := fmt.Sprintf(
+		"%s:%s",
+		centralConfig.AuthenticationService.Host,
+		centralConfig.AuthenticationService.Port,
+	)
 	grpcServiceServer, err := (&grpcFactory.Factory{}).Create(
 		grpcServerAddress,
 		service.GetAuthenticationService(),
 		logFactory,
-		config.TLSEnabled,
+		centralConfig.TLSEnabled,
 	)
 
 	if err != nil {

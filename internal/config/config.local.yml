@@ -1,12 +1,7 @@
 app: qd_authentication
 authentication_key: QuaDevAuthentication@2023
-tls_enabled: true
-email_verification_endpoint: http://qd.api.gateway:9000/
-grpc:
-  host: qd.authentication.api
-  port: 9090
 authentication_db:
   uri: mongodb+srv://admin:QuaDevAdmin@cluster0.n1hwnsb.mongodb.net/test
-email:
-  host: qd.email.api
-  port: 9091
+aws:
+  key: AKIARWDSJ2CMK4KP3ASZ
+  secret: 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

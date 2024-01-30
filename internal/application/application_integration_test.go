@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	pkgConfig "github.com/quadev-ltd/qd-common/pkg/config"
+	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 	commonUtil "github.com/quadev-ltd/qd-common/pkg/util"
@@ -142,7 +142,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 	// Logs configurations
 	zerolog.SetGlobalLevel(zerolog.Disabled)
-	os.Setenv(pkgConfig.AppEnvironmentKey, "test")
+	os.Setenv(commonConfig.AppEnvironmentKey, "test")
 
 	mongoServer := startMockMongoServer(t)
 	defer mongoServer.Stop()
@@ -157,30 +157,46 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 	var config config.Config
 	config.Load("internal/config")
-
 	config.AuthenticationDB.URI = mongoServer.URI()
+	centralConfig := commonConfig.Config{
+		TLSEnabled:                true,
+		EmailVerificationEndpoint: "http://localhost:2222/",
+		EmailService: commonConfig.Address{
+			Host: "qd.email.api",
+			Port: "1111",
+		},
+		AuthenticationService: commonConfig.Address{
+			Host: "qd.authentication.api",
+			Port: "3333",
+		},
+	}
 
-	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf("%s:%s", config.Email.Host, config.Email.Port), config.TLSEnabled)
+	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf(
+		"%s:%s",
+		centralConfig.EmailService.Host,
+		centralConfig.EmailService.Port),
+		centralConfig.TLSEnabled,
+	)
 	defer mockEmailServer.Stop()
 
-	application := NewApplication(&config)
+	application := NewApplication(&config, &centralConfig)
 	go func() {
 		t.Log(fmt.Sprintf("Starting server on %s...\n", application.GetGRPCServerAddress()))
 		application.StartServer()
 	}()
 	defer application.Close()
 
-	waitForServerUp(t, application, config.TLSEnabled)
+	waitForServerUp(t, application, centralConfig.TLSEnabled)
 
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		getPublicKeyResponse, err := client.GetPublicKey(
-			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.GetPublicKeyRequest{},
 		)
 
@@ -192,13 +208,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Success", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			registerRequest,
 		)
 
@@ -208,13 +224,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Failure_Already_Existing_User", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			registerRequest,
 		)
 
@@ -224,13 +240,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Failure_Send_Email_Error", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
-			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.RegisterRequest{
 				Email:       wrongEmail,
 				Password:    password,
@@ -245,12 +261,12 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Verify_Email_Error_Wrong_Token", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 		registerResponse, err := client.VerifyEmail(
-			commonLogger.AddCorrelationIDToContext(context.Background(), correlationID),
+			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
 			})
@@ -266,7 +282,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -280,7 +296,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -304,7 +320,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -318,7 +334,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -339,14 +355,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
 		}
 		defer client.Disconnect(ctx)
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -368,7 +384,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 
 		err = client.Connect(ctx)
 		if err != nil {
@@ -383,7 +399,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -403,7 +419,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToContext(context.Background(), correlationID)
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		err = client.Connect(ctx)
 		if err != nil {
 			log.Err(err)
@@ -417,7 +433,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			log.Err(err)
 		}
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), config.TLSEnabled)
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
