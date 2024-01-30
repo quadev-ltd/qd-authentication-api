@@ -3,5 +3,5 @@ authentication_key: service_key
 authentication_db:
   uri: mongo-db-uri
 aws:
-  key: aws_key
-  secret: aws_secret
+  key: key
+  secret: secret
