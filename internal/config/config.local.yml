@@ -1,7 +1,0 @@
-app: qd_authentication
-authentication_key: QuaDevAuthentication@2023
-authentication_db:
-  uri: mongodb+srv://admin:QuaDevAdmin@cluster0.n1hwnsb.mongodb.net/test
-aws:
-  key: AKIARWDSJ2CMK4KP3ASZ
-  secret: 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
