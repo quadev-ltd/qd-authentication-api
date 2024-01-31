@@ -28,8 +28,11 @@ jobs:
       - name: Run Go Import Check
         run: go get golang.org/x/tools/cmd/goimports && goimports -l . | tee /dev/stderr | (! read)
 
+      - name: Install golint
+        run: go get -u golang.org/x/lint/golint
+
       - name: Run Go Lint
-        run: go get -u golang.org/x/lint/golint && golint ./...
+        run: golint ./...
 
       - name: Run Unit Tests
         run: go test -v ./...
