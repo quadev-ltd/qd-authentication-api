@@ -58,6 +58,13 @@ jobs:
           cd pb
           buf generate
 
+      - name: Download MongoDB
+        run: |
+          # Download the MongoDB binary compatible with your CI/CD environment's architecture
+          wget https://example.com/path/to/mongodb-linux-x86_64.tar.gz
+          tar -xzvf mongodb-linux-x86_64.tar.gz
+          export PATH=$PATH:$PWD/mongodb-linux-x86_64/bin
+
       - name: Run Unit Tests
         run: go test -v ./...
 
