@@ -34,6 +34,11 @@ jobs:
       - name: Run Go Lint
         run: golint ./...
 
+      - name: Generate protobuf code
+        run: |
+          cd pb
+          buf generate
+
       - name: Run Unit Tests
         run: go test -v ./...
 
