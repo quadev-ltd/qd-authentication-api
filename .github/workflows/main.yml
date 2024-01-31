@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build and Test
     runs-on: ubuntu-latest
+    container:
+      image: golang:1.21.2
 
     steps:
       - name: Checkout Code
