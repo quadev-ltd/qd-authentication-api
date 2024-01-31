@@ -32,6 +32,11 @@ To avoid running hooks do `git commit --no-verify`
 ## GRPC
 To generate the grpc code:
 - Follow the steps in https://buf.build/docs/installation to install buf.
+- Install protoc dependencies in your local:
+```bash
+GO111MODULE=off go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
+GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
+```
 - In the root of the repository, run `git submodule update --init --recursive`.
 - Then, in `/pb/`, run `buf generate` to generate the protobuf files.  
 > note: Flags `-v --debug` will provide more details on the execution.

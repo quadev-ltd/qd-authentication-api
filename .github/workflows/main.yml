@@ -31,8 +31,8 @@ jobs:
       - name: Install buf and protoc
         run: |
           # Install protoc
-          sudo apt-get update -y
-          sudo apt-get install -y protobuf-compiler
+          GO111MODULE=off go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
+          GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 
           # Install buf
           wget https://github.com/bufbuild/buf/releases/download/v1.0.0/buf-Linux-x86_64
