@@ -28,14 +28,8 @@ jobs:
       - name: Run Go Import Check
         run: go get golang.org/x/tools/cmd/goimports && goimports -l . | tee /dev/stderr | (! read)
 
-      - name: Install buf and protoc
+      - name: Install buf
         run: |
-          # Install protoc
-          sudo apt-get update -y
-          sudo apt-get install -y protobuf-compiler
-          GO111MODULE=off go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
-          GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
-
           # Install buf
           wget https://github.com/bufbuild/buf/releases/download/v1.28.0/buf-Linux-x86_64
           chmod +x buf-Linux-x86_64
