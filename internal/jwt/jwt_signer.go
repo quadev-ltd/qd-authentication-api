@@ -14,8 +14,8 @@ import (
 	"github.com/golang-jwt/jwt"
 )
 
-// JWTSignerer is an interface for JWTAuthenticator
-type JWTSignerer interface {
+// Signerer is an interface for JWTAuthenticator
+type Signerer interface {
 	GenerateNewKeyPair() error
 	GetPublicKey(ctx context.Context) (string, error)
 	SignToken(email string, expiry time.Time) (*string, error)
@@ -31,7 +31,7 @@ type JWTSigner struct {
 	publicKey    *rsa.PublicKey
 }
 
-var _ JWTSignerer = &JWTSigner{}
+var _ Signerer = &JWTSigner{}
 
 // Key constants
 const (
@@ -155,7 +155,7 @@ func loadPublicKeyFromFile(filename string) (*rsa.PublicKey, error) {
 }
 
 // NewJWTSigner creates a new JWT signer
-func NewJWTSigner(fileLocation string) (JWTSignerer, error) {
+func NewJWTSigner(fileLocation string) (Signerer, error) {
 	privateKey, err := loadPrivateKeyFromFile(
 		fmt.Sprintf("%s/%s", fileLocation, PrivateKeyFileName),
 	)

@@ -7,6 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// GenerateSalt generates a random salt of the given length
 func GenerateSalt(length int) (string, error) {
 	salt := make([]byte, length)
 	_, error := rand.Read(salt)
@@ -16,6 +17,7 @@ func GenerateSalt(length int) (string, error) {
 	return base64.StdEncoding.EncodeToString(salt), nil
 }
 
+// GenerateVerificationToken generates a random verification token
 func GenerateVerificationToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
@@ -26,6 +28,7 @@ func GenerateVerificationToken() (string, error) {
 	return token, nil
 }
 
+// GenerateHash generates a hash of the given password
 func GenerateHash(password string) ([]byte, *string, error) {
 	// Generate salt
 	saltLength := 32
