@@ -81,11 +81,9 @@ func startMockMongoServer(test *testing.T) *memongo.Server {
 		LogLevel:     10,
 		MongoVersion: "4.0.5",
 	}
-	if runtime.GOARCH == "arm64" {
-		if runtime.GOOS == "darwin" {
-			// Only set the custom url as workaround for arm64 macs
-			memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.0.tgz"
-		}
+	if runtime.GOARCH == "arm64" && runtime.GOOS == "darwin" {
+		// Only set the custom url as workaround for arm64 macs
+		// memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.0.tgz"
 	}
 	mongoServer, err := memongo.StartWithOptions(memongoOptions)
 	if err != nil {
