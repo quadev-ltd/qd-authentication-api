@@ -28,6 +28,12 @@ jobs:
       - name: Run Go Import Check
         run: go get golang.org/x/tools/cmd/goimports && goimports -l . | tee /dev/stderr | (! read)
 
+      - name: Install golint
+        run: GO111MODULE=off go get -u golang.org/x/lint/golint
+
+      - name: Run Go Lint
+        run: golint ./...
+
       - name: Install buf
         run: |
           # Install buf
@@ -35,11 +41,8 @@ jobs:
           chmod +x buf-Linux-x86_64
           sudo mv buf-Linux-x86_64 /usr/local/bin/buf
 
-      - name: Install golint
-        run: GO111MODULE=off go get -u golang.org/x/lint/golint
-
-      - name: Run Go Lint
-        run: golint ./...
+      - name: Add proto files
+        run: git submodule update --init --recursive
 
       - name: Generate protobuf code
         run: |
