@@ -62,8 +62,8 @@ jobs:
         run: |
           # Download the MongoDB binary compatible with your CI/CD environment's architecture
           wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-4.0.28.tgz
-          tar -xzvf mongodb-linux-x86_64.tar.gz
-          export PATH=$PATH:$PWD/mongodb-linux-x86_64/bin
+          tar -xzvf mongodb-linux-x86_64-amazon-4.0.28.tgz
+          export PATH=$PATH:$PWD/mongodb-linux-x86_64-amazon-4.0.28/bin
 
       - name: Run Unit Tests
         run: go test -v ./...
