@@ -36,18 +36,6 @@ jobs:
       - name: Run Go Lint
         run: golint ./...
 
-      - name: Install buf
-        run: |
-          # Install buf
-          wget https://github.com/bufbuild/buf/releases/download/v1.28.0/buf-Linux-x86_64
-          chmod +x buf-Linux-x86_64
-          mv buf-Linux-x86_64 /usr/local/bin/buf
-
-      - name: Install protoc
-        run: |
-          GO111MODULE=off go get google.golang.org/grpc/cmd/protoc-gen-go-grpc
-          GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
-
       - name: Add proto files
         run: |
           git config --global --add safe.directory /__w/qd-authentication-api/qd-authentication-api
@@ -57,14 +45,6 @@ jobs:
         run: |
           cd pb
           buf generate
-
-      - name: Download MongoDB
-        run: |
-          # Download the MongoDB binary compatible with your CI/CD environment's architecture
-          wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-4.4.28.tgz
-          tar -xzvf mongodb-linux-x86_64-amazon-4.4.28.tgz -C /usr/local
-          chmod +x /usr/local/mongodb-linux-x86_64-amazon-4.4.28
-          export PATH=$PATH:/usr/local/mongodb-linux-x86_64-amazon-4.4.28/bin
 
       - name: Run Unit Tests
         run: |
