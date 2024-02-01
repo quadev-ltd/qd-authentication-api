@@ -91,6 +91,11 @@ func startMockMongoServer(test *testing.T) *memongo.Server {
 	if err != nil {
 		test.Fatalf("Failed to start mock mongo server: %v", err)
 	}
+	// Set execute permissions on the mongod binary
+	err = os.Chmod("/github/home/.cache/memongo/mongodb-linux-x86_64-ubuntu2004-4_4_28_tgz_d0e78eb647/mongod", 0755)
+	if err != nil {
+		test.Fatalf("Failed to set execute permission on mongod binary: %v", err)
+	}
 	return mongoServer
 }
 
