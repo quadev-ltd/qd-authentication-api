@@ -47,10 +47,7 @@ jobs:
           buf generate
 
       - name: Run Unit Tests
-        run: |
-          mongod --fork --logpath /tmp/mongodb.log --dbpath /tmp/data
-          go test -v ./...
-          mongod --shutdown
+        run: go test -v ./...
 
       - name: Build
         run: go build -o myservice
