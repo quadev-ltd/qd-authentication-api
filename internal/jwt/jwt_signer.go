@@ -154,8 +154,8 @@ func loadPublicKeyFromFile(filename string) (*rsa.PublicKey, error) {
 	return publicKey.(*rsa.PublicKey), nil
 }
 
-// NewJWTSigner creates a new JWT signer
-func NewJWTSigner(fileLocation string) (Signerer, error) {
+// NewSigner creates a new JWT signer
+func NewSigner(fileLocation string) (Signerer, error) {
 	privateKey, err := loadPrivateKeyFromFile(
 		fmt.Sprintf("%s/%s", fileLocation, PrivateKeyFileName),
 	)

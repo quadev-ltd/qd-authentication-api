@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/tryvium-travels/memongo"
+	"github.com/tryvium-travels/memongo/memongolog"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -78,7 +79,7 @@ func waitForServerUp(test *testing.T, application Applicationer, tlsEnabled bool
 
 func startMockMongoServer(test *testing.T) *memongo.Server {
 	memongoOptions := &memongo.Options{
-		LogLevel:       2,
+		LogLevel:       memongolog.LogLevelDebug,
 		StartupTimeout: 30 * time.Second,
 		MongoVersion:   "4.4.28",
 	}
