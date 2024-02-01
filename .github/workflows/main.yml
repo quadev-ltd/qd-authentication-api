@@ -67,7 +67,7 @@ jobs:
           export PATH=$PATH:/usr/local/mongodb-linux-x86_64-amazon-4.4.28/bin
 
       - name: Run Unit Tests
-        run: go test -v ./...
+        run: sudo go test -v ./...
 
       - name: Build
         run: go build -o myservice
