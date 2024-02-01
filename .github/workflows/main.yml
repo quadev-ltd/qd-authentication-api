@@ -64,6 +64,7 @@ jobs:
           wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon-4.4.28.tgz
           tar -xzvf mongodb-linux-x86_64-amazon-4.4.28.tgz
           chmod +x $PWD/mongodb-linux-x86_64-amazon-4.4.28/bin/mongod
+          chmod +x /github/home/.cache/memongo/mongodb-linux-x86_64-ubuntu2004-4_4_28_tgz_d0e78eb647/mongod
           export PATH=$PATH:$PWD/mongodb-linux-x86_64-amazon-4.4.28/bin
 
       - name: Run Unit Tests
