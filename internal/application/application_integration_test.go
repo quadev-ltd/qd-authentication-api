@@ -78,7 +78,7 @@ func waitForServerUp(test *testing.T, application Applicationer, tlsEnabled bool
 
 func startMockMongoServer(test *testing.T) *memongo.Server {
 	memongoOptions := &memongo.Options{
-		LogLevel:       10,
+		LogLevel:       2,
 		StartupTimeout: 30 * time.Second,
 		MongoVersion:   "4.4.28",
 	}
