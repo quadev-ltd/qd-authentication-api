@@ -30,6 +30,12 @@ jobs:
       - name: Run Go Import Check
         run: go get golang.org/x/tools/cmd/goimports && goimports -l . | tee /dev/stderr | (! read)
 
+      - name: Install golint and git
+        run: |
+          apt-get update
+          apt-get install -y git
+          GO111MODULE=off go get -u golang.org/x/lint/golint
+
       - name: Install golint
         run: GO111MODULE=off go get -u golang.org/x/lint/golint
 
