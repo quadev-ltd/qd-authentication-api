@@ -49,7 +49,9 @@ jobs:
           GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 
       - name: Add proto files
-        run: git submodule update --init --recursive
+        run: |
+          git config --global --add safe.directory /__w/qd-authentication-api/qd-authentication-api
+          git submodule update --init --recursive
 
       - name: Generate protobuf code
         run: |
