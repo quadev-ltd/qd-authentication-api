@@ -46,7 +46,8 @@ jobs:
 
       - name: Add dertificates
         run: |
-          echo pwd
+          current_path=$(pwd)
+          echo "Current Path: $current_path"
           cd /certs
           echo "{{ secrets.$CA_PEM }}" | base64 -d /ca.pem
           echo "{{ secrets.$QD_AUTHENTICATION_API_CRT }}" | base64 -d > qd.authentication.api.crt
