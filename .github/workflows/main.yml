@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     container: tavoargento/quadev-go-service:0.0.1  # Specify the Docker image
 
     steps:
