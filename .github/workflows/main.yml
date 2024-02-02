@@ -48,8 +48,25 @@ jobs:
           echo "${{ secrets.QD_EMAIL_API_KEY }}" | base64 -d > qd.email.api.key
           cd -
 
+      # Manually start MongoDB
+      - name: Download MongoDB
+        run: |
+          wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-4.4.28.tgz -O /tmp/mongodb.tgz
+          tar -xzf /tmp/mongodb.tgz -C /tmp
+          echo "MONGODB_BIN=/tmp/mongodb-linux-x86_64-ubuntu2004-4.4.28/bin" >> $GITHUB_ENV
+
+      - name: Start MongoDB
+        run: |
+          mkdir /tmp/mongodb-data
+          $MONGODB_BIN/mongod --dbpath /tmp/mongodb-data --port 27017 --fork --logpath /tmp/mongodb.log
+          until nc -z localhost 27017; do
+            echo "Waiting for MongoDB to start..."
+            sleep 1
+          done
+          echo "MongoDB started"
+
       - name: Run Unit Tests
-        run: sudo -E go test -v ./...
+        run: go test -v ./...
 
       - name: Build
         run: go build -o myservice
