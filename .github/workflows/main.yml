@@ -10,6 +10,8 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-20.04
     container: tavoargento/quadev-go-service:0.0.1  # Specify the Docker image
+    env:
+      MONGO_DB_VERSION: 4.4.28
 
     steps:
       - name: Checkout Code
@@ -51,10 +53,13 @@ jobs:
       # Manually start MongoDB
       - name: Download MongoDB
         run: |
-          wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-4.4.28.tgz -O /tmp/mongodb.tgz
+          wget https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-${{ env.MONGO_DB_VERSION }}.tgz -O /tmp/mongodb.tgz
           tar -xzf /tmp/mongodb.tgz -C /tmp
-          echo "MONGODB_BIN=/tmp/mongodb-linux-x86_64-ubuntu2004-4.4.28/bin" >> $GITHUB_ENV
+          echo "MONGODB_BIN=/tmp/mongodb-linux-x86_64-ubuntu2004-${{ env.MONGO_DB_VERSION }}/bin" >> $GITHUB_ENV
 
+      - name: Make MongoDB Binary Executable
+        run: chmod +x $MONGODB_BIN/mongod
+      
       - name: Install Netcat
         run: sudo apt-get update && sudo apt-get install -y netcat
       

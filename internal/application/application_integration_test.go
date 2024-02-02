@@ -84,6 +84,11 @@ func startMockMongoServer(test *testing.T) *memongo.Server {
 		MongoVersion:   "4.4.28",
 	}
 	mongoBinPath := os.Getenv("MONGODB_BIN")
+	mongoVersion := os.Getenv("MONGO_DB_VERSION")
+	if mongoVersion != "" {
+		memongoOptions.MongoVersion = mongoVersion
+		test.Logf("Using MongoDB version: %s", mongoVersion)
+	}
 	if mongoBinPath != "" {
 		memongoOptions.MongodBin = mongoBinPath
 		test.Logf("Using existing MongoDB binary at: %s", mongoBinPath)
