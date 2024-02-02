@@ -15,6 +15,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: Print Environment Information
+        run: |
+          echo "Current User: $(whoami)"
+          echo "Current Directory: $(pwd)"
+          env
+      
       - name: Install Dependencies
         run: go mod download
 
@@ -40,10 +46,6 @@ jobs:
 
       - name: Add dertificates
         run: |
-          current_user=$(whoami)
-          current_id=$(id)
-          echo "Current user: $current_user"
-          echo "Current id: $current_id"
           cd certs
           echo "${{ secrets.CA_PEM }}" | base64 -d > ca.pem
           echo "${{ secrets.QD_AUTHENTICATION_API_CRT }}" | base64 -d > qd.authentication.api.crt
