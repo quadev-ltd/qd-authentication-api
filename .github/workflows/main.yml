@@ -55,6 +55,9 @@ jobs:
           tar -xzf /tmp/mongodb.tgz -C /tmp
           echo "MONGODB_BIN=/tmp/mongodb-linux-x86_64-ubuntu2004-4.4.28/bin" >> $GITHUB_ENV
 
+      - name: Install Netcat
+        run: sudo apt-get update && sudo apt-get install -y netcat
+      
       - name: Start MongoDB
         run: |
           mkdir /tmp/mongodb-data
