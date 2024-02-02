@@ -58,7 +58,7 @@ jobs:
       - name: Start MongoDB
         run: |
           mkdir /tmp/mongodb-data
-          $MONGODB_BIN/mongod --dbpath /tmp/mongodb-data --port 27017 --fork
+          $MONGODB_BIN/mongod --dbpath /tmp/mongodb-data --port 27017 --fork --syslog
           until nc -z localhost 27017; do
             echo "Waiting for MongoDB to start..."
             sleep 1
