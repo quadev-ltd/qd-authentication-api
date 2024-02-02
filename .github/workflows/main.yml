@@ -49,7 +49,7 @@ jobs:
           cd -
 
       - name: Run Unit Tests
-        run: sudo PATH="$PATH" go test -v ./...
+        run: sudo -E go test -v ./...
 
       - name: Build
         run: go build -o myservice
