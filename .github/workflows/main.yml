@@ -73,6 +73,11 @@ jobs:
           done
           echo "MongoDB started"
 
+      - name: Modify /etc/hosts
+        run: |
+          echo "127.0.0.1 qd.authentication.api" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 qd.email.api" | sudo tee -a /etc/hosts
+
       - name: Run Unit Tests
         run: go test -v ./...
 
