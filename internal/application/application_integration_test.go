@@ -81,7 +81,7 @@ func startMockMongoServer(test *testing.T) *memongo.Server {
 	memongoOptions := &memongo.Options{
 		LogLevel:       memongolog.LogLevelDebug,
 		StartupTimeout: 30 * time.Second,
-		MongoVersion:   "4.2.25",
+		MongoVersion:   "4.4.28",
 	}
 	mongoBinPath := os.Getenv("MONGODB_BIN")
 	if mongoBinPath != "" {
