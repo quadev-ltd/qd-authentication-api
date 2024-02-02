@@ -81,7 +81,7 @@ func startMockMongoServer(test *testing.T) *memongo.Server {
 	memongoOptions := &memongo.Options{
 		LogLevel:       memongolog.LogLevelDebug,
 		StartupTimeout: 30 * time.Second,
-		MongoVersion:   "4.4.25",
+		MongoVersion:   "4.2.25",
 	}
 	if runtime.GOARCH == "arm64" && runtime.GOOS == "darwin" {
 		// Only set the custom url as workaround for arm64 macs
