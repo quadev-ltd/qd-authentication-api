@@ -83,7 +83,11 @@ func startMockMongoServer(test *testing.T) *memongo.Server {
 		StartupTimeout: 30 * time.Second,
 		MongoVersion:   "4.2.25",
 	}
-	if runtime.GOARCH == "arm64" && runtime.GOOS == "darwin" {
+	mongoBinPath := os.Getenv("MONGODB_BIN")
+	if mongoBinPath != "" {
+		memongoOptions.MongodBin = mongoBinPath
+		test.Logf("Using existing MongoDB binary at: %s", mongoBinPath)
+	} else if runtime.GOARCH == "arm64" && runtime.GOOS == "darwin" {
 		// Only set the custom url as workaround for arm64 macs
 		memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.25.tgz"
 	}
