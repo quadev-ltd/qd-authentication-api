@@ -90,7 +90,7 @@ func startMockMongoServer(test *testing.T) *memongo.Server {
 		test.Logf("Using MongoDB version: %s", mongoVersion)
 	}
 	if mongoBinPath != "" {
-		memongoOptions.MongodBin = mongoBinPath
+		memongoOptions.MongodBin = fmt.Sprintf("%s/mongod", mongoBinPath)
 		test.Logf("Using existing MongoDB binary at: %s", mongoBinPath)
 	} else if runtime.GOARCH == "arm64" && runtime.GOOS == "darwin" {
 		// Only set the custom url as workaround for arm64 macs
