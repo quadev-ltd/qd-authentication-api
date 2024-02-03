@@ -2,12 +2,13 @@ package mongo
 
 import (
 	"context"
-	"qd-authentication-api/internal/model"
-	"qd-authentication-api/internal/mongo/mock"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/mongo/mock"
 )
 
 func newUser() *model.User {
@@ -27,7 +28,7 @@ func newUser() *model.User {
 
 func TestMongoUserRepository(test *testing.T) {
 	test.Run("Create", func(test *testing.T) {
-		mongoServer, client, error := mock.SetupMockMongoServer()
+		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 
@@ -46,7 +47,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Equal(test, user.Email, foundUser.Email)
 	})
 	test.Run("GetByEmail Not Found", func(test *testing.T) {
-		mongoServer, client, error := mock.SetupMockMongoServer()
+		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 
@@ -59,7 +60,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Nil(test, user)
 	})
 	test.Run("GetUserByVerificationToken", func(test *testing.T) {
-		mongoServer, client, error := mock.SetupMockMongoServer()
+		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 
@@ -78,7 +79,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Equal(test, user.VerificationToken, foundUser.VerificationToken)
 	})
 	test.Run("Update Success", func(test *testing.T) {
-		mongoServer, client, err := mock.SetupMockMongoServer()
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 		repo := NewUserRepository(client)
@@ -97,7 +98,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Equal(test, user.AccountStatus, foundUser.AccountStatus)
 	})
 	test.Run("Update User Not Found", func(test *testing.T) {
-		mongoServer, client, error := mock.SetupMockMongoServer()
+		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 
