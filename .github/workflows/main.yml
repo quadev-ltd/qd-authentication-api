@@ -79,4 +79,4 @@ jobs:
         run: go test -v ./...
 
       - name: Build
-        run: go build -o myservice
+        run: go build cmd/main.go
