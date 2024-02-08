@@ -36,7 +36,7 @@ type AuthenticationServicer interface {
 type AuthenticationService struct {
 	emailService     EmailServicer
 	userRepository   repository.UserRepositoryer
-	jwtAuthenticator jwt.JWTSignerer
+	jwtAuthenticator jwt.Signerer
 }
 
 var _ AuthenticationServicer = &AuthenticationService{}
@@ -45,7 +45,7 @@ var _ AuthenticationServicer = &AuthenticationService{}
 func NewAuthenticationService(
 	emailService EmailServicer,
 	userRepository repository.UserRepositoryer,
-	jwtAuthenticator jwt.JWTSignerer,
+	jwtAuthenticator jwt.Signerer,
 ) AuthenticationServicer {
 	return &AuthenticationService{
 		userRepository:   userRepository,

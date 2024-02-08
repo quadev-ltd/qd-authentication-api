@@ -30,8 +30,8 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, "QuaDevAuthenticationTest", cfg.App)
 		assert.Equal(t, "test_key", cfg.AuthenticationKey)
 		assert.Equal(t, "mongodb+srv://password:user@cluster.test.mongodb.net/test", cfg.AuthenticationDB.URI)
-		assert.Equal(t, "aws_key", cfg.AWS.Key)
-		assert.Equal(t, "aws_secret", cfg.AWS.Secret)
+		assert.Equal(t, "key", cfg.AWS.Key)
+		assert.Equal(t, "secret", cfg.AWS.Secret)
 
 		assert.False(t, cfg.Verbose)
 		assert.Equal(t, "test", cfg.Environment)

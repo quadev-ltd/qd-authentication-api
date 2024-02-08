@@ -2,29 +2,47 @@ package mock
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"runtime"
+	"testing"
 
 	"github.com/tryvium-travels/memongo"
+	"github.com/tryvium-travels/memongo/memongolog"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// SetupMockMongoServer sets up a mock mongo server
-func SetupMockMongoServer() (*memongo.Server, *mongo.Client, error) {
+// SetUpMongoServer sets up a mock mongo server
+func SetUpMongoServer(test *testing.T) *memongo.Server {
 	memongoOptions := &memongo.Options{
-		LogLevel:     4,
-		MongoVersion: "4.0.5",
+		LogLevel:     memongolog.LogLevelSilent,
+		MongoVersion: "4.4.28",
 	}
-	if runtime.GOARCH == "arm64" {
-		if runtime.GOOS == "darwin" {
-			// Only set the custom url as workaround for arm64 macs
-			memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.0.tgz"
-		}
+	mongoBinPath := os.Getenv("MONGODB_BIN")
+	mongoVersion := os.Getenv("MONGO_DB_VERSION")
+	if mongoVersion != "" {
+		memongoOptions.MongoVersion = mongoVersion
+		test.Logf("Using MongoDB version: %s", mongoVersion)
+	}
+	if mongoBinPath != "" {
+		memongoOptions.MongodBin = fmt.Sprintf("%s/mongod", mongoBinPath)
+		test.Logf("Using existing MongoDB binary at: %s", mongoBinPath)
+	} else if runtime.GOARCH == "arm64" && runtime.GOOS == "darwin" {
+		// Only set the custom url as workaround for arm64 macs
+		memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.25.tgz"
+		test.Logf("Using download url: %s", memongoOptions.DownloadURL)
 	}
 	mongoServer, err := memongo.StartWithOptions(memongoOptions)
 	if err != nil {
-		return nil, nil, err
+		test.Fatalf("Failed to start mock mongo server: %v", err)
 	}
+	return mongoServer
+}
+
+// SetupMockMongoServerAndClient sets up a mock mongo server
+func SetupMockMongoServerAndClient(test *testing.T) (*memongo.Server, *mongo.Client, error) {
+	mongoServer := SetUpMongoServer(test)
 
 	// Create a new mongo client
 	client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))

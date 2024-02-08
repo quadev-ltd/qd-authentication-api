@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"testing"
 	"time"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/tryvium-travels/memongo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -26,6 +24,7 @@ import (
 
 	"qd-authentication-api/internal/config"
 	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/mongo/mock"
 	"qd-authentication-api/pb/gen/go/pb_authentication"
 	"qd-authentication-api/pb/gen/go/pb_email"
 )
@@ -74,24 +73,6 @@ func waitForServerUp(test *testing.T, application Applicationer, tlsEnabled bool
 
 		time.Sleep(1 * time.Second)
 	}
-}
-
-func startMockMongoServer(test *testing.T) *memongo.Server {
-	memongoOptions := &memongo.Options{
-		LogLevel:     10,
-		MongoVersion: "4.0.5",
-	}
-	if runtime.GOARCH == "arm64" {
-		if runtime.GOOS == "darwin" {
-			// Only set the custom url as workaround for arm64 macs
-			memongoOptions.DownloadURL = "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.0.tgz"
-		}
-	}
-	mongoServer, err := memongo.StartWithOptions(memongoOptions)
-	if err != nil {
-		test.Fatalf("Failed to start mock mongo server: %v", err)
-	}
-	return mongoServer
 }
 
 // MockEmailServiceServer is a mock implementation of the EmailServiceServer
@@ -144,7 +125,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	os.Setenv(commonConfig.AppEnvironmentKey, "test")
 
-	mongoServer := startMockMongoServer(t)
+	mongoServer := mock.SetUpMongoServer(t)
 	defer mongoServer.Stop()
 
 	// Save current working directory and change it

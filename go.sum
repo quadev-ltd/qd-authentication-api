@@ -98,12 +98,6 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/quadev-ltd/qd-common v0.0.25 h1:63y4+oQg5I8vLHmnypMeOSovxR43NrmgFj2Lno2EPaY=
-github.com/quadev-ltd/qd-common v0.0.25/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
-github.com/quadev-ltd/qd-common v0.0.26 h1:GPoRcZITD6yyr2KyVuKN/WE40g4c+Y4H+n3CgjNlY1M=
-github.com/quadev-ltd/qd-common v0.0.26/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
-github.com/quadev-ltd/qd-common v0.0.27 h1:oawU1F3iqK6bHK5gjWYPqE7gPJiJVwWg82R5mohD268=
-github.com/quadev-ltd/qd-common v0.0.27/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
 github.com/quadev-ltd/qd-common v0.0.28 h1:aBhhvtxOK5nx9AFUYK/AdrbJDWIoksxLVwlsVBc5zKA=
 github.com/quadev-ltd/qd-common v0.0.28/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
@@ -142,8 +136,8 @@ github.com/subosito/gotenv v1.6.0 h1:9NlTDc1FTs4qu0DDq7AEtTPNw6SVm7uBMsUCUjABIf8
 github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSWPKKo0FU=
 github.com/tidwall/pretty v1.0.0 h1:HsD+QiTn7sK6flMKIvNmpqz1qrpP3Ps6jOKIKMooyg4=
 github.com/tidwall/pretty v1.0.0/go.mod h1:XNkn88O1ChpSDQmQeStsy+sBenx6DDtFZJxhVysOjyk=
-github.com/tryvium-travels/memongo v0.10.0 h1:qDhyts06xFtGJDCd9NznSDFMiKa9UrzZ8N2+2+lqb6w=
-github.com/tryvium-travels/memongo v0.10.0/go.mod h1:riRUHKRQ5JbeX2ryzFfmr7P2EYXIkNwgloSQJPpBikA=
+github.com/tryvium-travels/memongo v0.11.0 h1:VpFkeigK7bge9aXH+oVG+H3OI2ih12riTROk0CvERrk=
+github.com/tryvium-travels/memongo v0.11.0/go.mod h1:riRUHKRQ5JbeX2ryzFfmr7P2EYXIkNwgloSQJPpBikA=
 github.com/twitchyliquid64/golang-asm v0.15.1 h1:SU5vSMR7hnwNxj24w34ZyCi/FmDZTkS4MhqMhdFk5YI=
 github.com/twitchyliquid64/golang-asm v0.15.1/go.mod h1:a1lVb/DtPvCB8fslRZhAngC2+aY1QWCk3Cedj/Gdt08=
 github.com/ugorji/go/codec v1.2.11 h1:BMaWp1Bb6fHwEtbplGBGJ498wD+LKlNSl25MjdZY4dU=
