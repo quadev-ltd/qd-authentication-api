@@ -23,6 +23,7 @@ func newUser() *model.User {
 		RegistrationDate:  time.Now(),
 		LastLoginDate:     time.Now(),
 		AccountStatus:     model.AccountStatusVerified,
+		RefreshTokens:     []model.RefreshToken{},
 	}
 }
 
@@ -88,6 +89,13 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.NoError(test, err)
 
 		user.AccountStatus = model.AccountStatusUnverified
+		newRefreshToken := model.RefreshToken{
+			Token:     "token",
+			IssuedAt:  time.Now(),
+			ExpiresAt: time.Now().Add(time.Hour * 24),
+			Revoked:   false,
+		}
+		user.RefreshTokens = append(user.RefreshTokens, newRefreshToken)
 
 		err = repo.Update(context.Background(), user)
 		assert.NoError(test, err)
@@ -96,6 +104,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.NoError(test, err)
 		assert.NotNil(test, foundUser)
 		assert.Equal(test, user.AccountStatus, foundUser.AccountStatus)
+		assert.Equal(test, user.RefreshTokens[0].Token, foundUser.RefreshTokens[0].Token)
 	})
 	test.Run("Update User Not Found", func(test *testing.T) {
 		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)

@@ -46,14 +46,12 @@ GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 ##  TODOs
 <!-- TODOs -->
 <!--
-    STUDY CONNECTION TO EMAIL SERVICE THROUGH TLS
-    Add JWT at registration response
+
     Add unit tests
         JWTAuthenticator
         authentication_service_test.go
         GetPublicKey journey
         GenerateKeyFiles
-    Test expiration dates in tokens
     Add token refresh endpooint
     Add forgot password
     Add change password
