@@ -224,7 +224,6 @@ func (service *AuthenticationService) createTokenResponse(
 			Message: "Error updating user",
 		}
 	}
-
 	return &model.AuthTokensResponse{
 		AuthToken:          *authTokenString,
 		AuthTokenExpiry:    *authenticationTokenExpiration,
