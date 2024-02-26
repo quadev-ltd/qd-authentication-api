@@ -11,6 +11,7 @@ import (
 // AccountStatus is the type for the account status
 type AccountStatus int
 
+// RefreshToken is the model for the refresh token
 type RefreshToken struct {
 	Token     string
 	IssuedAt  time.Time
