@@ -88,6 +88,7 @@ func (userRepository *UserRepository) Update(ctx context.Context, user *model.Us
 			"accountstatus":               user.AccountStatus,
 			"verificationtoken":           user.VerificationToken,
 			"verificationtokenexpirydate": user.VerificationTokenExpiryDate,
+			"refreshtokens":               user.RefreshTokens,
 		},
 	}
 

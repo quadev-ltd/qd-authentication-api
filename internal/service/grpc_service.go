@@ -215,3 +215,21 @@ func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authe
 }
 
 var limiter = rate.NewLimiter(rate.Limit(1), 5)
+
+// Authenticate authenticates a user
+func (service AuthenticationServiceServer) RefreshToken(
+	ctx context.Context,
+	request *pb_authentication.RefreshTokenRequest,
+) (*pb_authentication.AuthenticateResponse, error) {
+	logger := commonLogger.GetLoggerFromContext(ctx)
+	if logger == nil {
+		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
+	}
+	authTokens, err := service.authenticationService.RefreshToken(ctx, request.Token)
+	if err != nil {
+		return nil, err
+	}
+	refreshTokenResponse := *convertAuthTokensToResponse(authTokens)
+	logger.Info("Refresh authentication token successful")
+	return &refreshTokenResponse, nil
+}

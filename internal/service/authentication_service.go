@@ -20,6 +20,7 @@ const (
 	AuthenticationTokenExpiry = 2 * time.Hour      // Authentication token expiry set to 2 hours
 	RefreshTokenExpiry        = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
 	VerificationTokenExpiry   = 24 * time.Hour     // Verification token expiry set to 24 hours
+	RefreshTokenRenewalWindow = 12 * time.Hour     // Refresh token renewal set to 7 days
 )
 
 // AuthenticationServicer is the interface for the authentication service
@@ -30,6 +31,7 @@ type AuthenticationServicer interface {
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
 	VerifyTokenAndDecodeEmail(ctx context.Context, token string) (*string, error)
 	ResendEmailVerification(ctx context.Context, email string) error
+	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
 }
 
 // AuthenticationService is the implementation of the authentication service
@@ -101,6 +103,7 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 		DateOfBirth:                 *dateOfBirth,
 		RegistrationDate:            time.Now(),
 		AccountStatus:               model.AccountStatusUnverified,
+		RefreshTokens:               []model.RefreshToken{},
 	}
 
 	// Validate the user object
@@ -148,11 +151,97 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 	return nil
 }
 
+func (service *AuthenticationService) createToken(ctx context.Context, email string, expiry time.Duration) (*string, *time.Time, error) {
+	logger := log.GetLoggerFromContext(ctx)
+	tokenExpiryDate := time.Now().Add(expiry)
+	tokenString, err := service.jwtAuthenticator.SignToken(email, tokenExpiryDate)
+	if err != nil {
+		logger.Error(err, "Error creating jwt token")
+		return nil, nil, &Error{
+			Message: "Error creating jwt token",
+		}
+	}
+	return tokenString, &tokenExpiryDate, nil
+}
+
+func findToken(tokens []model.RefreshToken, refreshToken string) int {
+	for i, tokenRecord := range tokens {
+		if tokenRecord.Token == refreshToken {
+			return i
+		}
+	}
+	return -1
+}
+
+func (service *AuthenticationService) createTokenResponse(
+	ctx context.Context,
+	user *model.User,
+	refreshToken *string,
+) (*model.AuthTokensResponse, error) {
+	logger := log.GetLoggerFromContext(ctx)
+	authTokenString,
+		authenticationTokenExpiration,
+		err := service.createToken(ctx, user.Email, AuthenticationTokenExpiry)
+	if err != nil {
+		return nil, &Error{
+			Message: "Error creating authentication token",
+		}
+	}
+
+	refreshTokenString,
+		refreshTokenExpiration,
+		err := service.createToken(ctx, user.Email, RefreshTokenExpiry)
+	if err != nil {
+		return nil, &Error{
+			Message: "Error creating refresh token",
+		}
+	}
+
+	newRefreshToken := model.RefreshToken{
+		Token:     *refreshTokenString,
+		IssuedAt:  time.Now(),
+		ExpiresAt: *refreshTokenExpiration,
+		Revoked:   false,
+	}
+
+	shouldReplaceExistingToken := refreshToken != nil
+	if shouldReplaceExistingToken {
+		index := findToken(user.RefreshTokens, *refreshToken)
+		if index == -1 {
+			return nil, &Error{
+				Message: "Refresh token is not listed",
+			}
+		}
+		user.RefreshTokens[index] = newRefreshToken
+	} else {
+		user.RefreshTokens = append(user.RefreshTokens, newRefreshToken)
+	}
+
+	err = service.userRepository.Update(ctx, user)
+	if err != nil {
+		logger.Error(err, "Error updating user")
+		return nil, &Error{
+			Message: "Error updating user",
+		}
+	}
+	return &model.AuthTokensResponse{
+		AuthToken:          *authTokenString,
+		AuthTokenExpiry:    *authenticationTokenExpiration,
+		RefreshToken:       *refreshTokenString,
+		RefreshTokenExpiry: *refreshTokenExpiration,
+		UserEmail:          user.Email,
+	}, nil
+}
+
 // Authenticate authenticates a user and provides a token
 func (service *AuthenticationService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
+	logger := log.GetLoggerFromContext(ctx)
 	user, resultError := service.userRepository.GetByEmail(ctx, email)
 	if resultError != nil {
-		return nil, fmt.Errorf("Error getting user by email: %v", resultError)
+		logger.Error(resultError, "Error getting user by email")
+		return nil, &Error{
+			Message: "Error getting user by email",
+		}
 	}
 
 	if user == nil {
@@ -164,31 +253,7 @@ func (service *AuthenticationService) Authenticate(ctx context.Context, email, p
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
-	authenticationTokenExpiryDate := time.Now().Add(AuthenticationTokenExpiry)
-	authTokenString, err := service.jwtAuthenticator.SignToken(user.Email, authenticationTokenExpiryDate)
-	if err != nil {
-		return nil, &Error{
-			Message: "Error creating authentication token",
-		}
-	}
-
-	refreshTokenExpiration := time.Now().Add(RefreshTokenExpiry)
-	refreshTokenString, err := service.jwtAuthenticator.SignToken(user.Email, refreshTokenExpiration)
-	if err != nil {
-		return nil, &Error{
-			Message: "Error creating refresh token",
-		}
-	}
-
-	response := &model.AuthTokensResponse{
-		AuthToken:          *authTokenString,
-		AuthTokenExpiry:    authenticationTokenExpiryDate,
-		RefreshToken:       *refreshTokenString,
-		RefreshTokenExpiry: refreshTokenExpiration,
-		UserEmail:          user.Email,
-	}
-
-	return response, nil
+	return service.createTokenResponse(ctx, user, nil)
 }
 
 // VerifyTokenAndDecodeEmail verifies a token and decodes the email
@@ -244,4 +309,36 @@ func (service *AuthenticationService) ResendEmailVerification(
 	}
 
 	return nil
+}
+
+// RefreshToken refreshes an authentication token using a refresh token
+func (service *AuthenticationService) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
+	logger := log.GetLoggerFromContext(ctx)
+	// Verify the refresh token
+	token, err := service.jwtAuthenticator.VerifyToken(refreshTokenString)
+	if err != nil {
+		logger.Error(err, "Error verifying refresh token")
+		return nil, &Error{
+			Message: "Invalid or expired refresh token",
+		}
+	}
+
+	email, err := service.jwtAuthenticator.GetEmailFromToken(token)
+	if err != nil {
+		logger.Error(err, "Error getting email from token")
+		return nil, &Error{
+			Message: "Error getting email from token",
+		}
+	}
+
+	// Retrieve user details from the database
+	user, err := service.userRepository.GetByEmail(ctx, *email)
+	if err != nil {
+		logger.Error(err, "Error getting user by email")
+		return nil, &Error{
+			Message: "Error getting user by email",
+		}
+	}
+
+	return service.createTokenResponse(ctx, user, &refreshTokenString)
 }

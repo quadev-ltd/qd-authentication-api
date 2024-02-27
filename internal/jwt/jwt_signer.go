@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 )
 
 // Signerer is an interface for JWTAuthenticator
@@ -213,6 +214,8 @@ func (authenticator *Signer) SignToken(email string, expiry time.Time) (*string,
 	tokenClaims := jwt.MapClaims{
 		EmailClaim:  email,
 		ExpiryClaim: expiry.Unix(),
+		"iat":       time.Now().Unix(),
+		"nonce":     uuid.New(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, tokenClaims)
 	tokenString, err := token.SignedString(authenticator.privateKey)

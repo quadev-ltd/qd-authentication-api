@@ -32,6 +32,7 @@ import (
 const wrongEmail = "wrong@email.com"
 
 var jwtToken string
+var refreshToken string
 
 func isServerUp(test *testing.T, addr string, tlsEnabled bool) bool {
 	if tlsEnabled {
@@ -427,5 +428,93 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
 		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password", err.Error())
+	})
+
+	t.Run("Refresh_Token_Error", func(t *testing.T) {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		if err != nil {
+			log.Err(err)
+		}
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		err = client.Connect(ctx)
+		if err != nil {
+			log.Err(err)
+		}
+		defer client.Disconnect(ctx)
+
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		registerResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+			Token: "wrong-token",
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, registerResponse)
+		assert.Equal(t, "rpc error: code = Unknown desc = Invalid or expired refresh token", err.Error())
+	})
+
+	t.Run("Refresh_Token_Success", func(t *testing.T) {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		if err != nil {
+			log.Err(err)
+		}
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		err = client.Connect(ctx)
+		if err != nil {
+			log.Err(err)
+		}
+		defer client.Disconnect(ctx)
+
+		collection := client.Database("qd_authentication").Collection("user")
+		var foundUser model.User
+		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			log.Err(err)
+		}
+		refreshToken = foundUser.RefreshTokens[0].Token
+
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		registerResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+			Token: refreshToken,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, registerResponse)
+		assert.NotNil(t, registerResponse.AuthToken)
+		assert.NotNil(t, registerResponse.RefreshToken)
+		assert.Equal(t, foundUser.Email, registerResponse.UserEmail)
+	})
+
+	t.Run("Refresh_Token_Not_Listed_Error", func(t *testing.T) {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		if err != nil {
+			log.Err(err)
+		}
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		err = client.Connect(ctx)
+		if err != nil {
+			log.Err(err)
+		}
+		defer client.Disconnect(ctx)
+
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		registerResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+			Token: refreshToken,
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, registerResponse)
+		assert.Equal(t, "rpc error: code = Unknown desc = Refresh token is not listed", err.Error())
 	})
 }
