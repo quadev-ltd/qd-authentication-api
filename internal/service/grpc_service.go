@@ -134,6 +134,8 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	return nil, status.Errorf(codes.Internal, "Internal server error")
 }
 
+var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 5)
+
 // ResendEmailVerification resends the email verification
 func (service AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
@@ -143,7 +145,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
-	if !limiter.Allow() {
+	if !resendEmailVerificationLimiter.Allow() {
 		logger.Warn("Rate limit exceeded")
 		return &pb_authentication.ResendEmailVerificationResponse{
 				Success: false,
@@ -214,7 +216,7 @@ func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authe
 	}
 }
 
-var limiter = rate.NewLimiter(rate.Limit(1), 5)
+var refreshTokenLimiter = rate.NewLimiter(rate.Limit(1), 5)
 
 // Authenticate authenticates a user
 func (service AuthenticationServiceServer) RefreshToken(
@@ -222,6 +224,11 @@ func (service AuthenticationServiceServer) RefreshToken(
 	request *pb_authentication.RefreshTokenRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
 	logger := commonLogger.GetLoggerFromContext(ctx)
+	if !refreshTokenLimiter.Allow() {
+		logger.Warn("Rate limit exceeded")
+		return nil,
+			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
+	}
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}

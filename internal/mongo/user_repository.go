@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"qd-authentication-api/internal/model"
@@ -32,13 +33,13 @@ func (userRepository *UserRepository) getCollection() *mongo.Collection {
 }
 
 // Create creates a new user in the mongo database
-func (userRepository *UserRepository) Create(ctx context.Context, user *model.User) error {
+func (userRepository *UserRepository) Create(ctx context.Context, user *model.User) (interface{}, error) {
 	collection := userRepository.getCollection()
-	_, err := collection.InsertOne(ctx, user)
+	result, err := collection.InsertOne(ctx, user)
 	if err != nil {
-		return fmt.Errorf("Insertion error: %v", err)
+		return nil, fmt.Errorf("Insertion error: %v", err)
 	}
-	return nil
+	return result.InsertedID, nil
 }
 
 // GetByEmail gets a user by email from the mongo database
@@ -60,19 +61,13 @@ func (userRepository *UserRepository) GetByEmail(ctx context.Context, email stri
 }
 
 // GetByVerificationToken gets a user by verification token from the mongo database
-func (userRepository *UserRepository) GetByVerificationToken(
-	ctx context.Context,
-	verificationToken string,
-) (*model.User, error) {
+func (userRepository *UserRepository) GetByUserId(ctx context.Context, userId primitive.ObjectID) (*model.User, error) {
 	collection := userRepository.getCollection()
-	filter := bson.M{"verificationtoken": verificationToken}
+	filter := bson.M{"_id": userId}
 	var foundUser model.User
 
 	resultError := collection.FindOne(ctx, filter).Decode(&foundUser)
 	if resultError != nil {
-		if resultError == mongo.ErrNoDocuments {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("Error finding user by verification token: %v", resultError)
 	}
 
@@ -85,10 +80,8 @@ func (userRepository *UserRepository) Update(ctx context.Context, user *model.Us
 	filter := bson.M{"email": user.Email}
 	update := bson.M{
 		"$set": bson.M{
-			"accountstatus":               user.AccountStatus,
-			"verificationtoken":           user.VerificationToken,
-			"verificationtokenexpirydate": user.VerificationTokenExpiryDate,
-			"refreshtokens":               user.RefreshTokens,
+			"accountstatus": user.AccountStatus,
+			"refreshtokens": user.RefreshTokens,
 		},
 	}
 

@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // AccountStatus is the type for the account status
@@ -21,18 +22,17 @@ type RefreshToken struct {
 
 // User is the model for the user
 type User struct {
-	Email                       string        `validate:"required,email"`
-	VerificationToken           string        `validate:"required"`
-	VerificationTokenExpiryDate time.Time     `validate:"required"`
-	PasswordHash                string        `validate:"required"`
-	PasswordSalt                string        `validate:"required"`
-	FirstName                   string        `validate:"required,min=2,max=30"`
-	LastName                    string        `validate:"required,min=2,max=30"`
-	DateOfBirth                 time.Time     `validate:"required,not_future"`
-	RegistrationDate            time.Time     `validate:"required"`
-	LastLoginDate               time.Time     `validate:"omitempty"`
-	AccountStatus               AccountStatus `validate:"required"`
-	RefreshTokens               []RefreshToken
+	ID               primitive.ObjectID `bson:"_id,omitempty"`
+	Email            string             `validate:"required,email"`
+	PasswordHash     string             `validate:"required"`
+	PasswordSalt     string             `validate:"required"`
+	FirstName        string             `validate:"required,min=2,max=30"`
+	LastName         string             `validate:"required,min=2,max=30"`
+	DateOfBirth      time.Time          `validate:"required,not_future"`
+	RegistrationDate time.Time          `validate:"required"`
+	LastLoginDate    time.Time          `validate:"omitempty"`
+	AccountStatus    AccountStatus      `validate:"required"`
+	RefreshTokens    []RefreshToken
 }
 
 // AccountStatus constants

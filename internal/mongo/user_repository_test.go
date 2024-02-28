@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/mongo/mock"
@@ -13,23 +14,22 @@ import (
 
 func newUser() *model.User {
 	return &model.User{
-		Email:             "test@example.com",
-		VerificationToken: "token",
-		PasswordHash:      "hash",
-		PasswordSalt:      "salt",
-		FirstName:         "Test",
-		LastName:          "User",
-		DateOfBirth:       time.Now(),
-		RegistrationDate:  time.Now(),
-		LastLoginDate:     time.Now(),
-		AccountStatus:     model.AccountStatusVerified,
-		RefreshTokens:     []model.RefreshToken{},
+		Email:            "test@example.com",
+		PasswordHash:     "hash",
+		PasswordSalt:     "salt",
+		FirstName:        "Test",
+		LastName:         "User",
+		DateOfBirth:      time.Now(),
+		RegistrationDate: time.Now(),
+		LastLoginDate:    time.Now(),
+		AccountStatus:    model.AccountStatusVerified,
+		RefreshTokens:    []model.RefreshToken{},
 	}
 }
 
 func TestMongoUserRepository(test *testing.T) {
 	test.Run("Create", func(test *testing.T) {
-		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 
@@ -38,12 +38,15 @@ func TestMongoUserRepository(test *testing.T) {
 		user := newUser()
 
 		// Test Create
-		error = repo.Create(context.Background(), user)
-		assert.NoError(test, error)
+		insertedID, err := repo.Create(context.Background(), user)
+		assert.NoError(test, err)
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
 
 		// Test GetByEmail
-		foundUser, error := repo.GetByEmail(context.Background(), user.Email)
-		assert.NoError(test, error)
+		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
+		assert.NoError(test, err)
 		assert.NotNil(test, foundUser)
 		assert.Equal(test, user.Email, foundUser.Email)
 	})
@@ -60,8 +63,8 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Nil(test, error)
 		assert.Nil(test, user)
 	})
-	test.Run("GetUserByVerificationToken", func(test *testing.T) {
-		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
+	test.Run("GetUserByUserID", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 
@@ -70,14 +73,17 @@ func TestMongoUserRepository(test *testing.T) {
 		user := newUser()
 
 		// Test Create
-		error = repo.Create(context.Background(), user)
-		assert.NoError(test, error)
+		insertedID, err := repo.Create(context.Background(), user)
+		assert.NoError(test, err)
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
 
 		// Test GetUserByVerificationToken
-		foundUser, error := repo.GetByVerificationToken(context.Background(), user.VerificationToken)
-		assert.NoError(test, error)
+		foundUser, err := repo.GetByUserId(context.Background(), id)
+		assert.NoError(test, err)
 		assert.NotNil(test, foundUser)
-		assert.Equal(test, user.VerificationToken, foundUser.VerificationToken)
+		assert.Equal(test, id.Hex(), foundUser.ID.Hex())
 	})
 	test.Run("Update Success", func(test *testing.T) {
 		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
@@ -85,8 +91,12 @@ func TestMongoUserRepository(test *testing.T) {
 		defer mongoServer.Stop()
 		repo := NewUserRepository(client)
 		user := newUser()
-		err = repo.Create(context.Background(), user)
+
+		insertedID, err := repo.Create(context.Background(), user)
 		assert.NoError(test, err)
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
 
 		user.AccountStatus = model.AccountStatusUnverified
 		newRefreshToken := model.RefreshToken{

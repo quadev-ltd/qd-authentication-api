@@ -2,11 +2,12 @@ package mongo
 
 import (
 	"context"
-	"qd-authentication-api/internal/config"
-	"qd-authentication-api/internal/repository"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"qd-authentication-api/internal/config"
+	"qd-authentication-api/internal/repository"
 )
 
 // RepositoryFactory is the implementation of the repository factory
@@ -24,9 +25,11 @@ func (repositoryFactory *RepositoryFactory) CreateRepository(
 	}
 
 	userRepository := NewUserRepository(client)
+	tokenRepository := NewTokenRepository(client)
 
 	return &Repository{
-		client:         client,
-		userRepository: userRepository,
+		client:          client,
+		userRepository:  userRepository,
+		tokenRepository: tokenRepository,
 	}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/quadev-ltd/qd-common/pkg/log"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
 	"qd-authentication-api/internal/jwt"
@@ -38,6 +39,7 @@ type AuthenticationServicer interface {
 type AuthenticationService struct {
 	emailService     EmailServicer
 	userRepository   repository.UserRepositoryer
+	tokenRepository  repository.TokenRepositoryer
 	jwtAuthenticator jwt.Signerer
 }
 
@@ -47,12 +49,14 @@ var _ AuthenticationServicer = &AuthenticationService{}
 func NewAuthenticationService(
 	emailService EmailServicer,
 	userRepository repository.UserRepositoryer,
+	tokenRepository repository.TokenRepositoryer,
 	jwtAuthenticator jwt.Signerer,
 ) AuthenticationServicer {
 	return &AuthenticationService{
-		userRepository:   userRepository,
-		emailService:     emailService,
-		jwtAuthenticator: jwtAuthenticator,
+		emailService,
+		userRepository,
+		tokenRepository,
+		jwtAuthenticator,
 	}
 }
 
@@ -67,6 +71,7 @@ func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string,
 
 // Register registers a new user
 func (service *AuthenticationService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
+	logger := log.GetLoggerFromContext(ctx)
 	existingUser, err := service.userRepository.GetByEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("Error getting user by email: %v", err)
@@ -85,25 +90,16 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 		return fmt.Errorf("Error generating password hash: %v", err)
 	}
 
-	verificationToken, err := util.GenerateVerificationToken()
-	if err != nil {
-		return fmt.Errorf("Error generating verification token: %v", err)
-	}
-
-	verificationTokentExpiryDate := time.Now().Add(VerificationTokenExpiry)
-
 	user := &model.User{
-		Email:                       email,
-		VerificationToken:           verificationToken,
-		VerificationTokenExpiryDate: verificationTokentExpiryDate,
-		PasswordHash:                string(hashedPassword),
-		PasswordSalt:                *salt,
-		FirstName:                   firstName,
-		LastName:                    lastName,
-		DateOfBirth:                 *dateOfBirth,
-		RegistrationDate:            time.Now(),
-		AccountStatus:               model.AccountStatusUnverified,
-		RefreshTokens:               []model.RefreshToken{},
+		Email:            email,
+		PasswordHash:     string(hashedPassword),
+		PasswordSalt:     *salt,
+		FirstName:        firstName,
+		LastName:         lastName,
+		DateOfBirth:      *dateOfBirth,
+		RegistrationDate: time.Now(),
+		AccountStatus:    model.AccountStatusUnverified,
+		RefreshTokens:    []model.RefreshToken{},
 	}
 
 	// Validate the user object
@@ -112,12 +108,34 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	}
 
 	// Create the user in the repository
-	if err := service.userRepository.Create(ctx, user); err != nil {
+	insertedID, err := service.userRepository.Create(ctx, user)
+	if err != nil {
 		return fmt.Errorf("Error creating user: %v", err)
 	}
 
-	if err := service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, user.VerificationToken); err != nil {
-		logger := log.GetLoggerFromContext(ctx)
+	// Create the verification token
+	userId, ok := insertedID.(primitive.ObjectID)
+	if !ok {
+		return fmt.Errorf("InsertedID is not of type primitive.ObjectID: %v", err)
+	}
+	verificationToken, err := util.GenerateVerificationToken()
+	if err != nil {
+		return fmt.Errorf("Error generating verification token: %v", err)
+	}
+	verificationTokentExpiryDate := time.Now().Add(VerificationTokenExpiry)
+	emailVerificationToken := &model.Token{
+		UserID:    userId,
+		Token:     verificationToken,
+		ExpiresAt: verificationTokentExpiryDate,
+		Type:      model.EmailVerificationTokenType,
+		IssuedAt:  time.Now(),
+	}
+	err = service.tokenRepository.Create(ctx, emailVerificationToken)
+	if err != nil {
+		return fmt.Errorf("Error inserting verification token in DB: %v", err)
+	}
+
+	if err := service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, verificationToken); err != nil {
 		logger.Error(err, "Error sending verification email")
 		return &SendEmailError{Message: "Error sending verification email"}
 	}
@@ -127,27 +145,36 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 
 // VerifyEmail verifies a user's email
 func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificationToken string) error {
-	user, err := service.userRepository.GetByVerificationToken(ctx, verificationToken)
+	token, err := service.tokenRepository.GetByToken(ctx, verificationToken)
 	if err != nil {
-		return fmt.Errorf("Error getting user by verification token: %v", err)
-	}
-	if user == nil {
 		return &Error{Message: "Invalid verification token"}
+	}
+	if token.Type != model.EmailVerificationTokenType {
+		return fmt.Errorf("Wrong type of token")
+	}
+	current := time.Now()
+	timeDifference := current.Sub(token.ExpiresAt)
+	if timeDifference >= 0 {
+		return &Error{Message: "Verification token expired"}
+	}
+	user, err := service.userRepository.GetByUserId(ctx, token.UserID)
+	if err != nil {
+		return fmt.Errorf("Error getting user by ID: %v", err)
 	}
 	if user.AccountStatus == model.AccountStatusVerified {
 		return &Error{Message: "Email already verified"}
 	}
-	current := time.Now()
-	timeDifference := current.Sub(user.VerificationTokenExpiryDate)
-	if timeDifference >= VerificationTokenExpiry {
-		return &Error{Message: "Verification token expired"}
-	}
+
 	user.AccountStatus = model.AccountStatusVerified
 
 	if err := service.userRepository.Update(ctx, user); err != nil {
 		return fmt.Errorf("Error updating user: %v", err)
 	}
 
+	err = service.tokenRepository.Remove(ctx, token.Token)
+	if err != nil {
+		return fmt.Errorf("Error removing token: %v", err)
+	}
 	return nil
 }
 
@@ -256,7 +283,7 @@ func (service *AuthenticationService) Authenticate(ctx context.Context, email, p
 	return service.createTokenResponse(ctx, user, nil)
 }
 
-// VerifyTokenAndDecodeEmail verifies a token and decodes the email
+// VerifyTokenAndDecodeEmail verifies decodes the email from the jwt token
 func (service *AuthenticationService) VerifyTokenAndDecodeEmail(
 	ctx context.Context,
 	token string,
@@ -292,18 +319,24 @@ func (service *AuthenticationService) ResendEmailVerification(
 	if err != nil {
 		return fmt.Errorf("Error generating verification token: %v", err)
 	}
-	user.VerificationToken = verificationToken
-	user.VerificationTokenExpiryDate = time.Now().Add(VerificationTokenExpiry)
-
-	if err := service.userRepository.Update(ctx, user); err != nil {
-		return fmt.Errorf("Error updating user: %v", err)
+	emailVerificationToken := &model.Token{
+		Token:     verificationToken,
+		IssuedAt:  time.Now(),
+		ExpiresAt: time.Now(),
+		Revoked:   false,
+		Type:      model.EmailVerificationTokenType,
+		UserID:    user.ID,
+	}
+	err = service.tokenRepository.Create(ctx, emailVerificationToken)
+	if err != nil {
+		return fmt.Errorf("Error inserting the verification token in db: %v", err)
 	}
 
 	if err := service.emailService.SendVerificationMail(
 		ctx,
 		user.Email,
 		user.FirstName,
-		user.VerificationToken,
+		verificationToken,
 	); err != nil {
 		return fmt.Errorf("Error sending verification email: %v", err)
 	}

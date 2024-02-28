@@ -51,6 +51,7 @@ func (serviceFactory *Factory) CreateService(
 	authenticationService := NewAuthenticationService(
 		emailService,
 		repository.GetUserRepository(),
+		repository.GetTokenRepository(),
 		jwtAuthenticator,
 	)
 

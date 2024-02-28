@@ -11,17 +11,15 @@ import (
 
 func newUser() *User {
 	return &User{
-		Email:                       "test@example.com",
-		VerificationToken:           "token",
-		VerificationTokenExpiryDate: time.Now().Add(10 * time.Minute),
-		PasswordHash:                "hash",
-		PasswordSalt:                "salt",
-		FirstName:                   "Test",
-		LastName:                    "User",
-		DateOfBirth:                 time.Now(),
-		RegistrationDate:            time.Now(),
-		LastLoginDate:               time.Now(),
-		AccountStatus:               AccountStatusVerified,
+		Email:            "test@example.com",
+		PasswordHash:     "hash",
+		PasswordSalt:     "salt",
+		FirstName:        "Test",
+		LastName:         "User",
+		DateOfBirth:      time.Now(),
+		RegistrationDate: time.Now(),
+		LastLoginDate:    time.Now(),
+		AccountStatus:    AccountStatusVerified,
 	}
 }
 
@@ -31,15 +29,6 @@ func TestValidateUser(t *testing.T) {
 		user := newUser()
 		err := ValidateUser(user)
 		assert.Nil(t, err)
-	})
-	t.Run("User_Without_Verification_Token", func(t *testing.T) {
-		user := newUser()
-		user.VerificationToken = ""
-		err := ValidateUser(user)
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "VerificationToken")
-		errors := err.(validator.ValidationErrors)
-		assert.Len(t, errors, 1)
 	})
 	t.Run("Valid_User_With_No_Login_Date", func(t *testing.T) {
 		// Valid user
@@ -78,15 +67,6 @@ func TestValidateUser(t *testing.T) {
 		assert.Contains(t, err.Error(), "RegistrationDate")
 		errors := err.(validator.ValidationErrors)
 		assert.Len(t, errors, 2)
-	})
-	t.Run("Missing_Token_Verifiction_Token_Expiry_Date", func(t *testing.T) {
-		user := newUser()
-		user.VerificationTokenExpiryDate = time.Time{}
-		err := ValidateUser(user)
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "VerificationTokenExpiryDate")
-		errors := err.(validator.ValidationErrors)
-		assert.Len(t, errors, 1)
 	})
 	t.Run("Birth_Date_In_Future", func(t *testing.T) {
 		user := newUser()
