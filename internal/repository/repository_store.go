@@ -1,7 +1,7 @@
 package repository
 
-// RepositoryStorer is the interface for the repository
-type RepositoryStorer interface {
+// Storer is the interface for the repository
+type Storer interface {
 	GetUserRepository() UserRepositoryer
 	GetTokenRepository() TokenRepositoryer
 	Close() error

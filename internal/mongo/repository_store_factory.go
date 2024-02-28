@@ -10,15 +10,15 @@ import (
 	"qd-authentication-api/internal/repository"
 )
 
-// RepositoryFactory is the implementation of the repository factory
+// RepositoryStoreFactory is the implementation of the repository factory
 type RepositoryStoreFactory struct{}
 
-var _ repository.RepositoryStoreFactoryer = &RepositoryStoreFactory{}
+var _ repository.StoreFactoryer = &RepositoryStoreFactory{}
 
 // CreateRepositoryStore creates a repository
 func (repositoryFactory *RepositoryStoreFactory) CreateRepositoryStore(
 	config *config.Config,
-) (repository.RepositoryStorer, error) {
+) (repository.Storer, error) {
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.AuthenticationDB.URI))
 	if err != nil {
 		return nil, err

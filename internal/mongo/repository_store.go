@@ -19,7 +19,7 @@ type RepositoryStore struct {
 	client          Clienter
 }
 
-var _ repository.RepositoryStorer = &RepositoryStore{}
+var _ repository.Storer = &RepositoryStore{}
 
 // GetUserRepository returns the user repository
 func (mongoRepository *RepositoryStore) GetUserRepository() repository.UserRepositoryer {
