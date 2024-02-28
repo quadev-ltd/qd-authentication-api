@@ -81,6 +81,7 @@ func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model
 	return nil
 }
 
+// Remove removes a token from the mongo database
 func (tokenRepository *TokenRepository) Remove(ctx context.Context, token string) error {
 	collection := tokenRepository.getCollection()
 	filter := bson.M{"token": token}

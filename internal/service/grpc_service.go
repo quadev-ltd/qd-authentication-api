@@ -218,7 +218,7 @@ func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authe
 
 var refreshTokenLimiter = rate.NewLimiter(rate.Limit(1), 5)
 
-// Authenticate authenticates a user
+// RefreshToken authenticates a user
 func (service AuthenticationServiceServer) RefreshToken(
 	ctx context.Context,
 	request *pb_authentication.RefreshTokenRequest,

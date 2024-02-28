@@ -80,7 +80,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.NotNil(test, id)
 
 		// Test GetUserByVerificationToken
-		foundUser, err := repo.GetByUserId(context.Background(), id)
+		foundUser, err := repo.GetByUserID(context.Background(), id)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundUser)
 		assert.Equal(test, id.Hex(), foundUser.ID.Hex())

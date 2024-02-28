@@ -417,7 +417,7 @@ func TestAuthenticationService(test *testing.T) {
 		testToken := newToken()
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
-		mockUserRepo.EXPECT().GetByUserId(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mockUserRepo.EXPECT().Update(gomock.Any(), testUser).Return(nil)
 		mockTokenRepo.EXPECT().Remove(gomock.Any(), testToken.Token).Return(nil)
 
@@ -510,7 +510,7 @@ func TestAuthenticationService(test *testing.T) {
 		mockError := errors.New("test-error")
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
-		mockUserRepo.EXPECT().GetByUserId(gomock.Any(), testToken.UserID).Return(nil, mockError)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(nil, mockError)
 
 		// Test Verify
 		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
@@ -535,7 +535,7 @@ func TestAuthenticationService(test *testing.T) {
 		testUser.AccountStatus = model.AccountStatusVerified
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
-		mockUserRepo.EXPECT().GetByUserId(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 
 		// Test Verify
 		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
@@ -560,7 +560,7 @@ func TestAuthenticationService(test *testing.T) {
 		mockError := errors.New("update error")
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
-		mockUserRepo.EXPECT().GetByUserId(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mockUserRepo.EXPECT().Update(gomock.Any(), testUser).Return(mockError)
 
 		// Act
@@ -587,7 +587,7 @@ func TestAuthenticationService(test *testing.T) {
 		mockError := errors.New("update error")
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
-		mockUserRepo.EXPECT().GetByUserId(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mockUserRepo.EXPECT().Update(gomock.Any(), testUser).Return(nil)
 		mockTokenRepo.EXPECT().Remove(gomock.Any(), testToken.Token).Return(mockError)
 

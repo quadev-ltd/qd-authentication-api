@@ -60,10 +60,10 @@ func (userRepository *UserRepository) GetByEmail(ctx context.Context, email stri
 	return &foundUser, nil
 }
 
-// GetByVerificationToken gets a user by verification token from the mongo database
-func (userRepository *UserRepository) GetByUserId(ctx context.Context, userId primitive.ObjectID) (*model.User, error) {
+// GetByUserID gets a user by verification token from the mongo database
+func (userRepository *UserRepository) GetByUserID(ctx context.Context, userID primitive.ObjectID) (*model.User, error) {
 	collection := userRepository.getCollection()
-	filter := bson.M{"_id": userId}
+	filter := bson.M{"_id": userID}
 	var foundUser model.User
 
 	resultError := collection.FindOne(ctx, filter).Decode(&foundUser)

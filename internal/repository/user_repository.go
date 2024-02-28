@@ -12,6 +12,6 @@ import (
 type UserRepositoryer interface {
 	Create(ctx context.Context, user *model.User) (interface{}, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
-	GetByUserId(ctx context.Context, userId primitive.ObjectID) (*model.User, error)
+	GetByUserID(ctx context.Context, userID primitive.ObjectID) (*model.User, error)
 	Update(ctx context.Context, user *model.User) error
 }

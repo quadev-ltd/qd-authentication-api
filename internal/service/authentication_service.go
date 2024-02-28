@@ -114,7 +114,7 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	}
 
 	// Create the verification token
-	userId, ok := insertedID.(primitive.ObjectID)
+	userID, ok := insertedID.(primitive.ObjectID)
 	if !ok {
 		return fmt.Errorf("InsertedID is not of type primitive.ObjectID: %v", err)
 	}
@@ -124,7 +124,7 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	}
 	verificationTokentExpiryDate := time.Now().Add(VerificationTokenExpiry)
 	emailVerificationToken := &model.Token{
-		UserID:    userId,
+		UserID:    userID,
 		Token:     verificationToken,
 		ExpiresAt: verificationTokentExpiryDate,
 		Type:      model.EmailVerificationTokenType,
@@ -157,7 +157,7 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 	if timeDifference >= 0 {
 		return &Error{Message: "Verification token expired"}
 	}
-	user, err := service.userRepository.GetByUserId(ctx, token.UserID)
+	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
 	if err != nil {
 		return fmt.Errorf("Error getting user by ID: %v", err)
 	}
