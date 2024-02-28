@@ -34,7 +34,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		token := newToken()
 
 		// Test Create
-		err = repo.Create(context.Background(), token)
+		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)
 
 		// Test GetByEmail
@@ -64,7 +64,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		repo := NewTokenRepository(client)
 		token := newToken()
 
-		err = repo.Create(context.Background(), token)
+		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)
 
 		issueAt := time.Now()
@@ -107,7 +107,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		repo := NewTokenRepository(client)
 		token := newToken()
 
-		err = repo.Create(context.Background(), token)
+		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)
 
 		err = repo.Remove(context.Background(), token.Token)

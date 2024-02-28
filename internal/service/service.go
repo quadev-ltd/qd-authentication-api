@@ -14,7 +14,7 @@ type Servicer interface {
 // Service is the implementation of the service
 type Service struct {
 	authenticationService AuthenticationServicer
-	repository            repository.Repositoryer
+	repository            repository.RepositoryStorer
 }
 
 var _ Servicer = &Service{}

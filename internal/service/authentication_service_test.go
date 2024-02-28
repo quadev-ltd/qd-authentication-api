@@ -109,7 +109,7 @@ func newToken() *model.Token {
 // 			email: testEmail,
 // 			setup: func() {
 // 				suite.mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-// 				suite.mockUserRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+// 				suite.mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(nil)
 // 				suite.mockEmail.EXPECT().SendVerificationMail(gomock.Any(), testEmail, testFirstName, gomock.Any()).Return(nil)
 // 			},
 // 		},
@@ -179,8 +179,8 @@ func TestAuthenticationService(test *testing.T) {
 			authenticationService := createAuthenticationService(controller)
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-		mockUserRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
-		mockTokenRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(gomock.Any(), testEmail, testFirstName, gomock.Any()).Return(nil)
 
 		// Test successful registration
@@ -316,7 +316,7 @@ func TestAuthenticationService(test *testing.T) {
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-		mockUserRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, nil)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 		// Test successful registration
@@ -346,8 +346,8 @@ func TestAuthenticationService(test *testing.T) {
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-		mockUserRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
-		mockTokenRepository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(mockedError)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
+		mockTokenRepository.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, mockedError)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 		// Test successful registration
@@ -376,8 +376,8 @@ func TestAuthenticationService(test *testing.T) {
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-		mockUserRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
-		mockTokenRepository.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
+		mockTokenRepository.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(
 			gomock.Any(),
 			testEmail,
@@ -930,7 +930,7 @@ func TestAuthenticationService(test *testing.T) {
 		mockedError := errors.New("Create error")
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mockTokenRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(mockedError)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, mockedError)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(context.Background(), testEmail)
@@ -954,7 +954,7 @@ func TestAuthenticationService(test *testing.T) {
 		mockedError := errors.New("Email service error")
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mockTokenRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(
 			context.Background(),
 			testEmail,
@@ -983,7 +983,7 @@ func TestAuthenticationService(test *testing.T) {
 		testUser := newUser()
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mockTokenRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(
 			context.Background(),
 			testEmail,

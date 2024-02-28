@@ -13,32 +13,21 @@ import (
 
 // TokenRepository is a mongo specific token repository
 type TokenRepository struct {
-	dbName         string
-	collectionName string
-	client         *mongo.Client
+	*Repository
 }
 
 var _ repository.TokenRepositoryer = &TokenRepository{}
 
 // NewTokenRepository creates a new mongo token repository
 func NewTokenRepository(client *mongo.Client) *TokenRepository {
-	return &TokenRepository{client: client, dbName: "qd_authentication", collectionName: "token"}
-}
-
-func (tokenRepository *TokenRepository) getCollection() *mongo.Collection {
-	return tokenRepository.client.Database(
-		tokenRepository.dbName,
-	).Collection(tokenRepository.collectionName)
-}
-
-// Create creates a new token in the mongo database
-func (tokenRepository *TokenRepository) Create(ctx context.Context, token *model.Token) error {
-	collection := tokenRepository.getCollection()
-	_, err := collection.InsertOne(ctx, token)
-	if err != nil {
-		return fmt.Errorf("Insertion error: %v", err)
+	return &TokenRepository{
+		Repository: NewRepository(client, "qd_authentication", "token"),
 	}
-	return nil
+}
+
+// InsertToken creates a new token in the mongo database
+func (tokenRepository *TokenRepository) InsertToken(ctx context.Context, token *model.Token) (interface{}, error) {
+	return tokenRepository.Insert(ctx, token)
 }
 
 // GetByToken gets a token by its value

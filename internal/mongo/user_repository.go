@@ -14,32 +14,21 @@ import (
 
 // UserRepository is a mongo specific user repository
 type UserRepository struct {
-	dbName         string
-	collectionName string
-	client         *mongo.Client
+	*Repository
 }
 
 var _ repository.UserRepositoryer = &UserRepository{}
 
 // NewUserRepository creates a new mongo user repository
 func NewUserRepository(client *mongo.Client) *UserRepository {
-	return &UserRepository{client: client, dbName: "qd_authentication", collectionName: "user"}
-}
-
-func (userRepository *UserRepository) getCollection() *mongo.Collection {
-	return userRepository.client.Database(
-		userRepository.dbName,
-	).Collection(userRepository.collectionName)
-}
-
-// Create creates a new user in the mongo database
-func (userRepository *UserRepository) Create(ctx context.Context, user *model.User) (interface{}, error) {
-	collection := userRepository.getCollection()
-	result, err := collection.InsertOne(ctx, user)
-	if err != nil {
-		return nil, fmt.Errorf("Insertion error: %v", err)
+	return &UserRepository{
+		Repository: NewRepository(client, "qd_authentication", "user"),
 	}
-	return result.InsertedID, nil
+}
+
+// InsertUser creates a new user in the mongo database
+func (userRepository *UserRepository) InsertUser(ctx context.Context, user *model.User) (interface{}, error) {
+	return userRepository.Insert(ctx, user)
 }
 
 // GetByEmail gets a user by email from the mongo database

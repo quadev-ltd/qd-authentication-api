@@ -35,20 +35,6 @@ func (m *MockTokenRepositoryer) EXPECT() *MockTokenRepositoryerMockRecorder {
 	return m.recorder
 }
 
-// Create mocks base method.
-func (m *MockTokenRepositoryer) Create(ctx context.Context, token *model.Token) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, token)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Create indicates an expected call of Create.
-func (mr *MockTokenRepositoryerMockRecorder) Create(ctx, token interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockTokenRepositoryer)(nil).Create), ctx, token)
-}
-
 // GetByToken mocks base method.
 func (m *MockTokenRepositoryer) GetByToken(ctx context.Context, token string) (*model.Token, error) {
 	m.ctrl.T.Helper()
@@ -62,6 +48,21 @@ func (m *MockTokenRepositoryer) GetByToken(ctx context.Context, token string) (*
 func (mr *MockTokenRepositoryerMockRecorder) GetByToken(ctx, token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByToken", reflect.TypeOf((*MockTokenRepositoryer)(nil).GetByToken), ctx, token)
+}
+
+// InsertToken mocks base method.
+func (m *MockTokenRepositoryer) InsertToken(ctx context.Context, token *model.Token) (interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InsertToken", ctx, token)
+	ret0, _ := ret[0].(interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InsertToken indicates an expected call of InsertToken.
+func (mr *MockTokenRepositoryerMockRecorder) InsertToken(ctx, token interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertToken", reflect.TypeOf((*MockTokenRepositoryer)(nil).InsertToken), ctx, token)
 }
 
 // Remove mocks base method.

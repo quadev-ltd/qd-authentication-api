@@ -28,7 +28,7 @@ func newUser() *model.User {
 }
 
 func TestMongoUserRepository(test *testing.T) {
-	test.Run("Create", func(test *testing.T) {
+	test.Run("Insert", func(test *testing.T) {
 		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
@@ -37,8 +37,8 @@ func TestMongoUserRepository(test *testing.T) {
 
 		user := newUser()
 
-		// Test Create
-		insertedID, err := repo.Create(context.Background(), user)
+		// Test Insert
+		insertedID, err := repo.InsertUser(context.Background(), user)
 		assert.NoError(test, err)
 		id, ok := insertedID.(primitive.ObjectID)
 		assert.True(test, ok)
@@ -72,8 +72,8 @@ func TestMongoUserRepository(test *testing.T) {
 
 		user := newUser()
 
-		// Test Create
-		insertedID, err := repo.Create(context.Background(), user)
+		// Test Insert
+		insertedID, err := repo.InsertUser(context.Background(), user)
 		assert.NoError(test, err)
 		id, ok := insertedID.(primitive.ObjectID)
 		assert.True(test, ok)
@@ -92,7 +92,7 @@ func TestMongoUserRepository(test *testing.T) {
 		repo := NewUserRepository(client)
 		user := newUser()
 
-		insertedID, err := repo.Create(context.Background(), user)
+		insertedID, err := repo.InsertUser(context.Background(), user)
 		assert.NoError(test, err)
 		id, ok := insertedID.(primitive.ObjectID)
 		assert.True(test, ok)

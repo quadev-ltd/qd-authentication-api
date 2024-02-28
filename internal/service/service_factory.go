@@ -26,7 +26,7 @@ func (serviceFactory *Factory) CreateService(
 	config *config.Config,
 	centralConfig *commonConfig.Config,
 ) (Servicer, error) {
-	repository, err := (&mongo.RepositoryFactory{}).CreateRepository(config)
+	repository, err := (&mongo.RepositoryStoreFactory{}).CreateRepositoryStore(config)
 	if err != nil {
 		log.Error().Msg(fmt.Sprintf(
 			"Failed to create repository. connectionrstring: %s environment: %s",

@@ -108,7 +108,7 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	}
 
 	// Create the user in the repository
-	insertedID, err := service.userRepository.Create(ctx, user)
+	insertedID, err := service.userRepository.InsertUser(ctx, user)
 	if err != nil {
 		return fmt.Errorf("Error creating user: %v", err)
 	}
@@ -130,7 +130,7 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 		Type:      model.EmailVerificationTokenType,
 		IssuedAt:  time.Now(),
 	}
-	err = service.tokenRepository.Create(ctx, emailVerificationToken)
+	_, err = service.tokenRepository.InsertToken(ctx, emailVerificationToken)
 	if err != nil {
 		return fmt.Errorf("Error inserting verification token in DB: %v", err)
 	}
@@ -327,7 +327,7 @@ func (service *AuthenticationService) ResendEmailVerification(
 		Type:      model.EmailVerificationTokenType,
 		UserID:    user.ID,
 	}
-	err = service.tokenRepository.Create(ctx, emailVerificationToken)
+	_, err = service.tokenRepository.InsertToken(ctx, emailVerificationToken)
 	if err != nil {
 		return fmt.Errorf("Error inserting the verification token in db: %v", err)
 	}

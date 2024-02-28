@@ -11,14 +11,14 @@ import (
 )
 
 // RepositoryFactory is the implementation of the repository factory
-type RepositoryFactory struct{}
+type RepositoryStoreFactory struct{}
 
-var _ repository.Factoryer = &RepositoryFactory{}
+var _ repository.RepositoryStoreFactoryer = &RepositoryStoreFactory{}
 
-// CreateRepository creates a repository
-func (repositoryFactory *RepositoryFactory) CreateRepository(
+// CreateRepositoryStore creates a repository
+func (repositoryFactory *RepositoryStoreFactory) CreateRepositoryStore(
 	config *config.Config,
-) (repository.Repositoryer, error) {
+) (repository.RepositoryStorer, error) {
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(config.AuthenticationDB.URI))
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (repositoryFactory *RepositoryFactory) CreateRepository(
 	userRepository := NewUserRepository(client)
 	tokenRepository := NewTokenRepository(client)
 
-	return &Repository{
+	return &RepositoryStore{
 		client:          client,
 		userRepository:  userRepository,
 		tokenRepository: tokenRepository,
