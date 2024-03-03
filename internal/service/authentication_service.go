@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	jwtCommon "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -40,7 +41,7 @@ type AuthenticationService struct {
 	emailService     EmailServicer
 	userRepository   repository.UserRepositoryer
 	tokenRepository  repository.TokenRepositoryer
-	jwtAuthenticator jwt.Signerer
+	jwtAuthenticator jwt.Managerer
 }
 
 var _ AuthenticationServicer = &AuthenticationService{}
@@ -50,7 +51,7 @@ func NewAuthenticationService(
 	emailService EmailServicer,
 	userRepository repository.UserRepositoryer,
 	tokenRepository repository.TokenRepositoryer,
-	jwtAuthenticator jwt.Signerer,
+	jwtAuthenticator jwt.Managerer,
 ) AuthenticationServicer {
 	return &AuthenticationService{
 		emailService,
@@ -62,8 +63,6 @@ func NewAuthenticationService(
 
 // GetPublicKey ctx context.Contextgets the public key
 func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string, error) {
-	logger := log.GetLoggerFromContext(ctx)
-	logger.Info("Retrieving public key")
 	return service.jwtAuthenticator.GetPublicKey(ctx)
 }
 
@@ -71,7 +70,10 @@ func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string,
 
 // Register registers a new user
 func (service *AuthenticationService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
-	logger := log.GetLoggerFromContext(ctx)
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return err
+	}
 	existingUser, err := service.userRepository.GetByEmail(ctx, email)
 	if err != nil {
 		return fmt.Errorf("Error getting user by email: %v", err)
@@ -126,7 +128,7 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 		UserID:    userID,
 		Token:     verificationToken,
 		ExpiresAt: verificationTokentExpiryDate,
-		Type:      model.EmailVerificationTokenType,
+		Type:      jwtCommon.EmailVerificationTokenType,
 		IssuedAt:  time.Now(),
 	}
 	_, err = service.tokenRepository.InsertToken(ctx, emailVerificationToken)
@@ -148,7 +150,7 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 	if err != nil {
 		return &Error{Message: "Invalid verification token"}
 	}
-	if token.Type != model.EmailVerificationTokenType {
+	if token.Type != jwtCommon.EmailVerificationTokenType {
 		return &Error{Message: "Wrong type of token"}
 	}
 	current := time.Now()
@@ -177,10 +179,13 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 	return nil
 }
 
-func (service *AuthenticationService) createToken(ctx context.Context, email string, expiry time.Duration) (*string, *time.Time, error) {
-	logger := log.GetLoggerFromContext(ctx)
+func (service *AuthenticationService) createToken(ctx context.Context, email string, expiry time.Duration, tokenType jwtCommon.TokenType) (*string, *time.Time, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 	tokenExpiryDate := time.Now().Add(expiry)
-	tokenString, err := service.jwtAuthenticator.SignToken(email, tokenExpiryDate)
+	tokenString, err := service.jwtAuthenticator.SignToken(email, tokenExpiryDate, tokenType)
 	if err != nil {
 		logger.Error(err, "Error creating jwt token")
 		return nil, nil, &Error{
@@ -197,7 +202,7 @@ func (service *AuthenticationService) createTokenResponse(
 ) (*model.AuthTokensResponse, error) {
 	authTokenString,
 		authenticationTokenExpiration,
-		err := service.createToken(ctx, user.Email, AuthenticationTokenExpiry)
+		err := service.createToken(ctx, user.Email, AuthenticationTokenExpiry, jwtCommon.AccessTokenType)
 	if err != nil {
 		return nil, &Error{
 			Message: "Error creating authentication token",
@@ -206,7 +211,7 @@ func (service *AuthenticationService) createTokenResponse(
 
 	refreshTokenString,
 		refreshTokenExpiration,
-		err := service.createToken(ctx, user.Email, RefreshTokenExpiry)
+		err := service.createToken(ctx, user.Email, RefreshTokenExpiry, jwtCommon.RefreshTokenType)
 	if err != nil {
 		return nil, &Error{
 			Message: "Error creating refresh token",
@@ -218,7 +223,7 @@ func (service *AuthenticationService) createTokenResponse(
 		IssuedAt:  time.Now(),
 		ExpiresAt: *refreshTokenExpiration,
 		Revoked:   false,
-		Type:      model.RefreshTokenType,
+		Type:      jwtCommon.RefreshTokenType,
 		UserID:    user.ID,
 	}
 
@@ -246,7 +251,10 @@ func (service *AuthenticationService) createTokenResponse(
 
 // Authenticate authenticates a user and provides a token
 func (service *AuthenticationService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	user, resultError := service.userRepository.GetByEmail(ctx, email)
 	if resultError != nil {
 		logger.Error(resultError, "Error getting user by email")
@@ -308,7 +316,7 @@ func (service *AuthenticationService) ResendEmailVerification(
 		IssuedAt:  time.Now(),
 		ExpiresAt: time.Now(),
 		Revoked:   false,
-		Type:      model.EmailVerificationTokenType,
+		Type:      jwtCommon.EmailVerificationTokenType,
 		UserID:    user.ID,
 	}
 	_, err = service.tokenRepository.InsertToken(ctx, emailVerificationToken)
@@ -330,7 +338,10 @@ func (service *AuthenticationService) ResendEmailVerification(
 
 // RefreshToken refreshes an authentication token using a refresh token
 func (service *AuthenticationService) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	// Verify the refresh token
 	token, err := service.jwtAuthenticator.VerifyToken(refreshTokenString)
 	if err != nil {

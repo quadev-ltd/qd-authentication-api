@@ -25,7 +25,7 @@ func main() {
 	// You can now use the client to call your gRPC methods
 	ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), "1234567890")
 
-	// // // // Registration
+	// // // Registration
 
 	// registerResponse, err := client.Register(ctx, &pb_authentication.RegisterRequest{
 	// 	Email:       "gusfran17@gmail.com",
@@ -45,13 +45,14 @@ func main() {
 
 	// // Authentication
 
-	authenticateResponse, err := client.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
-		Email:    "gusfran17@gmail.com",
-		Password: "Password123!",
+	refreshTokenResponse, err := client.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+		Token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imd1c2ZyYW4xN0BnbWFpbC5jb20iLCJleHBpcnkiOjE3MTAwODE1MjUsImlhdCI6MTcwOTQ3NjcyNSwibm9uY2UiOiI0YWJiMGNlMy01ODY5LTQ5MTMtYWM5Yi00ZjQwMzg0MmEzN2MifQ.vZx7SdPNBzL64DwmwwOdwagbYuwKqYZD0yD5kibf2OLaMVKZuL_D-qYWyp-7MoJSzwjG3s_RhCAeRFYBQYEQwFKDVAt_NogLuwuPO-xlCaegsCMETq_v1t0uEOnsFgVnK21w0zq8yCXpT8jsi7MSTwPXOBh7TCR_ICsu-ED86coL47-gTdzgir711_JEqq7IdC_B5mpbAe5bTSsB0wArIpseRUunDM41gd6W8F5hdPNrviDgmUsOYm3PrG4SuPYmRlk3rrqSh1-xmhGmfe4J2BjqNvgleIrET7n7CP0eChn75t4_gSoWMitDlfE_KBKsX-f6YZWKDfkWrwd0Vvnf9g",
 	})
 	if err != nil {
-		log.Fatalf("Authenticate failed: %v", err)
+		log.Fatalf("Refresh token failed: %v", err)
 	}
 	// Handle the response
-	log.Printf("Authentication response:\n\n\n\n%v", authenticateResponse)
+	log.Printf("Refresh token response:\n\n\n\n%v", refreshTokenResponse)
+
+	// //
 }
