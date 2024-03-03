@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// NewToken creates a new token
 func NewToken(token string) *Token {
 	return &Token{
 		UserID:    primitive.NewObjectID(),
@@ -17,6 +18,7 @@ func NewToken(token string) *Token {
 	}
 }
 
+// NewUser creates a new user
 func NewUser() *User {
 	return &User{
 		Email:            "test@example.com",

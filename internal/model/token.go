@@ -27,7 +27,7 @@ type Token struct {
 	UserID    primitive.ObjectID `bson:"userId"` // Reference to User
 }
 
-// ValidateUser validates the userproperties
+// ValidateToken validates the userproperties
 func ValidateToken(user *Token) error {
 	validate := validator.New()
 	error := validate.Struct(user)
