@@ -6,22 +6,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/mongo/mock"
 )
-
-func newToken() *model.Token {
-	return &model.Token{
-		UserID:    primitive.NewObjectID(),
-		Token:     "test_token",
-		IssuedAt:  time.Now(),
-		ExpiresAt: time.Now().Add(2 * time.Hour),
-		Type:      model.EmailVerificationTokenType,
-		Revoked:   false,
-	}
-}
 
 func TestMongoTokenRepository(test *testing.T) {
 	test.Run("Create", func(test *testing.T) {
@@ -31,7 +19,7 @@ func TestMongoTokenRepository(test *testing.T) {
 
 		repo := NewTokenRepository(client)
 
-		token := newToken()
+		token := model.NewToken("test_token")
 
 		// Test Create
 		_, err = repo.InsertToken(context.Background(), token)
@@ -62,7 +50,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 		repo := NewTokenRepository(client)
-		token := newToken()
+		token := model.NewToken("test_token")
 
 		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)
@@ -92,7 +80,7 @@ func TestMongoTokenRepository(test *testing.T) {
 
 		repo := NewTokenRepository(client)
 
-		token := newToken()
+		token := model.NewToken("test_token")
 
 		// Test Update
 		error = repo.Update(context.Background(), token)
@@ -105,7 +93,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 		repo := NewTokenRepository(client)
-		token := newToken()
+		token := model.NewToken("test_token")
 
 		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)

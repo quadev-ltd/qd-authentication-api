@@ -3,6 +3,7 @@ package util
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,7 +25,13 @@ func GenerateVerificationToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	token := base64.URLEncoding.EncodeToString(b)
+
+	date := time.Now().Format("20060102")
+
+	dateBytes := []byte(date)
+	tokenBytes := append(dateBytes, b...)
+
+	token := base64.URLEncoding.EncodeToString(tokenBytes)
 	return token, nil
 }
 

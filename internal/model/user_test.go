@@ -9,36 +9,22 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func newUser() *User {
-	return &User{
-		Email:            "test@example.com",
-		PasswordHash:     "hash",
-		PasswordSalt:     "salt",
-		FirstName:        "Test",
-		LastName:         "User",
-		DateOfBirth:      time.Now(),
-		RegistrationDate: time.Now(),
-		LastLoginDate:    time.Now(),
-		AccountStatus:    AccountStatusVerified,
-	}
-}
-
 func TestValidateUser(t *testing.T) {
 	t.Run("Valid_User", func(t *testing.T) {
 		// Valid user
-		user := newUser()
+		user := NewUser()
 		err := ValidateUser(user)
 		assert.Nil(t, err)
 	})
 	t.Run("Valid_User_With_No_Login_Date", func(t *testing.T) {
 		// Valid user
-		user := newUser()
+		user := NewUser()
 		user.LastLoginDate = time.Time{}
 		err := ValidateUser(user)
 		assert.Nil(t, err)
 	})
 	t.Run("Invalid_Email", func(t *testing.T) {
-		user := newUser()
+		user := NewUser()
 		user.Email = "test-example.com"
 		resultError := ValidateUser(user)
 		assert.NotNil(t, resultError)
@@ -47,7 +33,7 @@ func TestValidateUser(t *testing.T) {
 		assert.Len(t, errors, 1)
 	})
 	t.Run("Invalid_User_Names", func(t *testing.T) {
-		user := newUser()
+		user := NewUser()
 		user.FirstName = "F"
 		user.LastName = "L"
 		err := ValidateUser(user)
@@ -58,7 +44,7 @@ func TestValidateUser(t *testing.T) {
 		assert.Len(t, errors, 2)
 	})
 	t.Run("Missing_Birth_Date", func(t *testing.T) {
-		user := newUser()
+		user := NewUser()
 		user.DateOfBirth = time.Time{}
 		user.RegistrationDate = time.Time{}
 		err := ValidateUser(user)
@@ -69,7 +55,7 @@ func TestValidateUser(t *testing.T) {
 		assert.Len(t, errors, 2)
 	})
 	t.Run("Birth_Date_In_Future", func(t *testing.T) {
-		user := newUser()
+		user := NewUser()
 		user.DateOfBirth = time.Now().Add(24 * time.Hour)
 		resultError := ValidateUser(user)
 		assert.NotNil(t, resultError)

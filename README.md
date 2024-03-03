@@ -48,10 +48,7 @@ GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 <!--
     Refactor register (devide into parts)
     Change function to get log from context to return an error
-    Move GRPC service to grpc folder
     ERROR LOGGING
-    Validte tokens model
-    Make sure tokens are unique
 
     Add unit tests
         JWTAuthenticator

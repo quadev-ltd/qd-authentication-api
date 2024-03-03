@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -24,4 +25,14 @@ type Token struct {
 	Revoked   bool               `bson:"revoked"`
 	Type      TokenType          `bson:"type"`
 	UserID    primitive.ObjectID `bson:"userId"` // Reference to User
+}
+
+// ValidateUser validates the userproperties
+func ValidateToken(user *Token) error {
+	validate := validator.New()
+	error := validate.Struct(user)
+	if error != nil {
+		return error
+	}
+	return nil
 }

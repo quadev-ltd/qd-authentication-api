@@ -35,31 +35,6 @@ var (
 	newRefreshTokenValue = "test_token_example"
 )
 
-func newUser() *model.User {
-	return &model.User{
-		Email:            "test@example.com",
-		PasswordHash:     "hash",
-		PasswordSalt:     "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI=",
-		FirstName:        "Test",
-		LastName:         "User",
-		DateOfBirth:      time.Now(),
-		RegistrationDate: time.Now(),
-		LastLoginDate:    time.Now(),
-		AccountStatus:    model.AccountStatusUnverified,
-	}
-}
-
-func newToken() *model.Token {
-	return &model.Token{
-		Token:     newRefreshTokenValue,
-		IssuedAt:  time.Now(),
-		ExpiresAt: time.Now().Add(2 * time.Hour),
-		Revoked:   false,
-		Type:      model.EmailVerificationTokenType,
-		UserID:    primitive.NewObjectID(),
-	}
-}
-
 // TODO try to use suite.Suite
 // type AuthenticationServiceTestSuite struct {
 // 	suite.Suite
@@ -405,8 +380,8 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testUser := newUser()
-		testToken := newToken()
+		testUser := model.NewUser()
+		testToken := model.NewToken(newRefreshTokenValue)
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
 		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
@@ -429,7 +404,7 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		expiredToken := newToken()
+		expiredToken := model.NewToken(newRefreshTokenValue)
 		expiredToken.ExpiresAt = time.Now().Add(-1 * time.Second)
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), expiredToken.Token).Return(expiredToken, nil)
@@ -453,7 +428,7 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testToken := newToken()
+		testToken := model.NewToken(newRefreshTokenValue)
 		mockedError := errors.New("Test error")
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(nil, mockedError)
@@ -475,7 +450,7 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testToken := newToken()
+		testToken := model.NewToken(newRefreshTokenValue)
 		testToken.Type = model.RefreshTokenType
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
@@ -498,7 +473,7 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testToken := newToken()
+		testToken := model.NewToken(newRefreshTokenValue)
 		mockError := errors.New("test-error")
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
@@ -522,8 +497,8 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testToken := newToken()
-		testUser := newUser()
+		testToken := model.NewToken(newRefreshTokenValue)
+		testUser := model.NewUser()
 		testUser.AccountStatus = model.AccountStatusVerified
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
@@ -547,8 +522,9 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testToken := newToken()
-		testUser := newUser()
+		testToken := model.NewToken(newRefreshTokenValue)
+		testUser := model.NewUser()
+		testUser.Email = "test@user.com"
 		mockError := errors.New("update error")
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
@@ -574,8 +550,8 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testToken := newToken()
-		testUser := newUser()
+		testToken := model.NewToken(newRefreshTokenValue)
+		testUser := model.NewUser()
 		mockError := errors.New("update error")
 
 		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
@@ -657,7 +633,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		email := "test@example.com"
 
-		user := newUser()
+		user := model.NewUser()
 		invalidPassword := "invalidpassword"
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
@@ -682,7 +658,7 @@ func TestAuthenticationService(test *testing.T) {
 			authenticationService := createAuthenticationService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
-		user := newUser()
+		user := model.NewUser()
 		user.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 		error := errors.New("some error")
@@ -720,7 +696,7 @@ func TestAuthenticationService(test *testing.T) {
 			authenticationService := createAuthenticationService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
-		user := newUser()
+		user := model.NewUser()
 		user.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 		exampleError := errors.New("some error")
@@ -751,7 +727,7 @@ func TestAuthenticationService(test *testing.T) {
 			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
 
-		user := newUser()
+		user := model.NewUser()
 		user.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 
@@ -886,7 +862,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		user := newUser()
+		user := model.NewUser()
 		user.AccountStatus = model.AccountStatusVerified
 
 		mockUserRepo,
@@ -917,7 +893,7 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testUser := newUser()
+		testUser := model.NewUser()
 		mockedError := errors.New("Create error")
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
@@ -941,7 +917,7 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testUser := newUser()
+		testUser := model.NewUser()
 		mockedError := errors.New("Email service error")
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
@@ -971,7 +947,7 @@ func TestAuthenticationService(test *testing.T) {
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testUser := newUser()
+		testUser := model.NewUser()
 
 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
@@ -1098,7 +1074,7 @@ func TestAuthenticationService(test *testing.T) {
 		token := "test_token"
 		jwtToken := &jwt.Token{}
 		email := "email@example.com"
-		user := newUser()
+		user := model.NewUser()
 		exampleError := errors.New("Custom error: Token not listed")
 
 		mockJWTSigner.EXPECT().VerifyToken(token).Return(jwtToken, nil)
@@ -1133,7 +1109,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		jwtToken := &jwt.Token{}
 		email := "email@example.com"
-		user := newUser()
+		user := model.NewUser()
 		exampleError := errors.New("new error")
 
 		mockJWTSigner.EXPECT().VerifyToken(refreshToken).Return(jwtToken, nil)
@@ -1170,7 +1146,7 @@ func TestAuthenticationService(test *testing.T) {
 		token := "test_token"
 		jwtToken := &jwt.Token{}
 		email := "email@example.com"
-		user := newUser()
+		user := model.NewUser()
 
 		mockJWTSigner.EXPECT().VerifyToken(refreshToken).Return(jwtToken, nil)
 		mockJWTSigner.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)

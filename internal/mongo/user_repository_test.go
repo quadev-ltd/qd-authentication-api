@@ -3,7 +3,6 @@ package mongo
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -11,20 +10,6 @@ import (
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/mongo/mock"
 )
-
-func newUser() *model.User {
-	return &model.User{
-		Email:            "test@example.com",
-		PasswordHash:     "hash",
-		PasswordSalt:     "salt",
-		FirstName:        "Test",
-		LastName:         "User",
-		DateOfBirth:      time.Now(),
-		RegistrationDate: time.Now(),
-		LastLoginDate:    time.Now(),
-		AccountStatus:    model.AccountStatusVerified,
-	}
-}
 
 func TestMongoUserRepository(test *testing.T) {
 	test.Run("Insert", func(test *testing.T) {
@@ -34,7 +19,7 @@ func TestMongoUserRepository(test *testing.T) {
 
 		repo := NewUserRepository(client)
 
-		user := newUser()
+		user := model.NewUser()
 
 		// Test Insert
 		insertedID, err := repo.InsertUser(context.Background(), user)
@@ -69,7 +54,7 @@ func TestMongoUserRepository(test *testing.T) {
 
 		repo := NewUserRepository(client)
 
-		user := newUser()
+		user := model.NewUser()
 
 		// Test Insert
 		insertedID, err := repo.InsertUser(context.Background(), user)
@@ -89,7 +74,7 @@ func TestMongoUserRepository(test *testing.T) {
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 		repo := NewUserRepository(client)
-		user := newUser()
+		user := model.NewUser()
 
 		insertedID, err := repo.InsertUser(context.Background(), user)
 		assert.NoError(test, err)
@@ -114,7 +99,7 @@ func TestMongoUserRepository(test *testing.T) {
 
 		repo := NewUserRepository(client)
 
-		user := newUser()
+		user := model.NewUser()
 
 		// Test Update
 		error = repo.Update(context.Background(), user)
