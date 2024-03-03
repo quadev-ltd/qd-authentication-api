@@ -44,7 +44,7 @@ func (serviceFactory *Factory) CreateService(
 		TLSEnabled:                centralConfig.TLSEnabled,
 	}
 	emailService := NewEmailService(emailServiceConfig)
-	jwtAuthenticator, err := jwt.NewSigner("./keys")
+	jwtAuthenticator, err := jwt.NewManager("./keys")
 	if err != nil {
 		return nil, err
 	}

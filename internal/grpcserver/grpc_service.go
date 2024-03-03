@@ -39,9 +39,9 @@ func (service AuthenticationServiceServer) GetPublicKey(
 	ctx context.Context,
 	request *pb_authentication.GetPublicKeyRequest,
 ) (*pb_authentication.GetPublicKeyResponse, error) {
-	logger := commonLogger.GetLoggerFromContext(ctx)
-	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 	publicKey, err := service.authenticationService.GetPublicKey(ctx)
 	if err != nil {
@@ -59,9 +59,9 @@ func (service AuthenticationServiceServer) Register(
 	ctx context.Context,
 	request *pb_authentication.RegisterRequest,
 ) (*pb_authentication.RegisterResponse, error) {
-	logger := commonLogger.GetLoggerFromContext(ctx)
-	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	var dateOfBirth *time.Time
@@ -116,9 +116,9 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
 ) (*pb_authentication.VerifyEmailResponse, error) {
-	logger := commonLogger.GetLoggerFromContext(ctx)
-	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 	verifyEmailError := service.authenticationService.VerifyEmail(ctx, request.VerificationToken)
 	if verifyEmailError == nil {
@@ -142,9 +142,9 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
 	request *pb_authentication.ResendEmailVerificationRequest,
 ) (*pb_authentication.ResendEmailVerificationResponse, error) {
-	logger := commonLogger.GetLoggerFromContext(ctx)
-	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if !resendEmailVerificationLimiter.Allow() {
 		logger.Warn("Rate limit exceeded")
@@ -182,9 +182,9 @@ func (service AuthenticationServiceServer) Authenticate(
 	ctx context.Context,
 	request *pb_authentication.AuthenticateRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
-	logger := commonLogger.GetLoggerFromContext(ctx)
-	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 	authTokens, err := service.authenticationService.Authenticate(ctx, request.Email, request.Password)
 	if err != nil {
@@ -224,14 +224,14 @@ func (service AuthenticationServiceServer) RefreshToken(
 	ctx context.Context,
 	request *pb_authentication.RefreshTokenRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
-	logger := commonLogger.GetLoggerFromContext(ctx)
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	if !refreshTokenLimiter.Allow() {
 		logger.Warn("Rate limit exceeded")
 		return nil,
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
-	}
-	if logger == nil {
-		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
 	authTokens, err := service.authenticationService.RefreshToken(ctx, request.Token)
 	if err != nil {

@@ -55,7 +55,7 @@ GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
         authentication_service_test.go
         GetPublicKey journey
         GenerateKeyFiles
-    Add token refresh endpooint
+    Add token refresh endpoint
     Add forgot password
     Add change password
     Add reset password
