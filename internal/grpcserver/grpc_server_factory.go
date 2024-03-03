@@ -44,7 +44,7 @@ func (grpcServerFactory *Factory) Create(
 	}
 
 	// Create a gRPC server with a registered authentication service
-	authenticationServiceGRPCServer := service.NewAuthenticationServiceServer(
+	authenticationServiceGRPCServer := NewAuthenticationServiceServer(
 		authenticationService,
 	)
 	grpcServer := grpc.NewServer(

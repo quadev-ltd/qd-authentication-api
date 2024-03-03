@@ -2,34 +2,39 @@ package mongo
 
 import (
 	"context"
+	"fmt"
+
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"qd-authentication-api/internal/repository"
 )
 
-// Clienter specific client interface
-type Clienter interface {
-	Connect(ctx context.Context) error
-	Disconnect(ctx context.Context) error
-}
-
-// Repository is a mongo specific repository
+// Repository is a mongo specific token repository
 type Repository struct {
-	userRepository repository.UserRepositoryer
-	client         Clienter
+	dbName         string
+	collectionName string
+	client         *mongo.Client
 }
 
 var _ repository.Repositoryer = &Repository{}
 
-// GetUserRepository returns the user repository
-func (mongoRepository *Repository) GetUserRepository() repository.UserRepositoryer {
-	return mongoRepository.userRepository
+// NewRepository creates a new mongo token repository
+func NewRepository(client *mongo.Client, dbName string, collectionName string) *Repository {
+	return &Repository{dbName, collectionName, client}
 }
 
-// Close closes the mongo repository
-func (mongoRepository *Repository) Close() error {
-	if mongoRepository.client != nil {
-		return mongoRepository.client.Disconnect(context.Background())
+func (repository *Repository) getCollection() *mongo.Collection {
+	return repository.client.Database(
+		repository.dbName,
+	).Collection(repository.collectionName)
+}
+
+// Insert creates a new token in the mongo database
+func (repository *Repository) Insert(ctx context.Context, document interface{}) (interface{}, error) {
+	collection := repository.getCollection()
+	result, err := collection.InsertOne(ctx, document)
+	if err != nil {
+		return nil, fmt.Errorf("Insertion error: %v", err)
 	}
-	return &repository.Error{
-		Message: "Repository client is nil",
-	}
+	return result.InsertedID, nil
 }

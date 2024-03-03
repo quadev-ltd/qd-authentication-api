@@ -46,6 +46,9 @@ GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 ##  TODOs
 <!-- TODOs -->
 <!--
+    Refactor register (devide into parts)
+    Change function to get log from context to return an error
+    ERROR LOGGING
 
     Add unit tests
         JWTAuthenticator

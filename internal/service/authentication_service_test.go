@@ -12,10 +12,11 @@ import (
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	jwtSignerMock "qd-authentication-api/internal/jwt/mock"
 	"qd-authentication-api/internal/model"
-	userRepositoryMock "qd-authentication-api/internal/repository/mock"
+	repositoryMock "qd-authentication-api/internal/repository/mock"
 	serviceMock "qd-authentication-api/internal/service/mock"
 )
 
@@ -28,41 +29,17 @@ const (
 )
 
 var (
-	testDateOfBirth = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
-	token           = "token"
-	refreshToken    = "refreshToken"
+	testDateOfBirth      = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
+	token                = "token"
+	refreshToken         = "refreshToken"
+	newRefreshTokenValue = "test_token_example"
 )
-
-func newUser() *model.User {
-	RefreshTokens := []model.RefreshToken{
-		{
-			Token:     refreshToken,
-			IssuedAt:  time.Now(),
-			ExpiresAt: time.Now().Add(24 * time.Hour),
-			Revoked:   false,
-		},
-	}
-	return &model.User{
-		Email:                       "test@example.com",
-		VerificationToken:           "token",
-		VerificationTokenExpiryDate: time.Now().Add(10 * time.Minute),
-		PasswordHash:                "hash",
-		PasswordSalt:                "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI=",
-		FirstName:                   "Test",
-		LastName:                    "User",
-		DateOfBirth:                 time.Now(),
-		RegistrationDate:            time.Now(),
-		LastLoginDate:               time.Now(),
-		AccountStatus:               model.AccountStatusUnverified,
-		RefreshTokens:               RefreshTokens,
-	}
-}
 
 // TODO try to use suite.Suite
 // type AuthenticationServiceTestSuite struct {
 // 	suite.Suite
 // 	controller            *gomock.Controller
-// 	mockRepo              *userRepositoryMock.MockUserRepositoryer
+// 	mockRepo              *repositoryMock.MockUserRepositoryer
 // 	mockEmail             *serviceMock.MockEmailServicer
 // 	mockJWTSigner  *jwtSignerMock.MockJWTSignerer
 // 	authenticationService AuthenticationServicer
@@ -70,7 +47,7 @@ func newUser() *model.User {
 
 // func (suite *AuthenticationServiceTestSuite) SetupTest() {
 // 	suite.controller = gomock.NewController(suite.T())
-// 	suite.mockRepo = userRepositoryMock.NewMockUserRepositoryer(suite.controller)
+// 	suite.mockRepo = repositoryMock.NewMockUserRepositoryer(suite.controller)
 // 	suite.mockEmail = serviceMock.NewMockEmailServicer(suite.controller)
 // 	suite.mockJWTSigner = serviceMock.NewMockJWTAthenticatorer(suite.controller)
 // 	suite.authenticationService = NewAuthenticationService(suite.mockEmail, suite.mockRepo, suite.mockJWTSigner)
@@ -98,8 +75,8 @@ func newUser() *model.User {
 // 			name:  "Register_Success",
 // 			email: testEmail,
 // 			setup: func() {
-// 				suite.mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-// 				suite.mockRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+// 				suite.mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+// 				suite.mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(nil)
 // 				suite.mockEmail.EXPECT().SendVerificationMail(gomock.Any(), testEmail, testFirstName, gomock.Any()).Return(nil)
 // 			},
 // 		},
@@ -107,7 +84,7 @@ func newUser() *model.User {
 // 			name:  "Register_Email_Uniqueness",
 // 			email: testEmail,
 // 			setup: func() {
-// 				suite.mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(&model.User{}, nil)
+// 				suite.mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(&model.User{}, nil)
 // 			},
 // 			err: &model.EmailInUseError{Email: testEmail},
 // 		},
@@ -115,7 +92,7 @@ func newUser() *model.User {
 // 			name:  "Register_Invalid_Email",
 // 			email: invalidEmail,
 // 			setup: func() {
-// 				suite.mockRepo.EXPECT().GetByEmail(gomock.Any(), invalidEmail).Return(nil, nil)
+// 				suite.mockUserRepo.EXPECT().GetByEmail(gomock.Any(), invalidEmail).Return(nil, nil)
 // 			},
 // 			err: errors.New("Key: 'User.Email' Error:Field validation for 'Email' failed on the 'email' tag"),
 // 		},
@@ -136,17 +113,24 @@ func newUser() *model.User {
 // }
 
 func createAuthenticationService(controller *gomock.Controller) (
-	*userRepositoryMock.MockUserRepositoryer,
+	*repositoryMock.MockUserRepositoryer,
+	*repositoryMock.MockTokenRepositoryer,
 	serviceMock.MockEmailServicer,
 	jwtSignerMock.MockJWTSignerer,
 	AuthenticationServicer,
 ) {
-	mockRepo := userRepositoryMock.NewMockUserRepositoryer(controller)
+	mockUserRepo := repositoryMock.NewMockUserRepositoryer(controller)
+	mockTokenRepo := repositoryMock.NewMockTokenRepositoryer(controller)
 	mockEmail := serviceMock.NewMockEmailServicer(controller)
 	mockJWTSigner := jwtSignerMock.NewMockJWTSignerer(controller)
-	authenticationService := NewAuthenticationService(mockEmail, mockRepo, mockJWTSigner)
+	authenticationService := NewAuthenticationService(
+		mockEmail,
+		mockUserRepo,
+		mockTokenRepo,
+		mockJWTSigner,
+	)
 
-	return mockRepo, *mockEmail, *mockJWTSigner, authenticationService
+	return mockUserRepo, mockTokenRepo, *mockEmail, *mockJWTSigner, authenticationService
 }
 
 func TestAuthenticationService(test *testing.T) {
@@ -155,13 +139,15 @@ func TestAuthenticationService(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			mockEmail,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-		mockRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(gomock.Any(), testEmail, testFirstName, gomock.Any()).Return(nil)
 
 		// Test successful registration
@@ -180,12 +166,13 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(&model.User{}, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(&model.User{}, nil)
 
 		err := authenticationService.Register(
 			context.Background(),
@@ -203,13 +190,14 @@ func TestAuthenticationService(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 		invalidEmail := "invalid-email"
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), invalidEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), invalidEmail).Return(nil, nil)
 
 		err := authenticationService.Register(
 			context.Background(),
@@ -230,13 +218,14 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 		invalidDateOfBirth := time.Time{}
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
 
 		err := authenticationService.Register(
 			context.Background(),
@@ -257,13 +246,14 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 		// Test successful registration
@@ -279,20 +269,82 @@ func TestAuthenticationService(test *testing.T) {
 		assert.IsType(test, &NoComplexPasswordError{}, error)
 		assert.Equal(test, "Password does not meet complexity requirements", error.Error())
 	})
+
+	test.Run("Register_Fail_Parsing_Inserted_ID_error", func(test *testing.T) {
+		// Arrange
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		mockUserRepo,
+			_,
+			_,
+			_,
+			authenticationService := createAuthenticationService(controller)
+		logMock := loggerMock.NewMockLoggerer(controller)
+
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(nil, nil)
+
+		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
+		// Test successful registration
+		err := authenticationService.Register(
+			ctx,
+			testEmail,
+			testPassword,
+			testFirstName,
+			testLastName,
+			&testDateOfBirth,
+		)
+		assert.Error(test, err)
+		assert.Equal(test, "InsertedID is not of type primitive.ObjectID: <nil>", err.Error())
+	})
+
+	test.Run("Register_Inserting_Verifiction_Token", func(test *testing.T) {
+		// Arrange
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+		mockedError := errors.New("Test error")
+
+		mockUserRepo,
+			mockTokenRepository,
+			_,
+			_,
+			authenticationService := createAuthenticationService(controller)
+		logMock := loggerMock.NewMockLoggerer(controller)
+
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
+		mockTokenRepository.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, mockedError)
+
+		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
+		// Test successful registration
+		error := authenticationService.Register(
+			ctx,
+			testEmail,
+			testPassword,
+			testFirstName,
+			testLastName,
+			&testDateOfBirth,
+		)
+		assert.Error(test, error)
+		assert.Equal(test, "Error inserting verification token in DB: Test error", error.Error())
+	})
 	test.Run("Register_Send_email_error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 		mockedError := errors.New("Test error")
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepository,
 			mockEmail,
 			_,
 			authenticationService := createAuthenticationService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-		mockRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
+		mockTokenRepository.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(
 			gomock.Any(),
 			testEmail,
@@ -322,19 +374,22 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		verificationToken := "testToken"
-		testUser := newUser()
+		testUser := model.NewUser()
+		testToken := model.NewToken(newRefreshTokenValue)
 
-		mockRepo.EXPECT().GetByVerificationToken(gomock.Any(), verificationToken).Return(testUser, nil)
-		mockRepo.EXPECT().Update(gomock.Any(), testUser).Return(nil)
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mockUserRepo.EXPECT().Update(gomock.Any(), testUser).Return(nil)
+		mockTokenRepo.EXPECT().Remove(gomock.Any(), testToken.Token).Return(nil)
 
 		// Test successful verification
-		err := authenticationService.VerifyEmail(context.Background(), verificationToken)
+		err := authenticationService.VerifyEmail(context.Background(), testToken.Token)
 
 		assert.NoError(test, err)
 		assert.Equal(test, model.AccountStatusVerified, testUser.AccountStatus)
@@ -343,19 +398,18 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		_,
+			mockTokenRepo,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		expiredToken := "expired_token"
-		user := newUser()
-		user.VerificationToken = expiredToken
-		user.VerificationTokenExpiryDate = time.Now().Add(-VerificationTokenExpiry - time.Hour)
+		expiredToken := model.NewToken(newRefreshTokenValue)
+		expiredToken.ExpiresAt = time.Now().Add(-1 * time.Second)
 
-		mockRepo.EXPECT().GetByVerificationToken(gomock.Any(), expiredToken).Return(user, nil)
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), expiredToken.Token).Return(expiredToken, nil)
 
-		err := authenticationService.VerifyEmail(context.Background(), expiredToken)
+		err := authenticationService.VerifyEmail(context.Background(), expiredToken.Token)
 
 		assert.NotNil(test, err)
 		assert.Error(test, err)
@@ -368,67 +422,149 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		_,
+			mockTokenRepo,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		verificationToken := "testToken"
+		testToken := model.NewToken(newRefreshTokenValue)
 		mockedError := errors.New("Test error")
 
-		mockRepo.EXPECT().GetByVerificationToken(gomock.Any(), verificationToken).Return(nil, mockedError)
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(nil, mockedError)
 
 		// Test Verify
-		resultError := authenticationService.VerifyEmail(context.Background(), verificationToken)
+		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
 
 		assert.Error(test, resultError)
-		assert.Equal(test, "Error getting user by verification token: Test error", resultError.Error())
+		assert.Equal(test, "Invalid verification token", resultError.Error())
 	})
-	test.Run("Verify_Token_not_found_error", func(test *testing.T) {
+	test.Run("Verify_Token_Wrong_Type_Of_Token_Error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		_,
+			mockTokenRepo,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		verificationToken := "testToken"
+		testToken := model.NewToken(newRefreshTokenValue)
+		testToken.Type = model.RefreshTokenType
 
-		mockRepo.EXPECT().GetByVerificationToken(gomock.Any(), verificationToken).Return(nil, nil)
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
 
 		// Test Verify
-		resultError := authenticationService.VerifyEmail(context.Background(), verificationToken)
+		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
 
 		assert.Error(test, resultError)
 		assert.NotNil(test, resultError)
+		assert.Equal(test, "Wrong type of token", resultError.Error())
+	})
+	test.Run("Verify_Get_User_By_ID_Error", func(test *testing.T) {
+		// Arrange
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		mockUserRepo,
+			mockTokenRepo,
+			_,
+			_,
+			authenticationService := createAuthenticationService(controller)
+
+		testToken := model.NewToken(newRefreshTokenValue)
+		mockError := errors.New("test-error")
+
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(nil, mockError)
+
+		// Test Verify
+		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
+
+		assert.Error(test, resultError)
+		assert.NotNil(test, resultError)
+		assert.Equal(test, "Error getting user by ID: test-error", resultError.Error())
+	})
+	test.Run("Verify_Get_User_Already_Verified_Error", func(test *testing.T) {
+		// Arrange
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		mockUserRepo,
+			mockTokenRepo,
+			_,
+			_,
+			authenticationService := createAuthenticationService(controller)
+
+		testToken := model.NewToken(newRefreshTokenValue)
+		testUser := model.NewUser()
+		testUser.AccountStatus = model.AccountStatusVerified
+
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
+
+		// Test Verify
+		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
+
+		assert.Error(test, resultError)
 		assert.IsType(test, &Error{}, resultError)
-		assert.Equal(test, "Invalid verification token", resultError.Error())
+		assert.Equal(test, "Email already verified", resultError.Error())
 	})
 	test.Run("Verify_Update_error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testToken := "testToken"
+		testToken := model.NewToken(newRefreshTokenValue)
+		testUser := model.NewUser()
+		testUser.Email = "test@user.com"
+		mockError := errors.New("update error")
 
-		user := newUser()
-
-		mockRepo.EXPECT().GetByVerificationToken(gomock.Any(), testToken).Return(user, nil)
-		mockRepo.EXPECT().Update(gomock.Any(), user).Return(errors.New("update error"))
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mockUserRepo.EXPECT().Update(gomock.Any(), testUser).Return(mockError)
 
 		// Act
-		resultError := authenticationService.VerifyEmail(context.Background(), testToken)
+		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
 
 		// Assert
 		assert.Error(test, resultError)
 		assert.Equal(test, "Error updating user: update error", resultError.Error())
+	})
+
+	test.Run("Verify_Update_error", func(test *testing.T) {
+		// Arrange
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		mockUserRepo,
+			mockTokenRepo,
+			_,
+			_,
+			authenticationService := createAuthenticationService(controller)
+
+		testToken := model.NewToken(newRefreshTokenValue)
+		testUser := model.NewUser()
+		mockError := errors.New("update error")
+
+		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mockUserRepo.EXPECT().Update(gomock.Any(), testUser).Return(nil)
+		mockTokenRepo.EXPECT().Remove(gomock.Any(), testToken.Token).Return(mockError)
+
+		// Act
+		resultError := authenticationService.VerifyEmail(context.Background(), testToken.Token)
+
+		// Assert
+		assert.Error(test, resultError)
+		assert.Equal(test, "Error removing token: update error", resultError.Error())
 	})
 
 	// Authenticate
@@ -437,7 +573,8 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
@@ -447,7 +584,7 @@ func TestAuthenticationService(test *testing.T) {
 		errorMessage := "Database error"
 		errorExample := errors.New(errorMessage)
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(nil, errorExample)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(nil, errorExample)
 		logMock.EXPECT().Error(errorExample, "Error getting user by email")
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
@@ -465,7 +602,8 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
@@ -473,7 +611,7 @@ func TestAuthenticationService(test *testing.T) {
 		email := "test@example.com"
 		password := "password"
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(nil, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(nil, nil)
 
 		// Test Authenticate
 		user, err := authenticationService.Authenticate(context.Background(), email, password)
@@ -487,17 +625,18 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
 		email := "test@example.com"
 
-		user := newUser()
+		user := model.NewUser()
 		invalidPassword := "invalidpassword"
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
 
 		// Test Authenticate
 		resultUser, resultError := authenticationService.Authenticate(context.Background(), email, invalidPassword)
@@ -512,18 +651,19 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
-		user := newUser()
+		user := model.NewUser()
 		user.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 		error := errors.New("some error")
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
 		mockJWTSigner.EXPECT().SignToken(
 			gomock.Any(),
 			gomock.Any(),
@@ -544,27 +684,27 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Nil(test, resultUser)
 		assert.Equal(test, "Error creating authentication token", resultError.Error())
 	})
-	test.Run("Authenticate_Update_User_Error", func(test *testing.T) {
+	test.Run("Authenticate_Insert_Token_Error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			_,
 			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
-		user := newUser()
+		user := model.NewUser()
 		user.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 		exampleError := errors.New("some error")
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&token, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
-		mockRepo.EXPECT().Update(gomock.Any(), user).Return(exampleError)
-		logMock.EXPECT().Error(exampleError, "Error updating user")
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, exampleError)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
@@ -574,26 +714,27 @@ func TestAuthenticationService(test *testing.T) {
 		// Assert
 		assert.Error(test, resultError)
 		assert.Nil(test, resultUser)
-		assert.Equal(test, "Error updating user", resultError.Error())
+		assert.Equal(test, "Could not insert new refresh token in DB: some error", resultError.Error())
 	})
 	test.Run("Authenticate_Authenticate_Success", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			_,
 			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
 
-		user := newUser()
+		user := model.NewUser()
 		user.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&token, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
-		mockRepo.EXPECT().Update(gomock.Any(), user).Return(nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 
 		// Act
 		resultUser, resultError := authenticationService.Authenticate(context.Background(), testEmail, testPassword)
@@ -610,7 +751,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
+		_, _, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
 
 		token := "invalid-token"
 		mockedError := errors.New("Token verification failed")
@@ -631,7 +772,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
+		_, _, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
 
 		token := "valid-token"
 		mockedError := errors.New("Error decoding email")
@@ -653,7 +794,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
+		_, _, _, mockJWTSigner, authenticationService := createAuthenticationService(controller)
 
 		exampleEmail := "example@email.com"
 		token := "valid-token"
@@ -670,20 +811,21 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Equal(test, exampleEmail, *email)
 	})
 
-	// ResendEmailVerification
+	// // ResendEmailVerification
 	test.Run("ResendEmailVerification_GetByEmail_Error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
 		mockedError := errors.New("User repository error")
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, mockedError)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, mockedError)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(context.Background(), testEmail)
@@ -698,12 +840,13 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(context.Background(), testEmail)
@@ -719,15 +862,16 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		user := newUser()
+		user := model.NewUser()
 		user.AccountStatus = model.AccountStatusVerified
 
-		mockRepo,
+		mockUserRepo,
+			_,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(context.Background(), testEmail)
@@ -743,39 +887,41 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			_,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testUser := newUser()
-		mockedError := errors.New("Update error")
+		testUser := model.NewUser()
+		mockedError := errors.New("Create error")
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mockRepo.EXPECT().Update(gomock.Any(), testUser).Return(mockedError)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, mockedError)
 
 		// Act
 		err := authenticationService.ResendEmailVerification(context.Background(), testEmail)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, "Error updating user: Update error", err.Error())
+		assert.Equal(test, "Error inserting the verification token in db: Create error", err.Error())
 	})
 
 	test.Run("ResendEmailVerification_SendEmail_Error", func(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			mockEmail,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testUser := newUser()
+		testUser := model.NewUser()
 		mockedError := errors.New("Email service error")
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mockRepo.EXPECT().Update(gomock.Any(), testUser).Return(nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(
 			context.Background(),
 			testEmail,
@@ -795,15 +941,16 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepo,
+		mockUserRepo,
+			mockTokenRepo,
 			mockEmail,
 			_,
 			authenticationService := createAuthenticationService(controller)
 
-		testUser := newUser()
+		testUser := model.NewUser()
 
-		mockRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mockRepo.EXPECT().Update(gomock.Any(), testUser).Return(nil)
+		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
+		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(primitive.NewObjectID(), nil)
 		mockEmail.EXPECT().SendVerificationMail(
 			context.Background(),
 			testEmail,
@@ -825,6 +972,7 @@ func TestAuthenticationService(test *testing.T) {
 		defer controller.Finish()
 
 		_,
+			_,
 			_,
 			mockJWTAuthenticator,
 			authenticationService := createAuthenticationService(controller)
@@ -855,6 +1003,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		_,
 			_,
+			_,
 			mockJWTAuthenticator,
 			authenticationService := createAuthenticationService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
@@ -882,7 +1031,8 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepository,
+		mockUserRepository,
+			_,
 			_,
 			mockJWTAuthenticator,
 			authenticationService := createAuthenticationService(controller)
@@ -896,7 +1046,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mockJWTAuthenticator.EXPECT().VerifyToken(token).Return(jwtToken, nil)
 		mockJWTAuthenticator.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)
-		mockRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(nil, errorExample)
+		mockUserRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(nil, errorExample)
 		logMock.EXPECT().Error(errorExample, "Error getting user by email")
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
@@ -914,7 +1064,8 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepository,
+		mockUserRepository,
+			mockTokenRepository,
 			_,
 			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
@@ -923,13 +1074,15 @@ func TestAuthenticationService(test *testing.T) {
 		token := "test_token"
 		jwtToken := &jwt.Token{}
 		email := "email@example.com"
-		user := newUser()
+		user := model.NewUser()
+		exampleError := errors.New("Custom error: Token not listed")
 
 		mockJWTSigner.EXPECT().VerifyToken(token).Return(jwtToken, nil)
 		mockJWTSigner.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)
-		mockRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
+		mockUserRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&token, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
+		mockTokenRepository.EXPECT().Remove(gomock.Any(), token).Return(exampleError)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
@@ -938,16 +1091,17 @@ func TestAuthenticationService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, resultError)
-		assert.Equal(test, resultError.Error(), "Refresh token is not listed")
+		assert.Equal(test, resultError.Error(), "Refresh token is not listed in DB: Custom error: Token not listed")
 		assert.Nil(test, resultUser)
 	})
 
-	test.Run("RefreshToken_Update_User_Error", func(test *testing.T) {
+	test.Run("RefreshToken_Insert_Token_Error", func(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepository,
+		mockUserRepository,
+			mockTokenRepository,
 			_,
 			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
@@ -955,16 +1109,16 @@ func TestAuthenticationService(test *testing.T) {
 
 		jwtToken := &jwt.Token{}
 		email := "email@example.com"
-		user := newUser()
+		user := model.NewUser()
 		exampleError := errors.New("new error")
 
 		mockJWTSigner.EXPECT().VerifyToken(refreshToken).Return(jwtToken, nil)
 		mockJWTSigner.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)
-		mockRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
-		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
-		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
-		mockRepository.EXPECT().Update(gomock.Any(), user).Return(exampleError)
-		logMock.EXPECT().Error(exampleError, "Error updating user")
+		mockUserRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
+		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&newRefreshTokenValue, nil)
+		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&newRefreshTokenValue, nil)
+		mockTokenRepository.EXPECT().Remove(gomock.Any(), refreshToken).Return(nil)
+		mockTokenRepository.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, exampleError)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
@@ -973,7 +1127,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, resultError)
-		assert.Equal(test, resultError.Error(), "Error updating user")
+		assert.Equal(test, "Could not insert new refresh token in DB: new error", resultError.Error())
 		assert.Nil(test, resultUser)
 	})
 
@@ -982,7 +1136,8 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockRepository,
+		mockUserRepository,
+			mockTokenRepository,
 			_,
 			mockJWTSigner,
 			authenticationService := createAuthenticationService(controller)
@@ -991,14 +1146,15 @@ func TestAuthenticationService(test *testing.T) {
 		token := "test_token"
 		jwtToken := &jwt.Token{}
 		email := "email@example.com"
-		user := newUser()
+		user := model.NewUser()
 
 		mockJWTSigner.EXPECT().VerifyToken(refreshToken).Return(jwtToken, nil)
 		mockJWTSigner.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)
-		mockRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
+		mockUserRepository.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&token, nil)
 		mockJWTSigner.EXPECT().SignToken(gomock.Any(), gomock.Any()).Return(&refreshToken, nil)
-		mockRepository.EXPECT().Update(gomock.Any(), user).Return(nil)
+		mockTokenRepository.EXPECT().Remove(gomock.Any(), refreshToken).Return(nil)
+		mockTokenRepository.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 

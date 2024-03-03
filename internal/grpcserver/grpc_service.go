@@ -1,4 +1,4 @@
-package service
+package grpcserver
 
 import (
 	"context"
@@ -12,19 +12,20 @@ import (
 	"google.golang.org/grpc/status"
 
 	"qd-authentication-api/internal/model"
+	servicePkg "qd-authentication-api/internal/service"
 	"qd-authentication-api/internal/util"
 	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
 // AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
-	authenticationService AuthenticationServicer
+	authenticationService servicePkg.AuthenticationServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
 // NewAuthenticationServiceServer creates a new authentication service server
 func NewAuthenticationServiceServer(
-	authenticationService AuthenticationServicer,
+	authenticationService servicePkg.AuthenticationServicer,
 ) *AuthenticationServiceServer {
 	return &AuthenticationServiceServer{
 		authenticationService: authenticationService,
@@ -82,8 +83,8 @@ func (service AuthenticationServiceServer) Register(
 	if registerError != nil {
 		_, isValidationError := registerError.(validator.ValidationErrors)
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
-		_, isNoComplexPasswordError := registerError.(*NoComplexPasswordError)
-		_, isEmailError := registerError.(*SendEmailError)
+		_, isNoComplexPasswordError := registerError.(*servicePkg.NoComplexPasswordError)
+		_, isEmailError := registerError.(*servicePkg.SendEmailError)
 		if isValidationError || isNoComplexPasswordError {
 			err := status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
 			return nil, err
@@ -128,11 +129,13 @@ func (service AuthenticationServiceServer) VerifyEmail(
 		}, nil
 	}
 	logger.Error(verifyEmailError, "Email verification failed")
-	if serviceErr, ok := verifyEmailError.(*Error); ok {
+	if serviceErr, ok := verifyEmailError.(*servicePkg.Error); ok {
 		return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 	}
 	return nil, status.Errorf(codes.Internal, "Internal server error")
 }
+
+var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 5)
 
 // ResendEmailVerification resends the email verification
 func (service AuthenticationServiceServer) ResendEmailVerification(
@@ -143,7 +146,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}
-	if !limiter.Allow() {
+	if !resendEmailVerificationLimiter.Allow() {
 		logger.Warn("Rate limit exceeded")
 		return &pb_authentication.ResendEmailVerificationResponse{
 				Success: false,
@@ -153,7 +156,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	}
 	email, error := service.authenticationService.VerifyTokenAndDecodeEmail(ctx, request.AuthToken)
 	if error != nil {
-		if serviceErr, ok := error.(*Error); ok {
+		if serviceErr, ok := error.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(error, "Failed to verify JWT token")
@@ -161,7 +164,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 	}
 	error = service.authenticationService.ResendEmailVerification(ctx, *email)
 	if error != nil {
-		if serviceErr, ok := error.(*Error); ok {
+		if serviceErr, ok := error.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(error, "Failed to resend email verification")
@@ -214,14 +217,19 @@ func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authe
 	}
 }
 
-var limiter = rate.NewLimiter(rate.Limit(1), 5)
+var refreshTokenLimiter = rate.NewLimiter(rate.Limit(1), 5)
 
-// Authenticate authenticates a user
+// RefreshToken authenticates a user
 func (service AuthenticationServiceServer) RefreshToken(
 	ctx context.Context,
 	request *pb_authentication.RefreshTokenRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
 	logger := commonLogger.GetLoggerFromContext(ctx)
+	if !refreshTokenLimiter.Allow() {
+		logger.Warn("Rate limit exceeded")
+		return nil,
+			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
+	}
 	if logger == nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error. No logger in context")
 	}

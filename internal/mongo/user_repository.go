@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 
 	"qd-authentication-api/internal/model"
@@ -13,32 +14,21 @@ import (
 
 // UserRepository is a mongo specific user repository
 type UserRepository struct {
-	dbName         string
-	collectionName string
-	client         *mongo.Client
+	*Repository
 }
 
 var _ repository.UserRepositoryer = &UserRepository{}
 
 // NewUserRepository creates a new mongo user repository
 func NewUserRepository(client *mongo.Client) *UserRepository {
-	return &UserRepository{client: client, dbName: "qd_authentication", collectionName: "user"}
-}
-
-func (userRepository *UserRepository) getCollection() *mongo.Collection {
-	return userRepository.client.Database(
-		userRepository.dbName,
-	).Collection(userRepository.collectionName)
-}
-
-// Create creates a new user in the mongo database
-func (userRepository *UserRepository) Create(ctx context.Context, user *model.User) error {
-	collection := userRepository.getCollection()
-	_, err := collection.InsertOne(ctx, user)
-	if err != nil {
-		return fmt.Errorf("Insertion error: %v", err)
+	return &UserRepository{
+		Repository: NewRepository(client, "qd_authentication", "user"),
 	}
-	return nil
+}
+
+// InsertUser creates a new user in the mongo database
+func (userRepository *UserRepository) InsertUser(ctx context.Context, user *model.User) (interface{}, error) {
+	return userRepository.Insert(ctx, user)
 }
 
 // GetByEmail gets a user by email from the mongo database
@@ -59,20 +49,14 @@ func (userRepository *UserRepository) GetByEmail(ctx context.Context, email stri
 	return &foundUser, nil
 }
 
-// GetByVerificationToken gets a user by verification token from the mongo database
-func (userRepository *UserRepository) GetByVerificationToken(
-	ctx context.Context,
-	verificationToken string,
-) (*model.User, error) {
+// GetByUserID gets a user by verification token from the mongo database
+func (userRepository *UserRepository) GetByUserID(ctx context.Context, userID primitive.ObjectID) (*model.User, error) {
 	collection := userRepository.getCollection()
-	filter := bson.M{"verificationtoken": verificationToken}
+	filter := bson.M{"_id": userID}
 	var foundUser model.User
 
 	resultError := collection.FindOne(ctx, filter).Decode(&foundUser)
 	if resultError != nil {
-		if resultError == mongo.ErrNoDocuments {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("Error finding user by verification token: %v", resultError)
 	}
 
@@ -85,10 +69,7 @@ func (userRepository *UserRepository) Update(ctx context.Context, user *model.Us
 	filter := bson.M{"email": user.Email}
 	update := bson.M{
 		"$set": bson.M{
-			"accountstatus":               user.AccountStatus,
-			"verificationtoken":           user.VerificationToken,
-			"verificationtokenexpirydate": user.VerificationTokenExpiryDate,
-			"refreshtokens":               user.RefreshTokens,
+			"accountstatus": user.AccountStatus,
 		},
 	}
 

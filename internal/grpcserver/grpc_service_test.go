@@ -1,4 +1,4 @@
-package service
+package grpcserver
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"qd-authentication-api/internal/model"
+	"qd-authentication-api/internal/service"
 	"qd-authentication-api/internal/service/mock"
 	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
@@ -144,7 +145,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
-		mockServiceError := &SendEmailError{Message: "some error"}
+		mockServiceError := &service.SendEmailError{Message: "some error"}
 
 		authenticationServiceMock.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
@@ -205,7 +206,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
-		mockVerifyEmailError := &Error{Message: "some error"}
+		mockVerifyEmailError := &service.Error{Message: "some error"}
 
 		authenticationServiceMock.EXPECT().
 			VerifyEmail(gomock.Any(), gomock.Any()).
@@ -329,7 +330,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
-		expectedError := &Error{Message: "test error"}
+		expectedError := &service.Error{Message: "test error"}
 
 		authenticationServiceMock.EXPECT().
 			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
@@ -346,7 +347,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
-		expectedError := &Error{Message: "test error"}
+		expectedError := &service.Error{Message: "test error"}
 		testEmail := "example@email.com"
 		authenticationServiceMock.EXPECT().
 			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).

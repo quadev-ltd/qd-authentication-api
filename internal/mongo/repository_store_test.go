@@ -26,7 +26,7 @@ func (m *MockClient) Disconnect(ctx context.Context) error {
 
 func TestRepository(test *testing.T) {
 	test.Run("Close_Client_Nil_Error", func(test *testing.T) {
-		repository := &Repository{
+		repository := &RepositoryStore{
 			client: nil,
 		}
 
@@ -42,7 +42,7 @@ func TestRepository(test *testing.T) {
 		client := new(MockClient)
 		client.On("Disconnect", mock.Anything).Return(nil)
 
-		repository := &Repository{
+		repository := &RepositoryStore{
 			client: client,
 		}
 
