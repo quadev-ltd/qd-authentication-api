@@ -70,7 +70,6 @@ func (userRepository *UserRepository) Update(ctx context.Context, user *model.Us
 	update := bson.M{
 		"$set": bson.M{
 			"accountstatus": user.AccountStatus,
-			"refreshtokens": user.RefreshTokens,
 		},
 	}
 

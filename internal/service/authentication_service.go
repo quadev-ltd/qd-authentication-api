@@ -99,7 +99,6 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 		DateOfBirth:      *dateOfBirth,
 		RegistrationDate: time.Now(),
 		AccountStatus:    model.AccountStatusUnverified,
-		RefreshTokens:    []model.RefreshToken{},
 	}
 
 	// Validate the user object
@@ -150,7 +149,7 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 		return &Error{Message: "Invalid verification token"}
 	}
 	if token.Type != model.EmailVerificationTokenType {
-		return fmt.Errorf("Wrong type of token")
+		return &Error{Message: "Wrong type of token"}
 	}
 	current := time.Now()
 	timeDifference := current.Sub(token.ExpiresAt)
@@ -191,21 +190,11 @@ func (service *AuthenticationService) createToken(ctx context.Context, email str
 	return tokenString, &tokenExpiryDate, nil
 }
 
-func findToken(tokens []model.RefreshToken, refreshToken string) int {
-	for i, tokenRecord := range tokens {
-		if tokenRecord.Token == refreshToken {
-			return i
-		}
-	}
-	return -1
-}
-
 func (service *AuthenticationService) createTokenResponse(
 	ctx context.Context,
 	user *model.User,
 	refreshToken *string,
 ) (*model.AuthTokensResponse, error) {
-	logger := log.GetLoggerFromContext(ctx)
 	authTokenString,
 		authenticationTokenExpiration,
 		err := service.createToken(ctx, user.Email, AuthenticationTokenExpiry)
@@ -224,33 +213,28 @@ func (service *AuthenticationService) createTokenResponse(
 		}
 	}
 
-	newRefreshToken := model.RefreshToken{
+	newRefreshToken := model.Token{
 		Token:     *refreshTokenString,
 		IssuedAt:  time.Now(),
 		ExpiresAt: *refreshTokenExpiration,
 		Revoked:   false,
+		Type:      model.RefreshTokenType,
+		UserID:    user.ID,
 	}
 
 	shouldReplaceExistingToken := refreshToken != nil
 	if shouldReplaceExistingToken {
-		index := findToken(user.RefreshTokens, *refreshToken)
-		if index == -1 {
-			return nil, &Error{
-				Message: "Refresh token is not listed",
-			}
+		err = service.tokenRepository.Remove(ctx, *refreshToken)
+		if err != nil {
+			return nil, fmt.Errorf("Refresh token is not listed in DB: %v", err)
 		}
-		user.RefreshTokens[index] = newRefreshToken
-	} else {
-		user.RefreshTokens = append(user.RefreshTokens, newRefreshToken)
+
+	}
+	_, err = service.tokenRepository.InsertToken(ctx, &newRefreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("Could not insert new refresh token in DB: %v", err)
 	}
 
-	err = service.userRepository.Update(ctx, user)
-	if err != nil {
-		logger.Error(err, "Error updating user")
-		return nil, &Error{
-			Message: "Error updating user",
-		}
-	}
 	return &model.AuthTokensResponse{
 		AuthToken:          *authTokenString,
 		AuthTokenExpiry:    *authenticationTokenExpiration,

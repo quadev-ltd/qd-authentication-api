@@ -473,13 +473,19 @@ func TestRegisterUserJourneys(t *testing.T) {
 		}
 		defer client.Disconnect(ctx)
 
-		collection := client.Database("qd_authentication").Collection("user")
+		userCollection := client.Database("qd_authentication").Collection("user")
 		var foundUser model.User
-		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
+		err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
 			log.Err(err)
 		}
-		refreshToken = foundUser.RefreshTokens[0].Token
+		tokenCollection := client.Database("qd_authentication").Collection("token")
+		var foundToken model.Token
+		err = tokenCollection.FindOne(ctx, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
+		if err != nil {
+			log.Err(err)
+		}
+		refreshToken = foundToken.Token
 
 		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
@@ -520,6 +526,6 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
-		assert.Equal(t, "rpc error: code = Unknown desc = Refresh token is not listed", err.Error())
+		assert.Equal(t, "rpc error: code = Unknown desc = Refresh token is not listed in DB: no token found with specified value", err.Error())
 	})
 }

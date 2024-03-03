@@ -12,14 +12,6 @@ import (
 // AccountStatus is the type for the account status
 type AccountStatus int
 
-// RefreshToken is the model for the refresh token
-type RefreshToken struct {
-	Token     string
-	IssuedAt  time.Time
-	ExpiresAt time.Time
-	Revoked   bool
-}
-
 // User is the model for the user
 type User struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty"`
@@ -32,7 +24,6 @@ type User struct {
 	RegistrationDate time.Time          `validate:"required"`
 	LastLoginDate    time.Time          `validate:"omitempty"`
 	AccountStatus    AccountStatus      `validate:"required"`
-	RefreshTokens    []RefreshToken
 }
 
 // AccountStatus constants
