@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	jwtCommon "github.com/quadev-ltd/qd-common/pkg/jwt"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/stretchr/testify/assert"
 
 	"qd-authentication-api/internal/model"
@@ -58,7 +58,7 @@ func TestMongoTokenRepository(test *testing.T) {
 
 		issueAt := time.Now()
 		expiresAt := time.Now().Add(33 * time.Hour)
-		token.Type = jwtCommon.RefreshTokenType
+		token.Type = commonJWT.RefreshTokenType
 		token.Revoked = true
 		token.IssuedAt = issueAt
 		token.ExpiresAt = expiresAt
@@ -69,7 +69,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		foundToken, err := repo.GetByToken(context.Background(), token.Token)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundToken)
-		assert.Equal(test, jwtCommon.RefreshTokenType, foundToken.Type)
+		assert.Equal(test, commonJWT.RefreshTokenType, foundToken.Type)
 		assert.True(test, foundToken.Revoked)
 		assert.Equal(test, issueAt, token.IssuedAt)
 		assert.Equal(test, expiresAt, token.ExpiresAt)

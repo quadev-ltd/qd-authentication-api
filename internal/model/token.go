@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	jwtCommon "github.com/quadev-ltd/qd-common/pkg/jwt"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -14,7 +14,7 @@ type Token struct {
 	IssuedAt  time.Time           `bson:"issuedAt"`
 	ExpiresAt time.Time           `bson:"expiresAt"`
 	Revoked   bool                `bson:"revoked"`
-	Type      jwtCommon.TokenType `bson:"type"`
+	Type      commonJWT.TokenType `bson:"type"`
 	UserID    primitive.ObjectID  `bson:"userId"` // Reference to User
 }
 
