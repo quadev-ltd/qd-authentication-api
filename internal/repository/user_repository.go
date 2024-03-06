@@ -11,7 +11,9 @@ import (
 // UserRepositoryer is the interface for the user repository
 type UserRepositoryer interface {
 	InsertUser(ctx context.Context, user *model.User) (interface{}, error)
+	ExistsByEmail(ctx context.Context, email string) (bool, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByUserID(ctx context.Context, userID primitive.ObjectID) (*model.User, error)
-	Update(ctx context.Context, user *model.User) error
+	UpdateStatus(ctx context.Context, user *model.User) error
+	UpdatePassword(ctx context.Context, user *model.User) error
 }

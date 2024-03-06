@@ -31,7 +31,20 @@ func (userRepository *UserRepository) InsertUser(ctx context.Context, user *mode
 	return userRepository.Insert(ctx, user)
 }
 
-// GetByEmail gets a user by email from the mongo database
+// ExistsByEmail checks if a user exists by email in the mongo database
+func (userRepository *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	collection := userRepository.getCollection()
+
+	filter := bson.M{"email": email}
+	count, err := collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, fmt.Errorf("Error checking user existence by email: %v", err)
+	}
+
+	return count > 0, nil
+}
+
+// GetByEmail gets a user by email from the mongo database, returns nil if user is not found
 func (userRepository *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	collection := userRepository.getCollection()
 
@@ -63,8 +76,8 @@ func (userRepository *UserRepository) GetByUserID(ctx context.Context, userID pr
 	return &foundUser, nil
 }
 
-// Update updates a user in the mongo database
-func (userRepository *UserRepository) Update(ctx context.Context, user *model.User) error {
+// UpdateStatus updates a user in the mongo database
+func (userRepository *UserRepository) UpdateStatus(ctx context.Context, user *model.User) error {
 	collection := userRepository.getCollection()
 	filter := bson.M{"email": user.Email}
 	update := bson.M{
@@ -74,6 +87,33 @@ func (userRepository *UserRepository) Update(ctx context.Context, user *model.Us
 	}
 
 	updateResult, resultError := collection.UpdateOne(ctx, filter, update)
+	if resultError != nil {
+		return fmt.Errorf("Error updating user status: %v", resultError)
+	}
+	if updateResult.MatchedCount == 0 {
+		return &repository.Error{
+			Message: "No account was found",
+		}
+	}
+	return nil
+}
+
+// UpdateStatus updates a user in the mongo database
+func (userRepository *UserRepository) UpdatePassword(ctx context.Context, user *model.User) error {
+	update := bson.M{
+		"$set": bson.M{
+			"passwordHash": user.PasswordHash,
+			"passwordSalt": user.PasswordSalt,
+		},
+	}
+	return userRepository.Update(ctx, user, update)
+}
+
+func (userRepository *UserRepository) Update(ctx context.Context, user *model.User, dataUpdate primitive.M) error {
+	collection := userRepository.getCollection()
+	filter := bson.M{"email": user.Email}
+
+	updateResult, resultError := collection.UpdateOne(ctx, filter, dataUpdate)
 	if resultError != nil {
 		return fmt.Errorf("Error updating user: %v", resultError)
 	}

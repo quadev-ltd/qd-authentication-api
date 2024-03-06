@@ -10,6 +10,7 @@ import (
 	"time"
 
 	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 	commonUtil "github.com/quadev-ltd/qd-common/pkg/util"
@@ -247,14 +248,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
-		registerResponse, err := client.VerifyEmail(
+		verifyEmailResponse, err := client.VerifyEmail(
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
 			})
 
 		assert.Error(t, err)
-		assert.Nil(t, registerResponse)
+		assert.Nil(t, verifyEmailResponse)
 		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid verification token", err.Error())
 	})
 
@@ -283,17 +284,17 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
+		authenticateResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: password,
 		})
 
-		jwtToken = registerResponse.AuthToken
+		jwtToken = authenticateResponse.AuthToken
 		assert.NoError(t, err)
-		assert.NotNil(t, registerResponse)
-		assert.NotNil(t, registerResponse.AuthToken)
-		assert.NotNil(t, registerResponse.RefreshToken)
-		assert.Equal(t, foundUser.Email, registerResponse.UserEmail)
+		assert.NotNil(t, authenticateResponse)
+		assert.NotNil(t, authenticateResponse.AuthToken)
+		assert.NotNil(t, authenticateResponse.RefreshToken)
+		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
 	})
 
 	t.Run("ResendVerificationEmail_Success", func(t *testing.T) {
@@ -391,14 +392,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.VerifyEmail(ctx, &pb_authentication.VerifyEmailRequest{
+		verifyEmailResponse, err := grpcClient.VerifyEmail(ctx, &pb_authentication.VerifyEmailRequest{
 			VerificationToken: foundToken.Token,
 		})
 
 		assert.NoError(t, err)
-		assert.NotNil(t, registerResponse)
-		assert.Equal(t, registerResponse.Message, "Email verified successfully")
-		assert.Equal(t, registerResponse.Success, true)
+		assert.NotNil(t, verifyEmailResponse)
+		assert.Equal(t, verifyEmailResponse.Message, "Email verified successfully")
+		assert.Equal(t, verifyEmailResponse.Success, true)
 	})
 
 	t.Run("Authenticate_Error", func(t *testing.T) {
@@ -425,13 +426,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
+		authenticateResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: "password",
 		})
 
 		assert.Error(t, err)
-		assert.Nil(t, registerResponse)
+		assert.Nil(t, authenticateResponse)
 		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password", err.Error())
 	})
 
@@ -452,13 +453,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+		refreshTokenResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
 			Token: "wrong-token",
 		})
 
 		assert.Error(t, err)
-		assert.Nil(t, registerResponse)
-		assert.Equal(t, "rpc error: code = Unknown desc = Invalid or expired refresh token", err.Error())
+		assert.Nil(t, refreshTokenResponse)
+		assert.Equal(t, "rpc error: code = Internal desc = Invalid or expired refresh token", err.Error())
 	})
 
 	t.Run("Refresh_Token_Success", func(t *testing.T) {
@@ -492,15 +493,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+		refreshTokenResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
 			Token: refreshToken,
 		})
 
 		assert.NoError(t, err)
-		assert.NotNil(t, registerResponse)
-		assert.NotNil(t, registerResponse.AuthToken)
-		assert.NotNil(t, registerResponse.RefreshToken)
-		assert.Equal(t, foundUser.Email, registerResponse.UserEmail)
+		assert.NotNil(t, refreshTokenResponse)
+		assert.NotNil(t, refreshTokenResponse.AuthToken)
+		assert.NotNil(t, refreshTokenResponse.RefreshToken)
+		assert.Equal(t, foundUser.Email, refreshTokenResponse.UserEmail)
 	})
 
 	t.Run("Refresh_Token_Not_Listed_Error", func(t *testing.T) {
@@ -520,12 +521,143 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		registerResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+		refreshTokenResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
 			Token: refreshToken,
 		})
 
 		assert.Error(t, err)
-		assert.Nil(t, registerResponse)
-		assert.Equal(t, "rpc error: code = Unknown desc = Refresh token is not listed in DB: no token found with specified value", err.Error())
+		assert.Nil(t, refreshTokenResponse)
+		assert.Equal(t, "rpc error: code = Internal desc = Refresh token is not listed in DB: no token found with specified value", err.Error())
+	})
+
+	t.Run("Forgot_Password_Success", func(t *testing.T) {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		if err != nil {
+			log.Err(err)
+		}
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		err = client.Connect(ctx)
+		if err != nil {
+			log.Err(err)
+		}
+		defer client.Disconnect(ctx)
+
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		forgotPasswordResponse, err := grpcClient.ForgotPassword(ctx, &pb_authentication.ForgotPasswordRequest{
+			Email: email,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, forgotPasswordResponse)
+		assert.Equal(t, "Forgot password request successful", forgotPasswordResponse.Message)
+		assert.True(t, forgotPasswordResponse.Success)
+	})
+
+	t.Run("VerifyResetPasswordToken_Success", func(t *testing.T) {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		if err != nil {
+			log.Err(err)
+		}
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		err = client.Connect(ctx)
+		if err != nil {
+			log.Err(err)
+		}
+		defer client.Disconnect(ctx)
+
+		userCollection := client.Database("qd_authentication").Collection("user")
+		var foundUser model.User
+		err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			log.Err(err)
+		}
+		tokenCollection := client.Database("qd_authentication").Collection("token")
+		var foundToken model.Token
+		err = tokenCollection.FindOne(ctx, bson.M{"userId": foundUser.ID, "type": commonJWT.ResetPasswordTokenType}).Decode(&foundToken)
+		if err != nil {
+			log.Err(err)
+		}
+		refreshToken = foundToken.Token
+
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		forgotPassword, err := grpcClient.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
+			Token: refreshToken,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, forgotPassword)
+		assert.True(t, forgotPassword.IsValid)
+		assert.Equal(t, "Verify reset password token successful", forgotPassword.Message)
+	})
+
+	t.Run("ResetPassword_Success", func(t *testing.T) {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		if err != nil {
+			log.Err(err)
+		}
+		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		err = client.Connect(ctx)
+		if err != nil {
+			log.Err(err)
+		}
+		defer client.Disconnect(ctx)
+
+		userCollection := client.Database("qd_authentication").Collection("user")
+		var foundUser model.User
+		err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			log.Err(err)
+		}
+		tokenCollection := client.Database("qd_authentication").Collection("token")
+		var foundToken model.Token
+		err = tokenCollection.FindOne(ctx, bson.M{"userId": foundUser.ID, "type": commonJWT.ResetPasswordTokenType}).Decode(&foundToken)
+		if err != nil {
+			log.Err(err)
+		}
+		resetPasswordToken := foundToken.Token
+		newPassword := "Passwrod@@@123!"
+
+		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		verifyResetPasswordTokenResponse, err := grpcClient.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
+			Token: resetPasswordToken,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, verifyResetPasswordTokenResponse)
+		assert.True(t, verifyResetPasswordTokenResponse.IsValid)
+		assert.Equal(t, "Verify reset password token successful", verifyResetPasswordTokenResponse.Message)
+
+		resetPasswordResponse, err := grpcClient.ResetPassword(ctx, &pb_authentication.ResetPasswordRequest{
+			Token:       resetPasswordToken,
+			NewPassword: newPassword,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, resetPasswordResponse)
+		assert.True(t, resetPasswordResponse.Success)
+		assert.Equal(t, "Reset password successful", resetPasswordResponse.Message)
+
+		authenticateResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
+			Email:    foundUser.Email,
+			Password: newPassword,
+		})
+
+		assert.NoError(t, err)
+		assert.NotNil(t, authenticateResponse)
+		assert.NotNil(t, authenticateResponse.AuthToken)
+		assert.NotNil(t, authenticateResponse.RefreshToken)
+		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
 	})
 }

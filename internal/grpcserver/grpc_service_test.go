@@ -165,7 +165,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	test.Run("Registration_Success", func(test *testing.T) {
 		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
-		successfulResponse := &pb_authentication.RegisterResponse{
+		successfulResponse := &pb_authentication.BaseResponse{
 			Success: true,
 			Message: "Registration successful",
 		}
@@ -223,7 +223,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
-		successfulResponse := &pb_authentication.VerifyEmailResponse{
+		successfulResponse := &pb_authentication.BaseResponse{
 			Success: true,
 			Message: "Email verified successfully",
 		}
@@ -404,4 +404,232 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(test, "Email verification sent successfully", response.Message)
 	})
 
+	test.Run("RefreshToken_Success", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "test-token"
+		resultTokens := &model.AuthTokensResponse{
+			AuthToken:          "auth-token",
+			AuthTokenExpiry:    time.Now(),
+			RefreshToken:       "refresh-token",
+			RefreshTokenExpiry: time.Now(),
+			UserEmail:          "test@user.com",
+		}
+		authenticationServiceMock.EXPECT().RefreshToken(gomock.Any(),
+			testTokenValue,
+		).Return(resultTokens, nil)
+		loggerMock.EXPECT().Info("Refresh authentication token successful")
+
+		response, returnedError := server.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Nil(test, returnedError)
+		assert.Equal(test, resultTokens.AuthToken, response.AuthToken)
+		assert.Equal(test, resultTokens.RefreshToken, response.RefreshToken)
+	})
+
+	test.Run("RefreshToken_Error", func(test *testing.T) {
+		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "test-token"
+		exampleError := errors.New("test-error")
+		authenticationServiceMock.EXPECT().RefreshToken(gomock.Any(),
+			testTokenValue,
+		).Return(nil, exampleError)
+
+		response, returnedError := server.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = test-error", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("RefreshToken_MissingLogger_Error", func(test *testing.T) {
+		controller, _, _, _, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "test-token"
+
+		response, returnedError := server.RefreshToken(context.Background(), &pb_authentication.RefreshTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Logger not found in context", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	// ForgotPassword
+	test.Run("ForgotPassword_Success", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testEmail := "test@email.com"
+
+		authenticationServiceMock.EXPECT().ForgotPassword(gomock.Any(),
+			testEmail,
+		).Return(nil)
+		loggerMock.EXPECT().Info("Forgot password request successful")
+
+		response, returnedError := server.ForgotPassword(ctx, &pb_authentication.ForgotPasswordRequest{
+			Email: testEmail,
+		})
+
+		assert.Nil(test, returnedError)
+		assert.Equal(test, "Forgot password request successful", response.Message)
+		assert.True(test, response.Success)
+	})
+
+	test.Run("ForgotPassword_Error", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testEmail := "test@email.com"
+		exampleError := errors.New("test-error")
+
+		authenticationServiceMock.EXPECT().ForgotPassword(gomock.Any(),
+			testEmail,
+		).Return(exampleError)
+		loggerMock.EXPECT().Error(exampleError, "Forgot password failed")
+
+		response, returnedError := server.ForgotPassword(ctx, &pb_authentication.ForgotPasswordRequest{
+			Email: testEmail,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Nil(test, response)
+		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+	})
+
+	test.Run("ForgotPassword_MissingLogger_Error", func(test *testing.T) {
+		controller, _, _, _, server := initialiseTest(test)
+		defer controller.Finish()
+		testEmail := "test@email.com"
+
+		response, returnedError := server.ForgotPassword(context.Background(), &pb_authentication.ForgotPasswordRequest{
+			Email: testEmail,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Nil(test, response)
+		assert.Equal(test, "rpc error: code = Internal desc = Logger not found in context", returnedError.Error())
+	})
+
+	// VerifyResetPasswordToken
+	test.Run("VerifyResetPasswordToken_Success", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "test@email.com"
+
+		authenticationServiceMock.EXPECT().VerifyResetPasswordToken(gomock.Any(),
+			testTokenValue,
+		).Return(nil)
+		loggerMock.EXPECT().Info("Verify reset password token successful")
+
+		response, returnedError := server.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Nil(test, returnedError)
+		assert.Equal(test, "Verify reset password token successful", response.Message)
+		assert.True(test, response.IsValid)
+	})
+
+	test.Run("VerifyResetPasswordToken_Error", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "test@email.com"
+		exampleError := errors.New("test-error")
+
+		authenticationServiceMock.EXPECT().VerifyResetPasswordToken(gomock.Any(),
+			testTokenValue,
+		).Return(exampleError)
+		loggerMock.EXPECT().Error(exampleError, "Verify reset password token failed")
+
+		response, returnedError := server.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("VerifyResetPasswordToken_MissingLogger_Error", func(test *testing.T) {
+		controller, _, _, _, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "test@email.com"
+
+		response, returnedError := server.VerifyResetPasswordToken(context.Background(), &pb_authentication.VerifyResetPasswordTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Logger not found in context", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	// ResetPassword
+	test.Run("ResetPassword_Success", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "token-value"
+		testPassword := "test-password"
+
+		authenticationServiceMock.EXPECT().ResetPassword(
+			gomock.Any(),
+			testTokenValue,
+			testPassword,
+		).Return(nil)
+		loggerMock.EXPECT().Info("Reset password successful")
+
+		response, returnedError := server.ResetPassword(ctx, &pb_authentication.ResetPasswordRequest{
+			Token:       testTokenValue,
+			NewPassword: testPassword,
+		})
+
+		assert.Nil(test, returnedError)
+		assert.Equal(test, "Reset password successful", response.Message)
+		assert.True(test, response.Success)
+	})
+
+	test.Run("ResetPassword_Error", func(test *testing.T) {
+		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "token-value"
+		testPassword := "test-password"
+		exampleError := errors.New("test-error")
+
+		authenticationServiceMock.EXPECT().ResetPassword(
+			gomock.Any(),
+			testTokenValue,
+			testPassword,
+		).Return(exampleError)
+		loggerMock.EXPECT().Error(exampleError, "Reset password failed")
+
+		response, returnedError := server.ResetPassword(ctx, &pb_authentication.ResetPasswordRequest{
+			Token:       testTokenValue,
+			NewPassword: testPassword,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("ResetPassword_MissingLogger_Error", func(test *testing.T) {
+		controller, _, _, _, server := initialiseTest(test)
+		defer controller.Finish()
+		testTokenValue := "token-value"
+		testPassword := "test-password"
+
+		response, returnedError := server.ResetPassword(context.Background(), &pb_authentication.ResetPasswordRequest{
+			Token:       testTokenValue,
+			NewPassword: testPassword,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Logger not found in context", returnedError.Error())
+		assert.Nil(test, response)
+	})
 }
