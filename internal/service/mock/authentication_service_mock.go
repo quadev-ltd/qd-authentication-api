@@ -51,6 +51,20 @@ func (mr *MockAuthenticationServicerMockRecorder) Authenticate(ctx, email, passw
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockAuthenticationServicer)(nil).Authenticate), ctx, email, password)
 }
 
+// ForgotPassword mocks base method.
+func (m *MockAuthenticationServicer) ForgotPassword(ctx context.Context, email string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ForgotPassword", ctx, email)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ForgotPassword indicates an expected call of ForgotPassword.
+func (mr *MockAuthenticationServicerMockRecorder) ForgotPassword(ctx, email interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ForgotPassword", reflect.TypeOf((*MockAuthenticationServicer)(nil).ForgotPassword), ctx, email)
+}
+
 // GetPublicKey mocks base method.
 func (m *MockAuthenticationServicer) GetPublicKey(ctx context.Context) (string, error) {
 	m.ctrl.T.Helper()
@@ -109,6 +123,20 @@ func (mr *MockAuthenticationServicerMockRecorder) ResendEmailVerification(ctx, e
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResendEmailVerification", reflect.TypeOf((*MockAuthenticationServicer)(nil).ResendEmailVerification), ctx, email)
 }
 
+// ResetPassword mocks base method.
+func (m *MockAuthenticationServicer) ResetPassword(ctx context.Context, token, password string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetPassword", ctx, token, password)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ResetPassword indicates an expected call of ResetPassword.
+func (mr *MockAuthenticationServicerMockRecorder) ResetPassword(ctx, token, password interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetPassword", reflect.TypeOf((*MockAuthenticationServicer)(nil).ResetPassword), ctx, token, password)
+}
+
 // VerifyEmail mocks base method.
 func (m *MockAuthenticationServicer) VerifyEmail(ctx context.Context, verificationToken string) error {
 	m.ctrl.T.Helper()
@@ -121,6 +149,20 @@ func (m *MockAuthenticationServicer) VerifyEmail(ctx context.Context, verificati
 func (mr *MockAuthenticationServicerMockRecorder) VerifyEmail(ctx, verificationToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmail", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyEmail), ctx, verificationToken)
+}
+
+// VerifyResetPasswordToken mocks base method.
+func (m *MockAuthenticationServicer) VerifyResetPasswordToken(ctx context.Context, token string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyResetPasswordToken", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// VerifyResetPasswordToken indicates an expected call of VerifyResetPasswordToken.
+func (mr *MockAuthenticationServicerMockRecorder) VerifyResetPasswordToken(ctx, token interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyResetPasswordToken", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyResetPasswordToken), ctx, token)
 }
 
 // VerifyTokenAndDecodeEmail mocks base method.

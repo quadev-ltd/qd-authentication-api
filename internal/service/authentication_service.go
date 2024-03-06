@@ -22,7 +22,8 @@ const (
 	AuthenticationTokenExpiry = 2 * time.Hour      // Authentication token expiry set to 2 hours
 	RefreshTokenExpiry        = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
 	VerificationTokenExpiry   = 24 * time.Hour     // Verification token expiry set to 24 hours
-	RefreshTokenRenewalWindow = 12 * time.Hour     // Refresh token renewal set to 7 days
+	PasswordResetTokenExpiry  = 20 * time.Minute
+	RefreshTokenRenewalWindow = 12 * time.Hour // Refresh token renewal set to 7 days
 )
 
 // AuthenticationServicer is the interface for the authentication service
@@ -34,6 +35,9 @@ type AuthenticationServicer interface {
 	VerifyTokenAndDecodeEmail(ctx context.Context, token string) (*string, error)
 	ResendEmailVerification(ctx context.Context, email string) error
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
+	ForgotPassword(ctx context.Context, email string) error
+	VerifyResetPasswordToken(ctx context.Context, token string) error
+	ResetPassword(ctx context.Context, token, password string) error
 }
 
 // AuthenticationService is the implementation of the authentication service
@@ -74,11 +78,11 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	if err != nil {
 		return err
 	}
-	existingUser, err := service.userRepository.GetByEmail(ctx, email)
+	userExists, err := service.userRepository.ExistsByEmail(ctx, email)
 	if err != nil {
-		return fmt.Errorf("Error getting user by email: %v", err)
+		return fmt.Errorf("Error checking user existence by email: %v", err)
 	}
-	if existingUser != nil {
+	if userExists {
 		return &model.EmailInUseError{Email: email}
 	}
 	if !model.IsPasswordComplex(password) {
@@ -168,7 +172,7 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 
 	user.AccountStatus = model.AccountStatusVerified
 
-	if err := service.userRepository.Update(ctx, user); err != nil {
+	if err := service.userRepository.UpdateStatus(ctx, user); err != nil {
 		return fmt.Errorf("Error updating user: %v", err)
 	}
 
@@ -369,4 +373,87 @@ func (service *AuthenticationService) RefreshToken(ctx context.Context, refreshT
 	}
 
 	return service.createTokenResponse(ctx, user, &refreshTokenString)
+}
+
+// ForgotPassword sends a password reset email
+func (service *AuthenticationService) ForgotPassword(ctx context.Context, email string) error {
+	user, err := service.userRepository.GetByEmail(ctx, email)
+	if err != nil {
+		return fmt.Errorf("Error getting user by email: %v", err)
+	}
+	if user.AccountStatus == model.AccountStatusUnverified {
+		return &Error{Message: fmt.Sprintf("Email account %s not verified yet", email)}
+	}
+	resetToken, err := util.GenerateVerificationToken()
+	if err != nil {
+		return fmt.Errorf("Error generating reset token: %v", err)
+	}
+	token := &model.Token{
+		UserID:    user.ID,
+		Token:     resetToken,
+		IssuedAt:  time.Now(),
+		ExpiresAt: time.Now().Add(PasswordResetTokenExpiry),
+		Revoked:   false,
+		Type:      commonJWT.ResetPasswordTokenType,
+	}
+	_, err = service.tokenRepository.InsertToken(ctx, token)
+	if err != nil {
+		return fmt.Errorf("Error inserting token in db: %v", err)
+	}
+	if err := service.emailService.SendPasswordResetMail(ctx, user.Email, user.FirstName, resetToken); err != nil {
+		return fmt.Errorf("Error sending password reset email: %v", err)
+	}
+	return nil
+}
+
+func (service *AuthenticationService) verifyResetPasswordTokenValidity(ctx context.Context, tokenValue string) (*model.Token, error) {
+	token, err := service.tokenRepository.GetByToken(ctx, tokenValue)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting token by its value: %v", err)
+	}
+	if token.Type != commonJWT.ResetPasswordTokenType {
+		return nil, &Error{Message: "Invalid token type"}
+	}
+	current := time.Now()
+	timeDifference := current.Sub(token.ExpiresAt)
+	if timeDifference >= 0 {
+		return nil, &Error{Message: "Token expired"}
+	}
+	return token, nil
+}
+
+// VerifyResetPasswordToken verifies a password reset token validity
+func (service *AuthenticationService) VerifyResetPasswordToken(ctx context.Context, tokenValue string) error {
+	_, err := service.verifyResetPasswordTokenValidity(ctx, tokenValue)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// ResetPassword resets the user password
+func (service *AuthenticationService) ResetPassword(ctx context.Context, tokenValue, password string) error {
+	token, err := service.verifyResetPasswordTokenValidity(ctx, tokenValue)
+	if err != nil {
+		return err
+	}
+	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
+	if err != nil {
+		return fmt.Errorf("Error getting user assigned to the token: %v", err)
+	}
+	if !model.IsPasswordComplex(password) {
+		return &NoComplexPasswordError{
+			Message: "Password does not meet complexity requirements",
+		}
+	}
+	hashedPassword, salt, err := util.GenerateHash(password)
+	if err != nil {
+		return fmt.Errorf("Error generating password hash: %v", err)
+	}
+	user.PasswordHash = string(hashedPassword)
+	user.PasswordSalt = *salt
+	if err := service.userRepository.UpdatePassword(ctx, user); err != nil {
+		return fmt.Errorf("Error updating user: %v", err)
+	}
+	return nil
 }

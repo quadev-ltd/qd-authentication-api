@@ -41,7 +41,7 @@ func (service AuthenticationServiceServer) GetPublicKey(
 ) (*pb_authentication.GetPublicKeyResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	publicKey, err := service.authenticationService.GetPublicKey(ctx)
 	if err != nil {
@@ -58,10 +58,10 @@ func (service AuthenticationServiceServer) GetPublicKey(
 func (service AuthenticationServiceServer) Register(
 	ctx context.Context,
 	request *pb_authentication.RegisterRequest,
-) (*pb_authentication.RegisterResponse, error) {
+) (*pb_authentication.BaseResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 
 	var dateOfBirth *time.Time
@@ -95,7 +95,7 @@ func (service AuthenticationServiceServer) Register(
 		}
 		if isEmailError {
 			logger.Info("Registration successful")
-			return &pb_authentication.RegisterResponse{
+			return &pb_authentication.BaseResponse{
 				Success: true,
 				Message: "Registration successful. However, verification email failed to send",
 			}, nil
@@ -105,7 +105,7 @@ func (service AuthenticationServiceServer) Register(
 		return nil, err
 	}
 	logger.Info("Registration successful")
-	return &pb_authentication.RegisterResponse{
+	return &pb_authentication.BaseResponse{
 		Success: true,
 		Message: "Registration successful",
 	}, nil
@@ -115,15 +115,15 @@ func (service AuthenticationServiceServer) Register(
 func (service AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
-) (*pb_authentication.VerifyEmailResponse, error) {
+) (*pb_authentication.BaseResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	verifyEmailError := service.authenticationService.VerifyEmail(ctx, request.VerificationToken)
 	if verifyEmailError == nil {
 		logger.Info("Email verified successfully")
-		return &pb_authentication.VerifyEmailResponse{
+		return &pb_authentication.BaseResponse{
 			Success: true,
 			Message: "Email verified successfully",
 		}, nil
@@ -141,14 +141,14 @@ var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 5)
 func (service AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
 	request *pb_authentication.ResendEmailVerificationRequest,
-) (*pb_authentication.ResendEmailVerificationResponse, error) {
+) (*pb_authentication.BaseResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	if !resendEmailVerificationLimiter.Allow() {
 		logger.Warn("Rate limit exceeded")
-		return &pb_authentication.ResendEmailVerificationResponse{
+		return &pb_authentication.BaseResponse{
 				Success: false,
 				Message: "Rate limit exceeded",
 			},
@@ -171,7 +171,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 	logger.Info("Email verification sent successfully")
-	return &pb_authentication.ResendEmailVerificationResponse{
+	return &pb_authentication.BaseResponse{
 		Success: true,
 		Message: "Email verification sent successfully",
 	}, nil
@@ -184,7 +184,7 @@ func (service AuthenticationServiceServer) Authenticate(
 ) (*pb_authentication.AuthenticateResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	authTokens, err := service.authenticationService.Authenticate(ctx, request.Email, request.Password)
 	if err != nil {
@@ -226,7 +226,7 @@ func (service AuthenticationServiceServer) RefreshToken(
 ) (*pb_authentication.AuthenticateResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	if !refreshTokenLimiter.Allow() {
 		logger.Warn("Rate limit exceeded")
@@ -235,9 +235,91 @@ func (service AuthenticationServiceServer) RefreshToken(
 	}
 	authTokens, err := service.authenticationService.RefreshToken(ctx, request.Token)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.Internal, err.Error())
 	}
 	refreshTokenResponse := *convertAuthTokensToResponse(authTokens)
 	logger.Info("Refresh authentication token successful")
 	return &refreshTokenResponse, nil
+}
+
+var forgotPasswordLimiter = rate.NewLimiter(rate.Limit(1), 5)
+
+// ForgotPassword sends a forgot password email
+func (service AuthenticationServiceServer) ForgotPassword(
+	ctx context.Context,
+	request *pb_authentication.ForgotPasswordRequest,
+) (*pb_authentication.BaseResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	if !forgotPasswordLimiter.Allow() {
+		logger.Warn("Rate limit exceeded")
+		return &pb_authentication.BaseResponse{
+				Success: false,
+				Message: "Rate limit exceeded",
+			},
+			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
+	}
+	error := service.authenticationService.ForgotPassword(ctx, request.Email)
+	if error != nil {
+		if serviceErr, ok := error.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		logger.Error(error, "Forgot password failed")
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	logger.Info("Forgot password request successful")
+	return &pb_authentication.BaseResponse{
+		Success: true,
+		Message: "Forgot password request successful",
+	}, nil
+}
+
+// VerifyResetPasswordToken verifies the reset password token
+func (service AuthenticationServiceServer) VerifyResetPasswordToken(
+	ctx context.Context,
+	request *pb_authentication.VerifyResetPasswordTokenRequest,
+) (*pb_authentication.VerifyResetPasswordTokenResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	error := service.authenticationService.VerifyResetPasswordToken(ctx, request.Token)
+	if error != nil {
+		if serviceErr, ok := error.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		logger.Error(error, "Verify reset password token failed")
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	logger.Info("Verify reset password token successful")
+	return &pb_authentication.VerifyResetPasswordTokenResponse{
+		IsValid: true,
+		Message: "Verify reset password token successful",
+	}, nil
+}
+
+// ResetPassword resets the password
+func (service AuthenticationServiceServer) ResetPassword(
+	ctx context.Context,
+	request *pb_authentication.ResetPasswordRequest,
+) (*pb_authentication.BaseResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	resetPasswordError := service.authenticationService.ResetPassword(ctx, request.Token, request.NewPassword)
+	if resetPasswordError != nil {
+		if serviceErr, ok := resetPasswordError.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		logger.Error(resetPasswordError, "Reset password failed")
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	logger.Info("Reset password successful")
+	return &pb_authentication.BaseResponse{
+		Success: true,
+		Message: "Reset password successful",
+	}, nil
 }
