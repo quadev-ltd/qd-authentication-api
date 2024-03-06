@@ -256,7 +256,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, verifyEmailResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid verification token", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid token", err.Error())
 	})
 
 	t.Run("Authenticate_Success", func(t *testing.T) {
@@ -359,7 +359,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, resendEamilVerificationResponse)
-		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid JWT token", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid or expired refresh token", err.Error())
 	})
 
 	t.Run("Verify_Email_Success", func(t *testing.T) {
@@ -581,7 +581,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			log.Err(err)
 		}
-		refreshToken = foundToken.Token
+		foundRefreshToken := foundToken.Token
 
 		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
 		assert.NoError(t, err)
@@ -589,7 +589,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		forgotPassword, err := grpcClient.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: refreshToken,
+			Token: foundRefreshToken,
 		})
 
 		assert.NoError(t, err)

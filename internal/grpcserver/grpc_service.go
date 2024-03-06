@@ -20,15 +20,18 @@ import (
 // AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
 	authenticationService servicePkg.AuthenticationServicer
+	tokenService          servicePkg.TokenServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
 // NewAuthenticationServiceServer creates a new authentication service server
 func NewAuthenticationServiceServer(
 	authenticationService servicePkg.AuthenticationServicer,
+	tokenService servicePkg.TokenServicer,
 ) *AuthenticationServiceServer {
 	return &AuthenticationServiceServer{
 		authenticationService: authenticationService,
+		tokenService:          tokenService,
 	}
 }
 
@@ -43,7 +46,7 @@ func (service AuthenticationServiceServer) GetPublicKey(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	publicKey, err := service.authenticationService.GetPublicKey(ctx)
+	publicKey, err := service.tokenService.GetPublicKey(ctx)
 	if err != nil {
 		logger.Error(err, "Failed to get public key")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -154,20 +157,21 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	email, error := service.authenticationService.VerifyTokenAndDecodeEmail(ctx, request.AuthToken)
-	if error != nil {
-		if serviceErr, ok := error.(*servicePkg.Error); ok {
+	email, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		logger.Error(error, "Failed to verify JWT token")
+		logger.Error(err, "Failed to verify JWT token")
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
-	error = service.authenticationService.ResendEmailVerification(ctx, *email)
-	if error != nil {
-		if serviceErr, ok := error.(*servicePkg.Error); ok {
+
+	err = service.authenticationService.ResendEmailVerification(ctx, *email)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		logger.Error(error, "Failed to resend email verification")
+		logger.Error(err, "Failed to resend email verification")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 	logger.Info("Email verification sent successfully")
@@ -285,12 +289,12 @@ func (service AuthenticationServiceServer) VerifyResetPasswordToken(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	error := service.authenticationService.VerifyResetPasswordToken(ctx, request.Token)
-	if error != nil {
-		if serviceErr, ok := error.(*servicePkg.Error); ok {
+	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.Token)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		logger.Error(error, "Verify reset password token failed")
+		logger.Error(err, "Verify reset password token failed")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 	logger.Info("Verify reset password token successful")

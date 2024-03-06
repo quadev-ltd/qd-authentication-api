@@ -51,6 +51,7 @@ func NewApplication(config *config.Config, centralConfig *commonConfig.Config) A
 	grpcServiceServer, err := (&grpcFactory.Factory{}).Create(
 		grpcServerAddress,
 		service.GetAuthenticationService(),
+		service.GetTokenService(),
 		logFactory,
 		centralConfig.TLSEnabled,
 	)

@@ -26,6 +26,7 @@ import (
 func initialiseTest(test *testing.T) (
 	*gomock.Controller,
 	*mock.MockAuthenticationServicer,
+	*mock.MockTokenServicer,
 	*loggerMock.MockLoggerer,
 	context.Context,
 	AuthenticationServiceServer,
@@ -33,14 +34,16 @@ func initialiseTest(test *testing.T) (
 	controller := gomock.NewController(test)
 
 	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+	tokenServiceMock := mock.NewMockTokenServicer(controller)
 	loggerMock := loggerMock.NewMockLoggerer(controller)
 	ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 	server := AuthenticationServiceServer{
 		authenticationService: authenticationServiceMock,
+		tokenService:          tokenServiceMock,
 	}
 
-	return controller, authenticationServiceMock, loggerMock, ctx, server
+	return controller, authenticationServiceMock, tokenServiceMock, loggerMock, ctx, server
 }
 
 func TestAuthenticationServiceServer(test *testing.T) {
@@ -64,7 +67,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		Password: "password",
 	}
 	test.Run("Registration_Error_Validation", func(test *testing.T) {
-		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		mockValidationError := validator.ValidationErrors{
@@ -84,7 +87,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Registration_Internal_Server_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		mockValidationError := errors.New("some error")
@@ -101,7 +104,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Registration_Error_Email_In_Use", func(test *testing.T) {
-		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		mockEmailInUseError := &model.EmailInUseError{Email: "test@example.com"}
@@ -128,7 +131,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			LastName:  "Doe",
 		}
 
-		controller, _, _, ctx, server := initialiseTest(test)
+		controller, _, _, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		response, returnedError := server.Register(ctx, registerRequestNoDOB)
@@ -142,7 +145,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Registration_Error_Email_Not_Sent", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		mockServiceError := &service.SendEmailError{Message: "some error"}
@@ -163,7 +166,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Registration_Success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		successfulResponse := &pb_authentication.BaseResponse{
 			Success: true,
@@ -186,7 +189,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Email verification internal server error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		mockVerifyEmailError := errors.New("some verification error")
@@ -203,7 +206,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Email verification service error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		mockVerifyEmailError := &service.Error{Message: "some error"}
@@ -220,7 +223,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Verify Email success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		successfulResponse := &pb_authentication.BaseResponse{
@@ -240,7 +243,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Authenticate returns Invalid email or password error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		invalidEmailOrPasswordError := &model.WrongEmailOrPassword{
@@ -260,7 +263,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Authenticate internal server error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		authenticationError := errors.New("some error")
@@ -278,7 +281,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("Authenticate success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		authenticateResponse := &model.AuthTokensResponse{
@@ -308,18 +311,20 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(test, successfulResponse, response)
 	})
 
-	test.Run("ResendEmailVerification_VerifyTokenAndDecodeEmail_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+	test.Run("ResendEmailVerification_VerifyJWTToken_Error", func(test *testing.T) {
+		controller, _, tokenServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
-		expectedError := errors.New("test error")
+		expectedError := errors.New("test-error")
 
-		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
+		tokenServiceMock.EXPECT().
+			VerifyJWTToken(gomock.Any(), gomock.Any()).
 			Return(nil, expectedError)
 		loggerMock.EXPECT().Error(expectedError, "Failed to verify JWT token")
 
-		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
+		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{
+			AuthToken: "test-token",
+		})
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
@@ -327,30 +332,30 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("ResendEmailVerification_ServiceError_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
+		controller, _, tokenServiceMock, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
-		expectedError := &service.Error{Message: "test error"}
+		expectedError := &service.Error{Message: "test-error"}
 
-		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
+		tokenServiceMock.EXPECT().
+			VerifyJWTToken(gomock.Any(), gomock.Any()).
 			Return(nil, expectedError)
 
 		response, returnedError := server.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{})
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
-		assert.Equal(test, "rpc error: code = InvalidArgument desc = test error", returnedError.Error())
+		assert.Equal(test, "rpc error: code = InvalidArgument desc = test-error", returnedError.Error())
 	})
 
 	test.Run("ResendEmailVerification_InvalidArgument_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, tokenServiceMock, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		expectedError := &service.Error{Message: "test error"}
 		testEmail := "example@email.com"
-		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
+		tokenServiceMock.EXPECT().
+			VerifyJWTToken(gomock.Any(), gomock.Any()).
 			Return(&testEmail, nil)
 		authenticationServiceMock.EXPECT().
 			ResendEmailVerification(gomock.Any(), testEmail).
@@ -364,13 +369,13 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("ResendEmailVerification_InternalServerError", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, tokenServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		expectedError := errors.New("test error")
 		testEmail := "example@email.com"
-		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
+		tokenServiceMock.EXPECT().
+			VerifyJWTToken(gomock.Any(), gomock.Any()).
 			Return(&testEmail, nil)
 		authenticationServiceMock.EXPECT().
 			ResendEmailVerification(gomock.Any(), testEmail).
@@ -385,12 +390,12 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("ResendEmailVerification_Success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, tokenServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 
 		testEmail := "example@email.com"
-		authenticationServiceMock.EXPECT().
-			VerifyTokenAndDecodeEmail(gomock.Any(), gomock.Any()).
+		tokenServiceMock.EXPECT().
+			VerifyJWTToken(gomock.Any(), gomock.Any()).
 			Return(&testEmail, nil)
 		authenticationServiceMock.EXPECT().
 			ResendEmailVerification(gomock.Any(), testEmail).
@@ -405,7 +410,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("RefreshToken_Success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "test-token"
 		resultTokens := &model.AuthTokensResponse{
@@ -430,7 +435,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("RefreshToken_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, _, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, _, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "test-token"
 		exampleError := errors.New("test-error")
@@ -448,7 +453,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("RefreshToken_MissingLogger_Error", func(test *testing.T) {
-		controller, _, _, _, server := initialiseTest(test)
+		controller, _, _, _, _, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "test-token"
 
@@ -463,7 +468,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 	// ForgotPassword
 	test.Run("ForgotPassword_Success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testEmail := "test@email.com"
 
@@ -482,7 +487,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("ForgotPassword_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testEmail := "test@email.com"
 		exampleError := errors.New("test-error")
@@ -502,7 +507,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("ForgotPassword_MissingLogger_Error", func(test *testing.T) {
-		controller, _, _, _, server := initialiseTest(test)
+		controller, _, _, _, _, server := initialiseTest(test)
 		defer controller.Finish()
 		testEmail := "test@email.com"
 
@@ -517,13 +522,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 	// VerifyResetPasswordToken
 	test.Run("VerifyResetPasswordToken_Success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, _, tokenServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "test@email.com"
 
-		authenticationServiceMock.EXPECT().VerifyResetPasswordToken(gomock.Any(),
+		tokenServiceMock.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
 			testTokenValue,
-		).Return(nil)
+		).Return(&model.Token{Token: testTokenValue}, nil)
 		loggerMock.EXPECT().Info("Verify reset password token successful")
 
 		response, returnedError := server.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
@@ -536,14 +542,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("VerifyResetPasswordToken_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, _, tokenServiceMock, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "test@email.com"
 		exampleError := errors.New("test-error")
 
-		authenticationServiceMock.EXPECT().VerifyResetPasswordToken(gomock.Any(),
+		tokenServiceMock.EXPECT().VerifyResetPasswordToken(gomock.Any(),
 			testTokenValue,
-		).Return(exampleError)
+		).Return(nil, exampleError)
 		loggerMock.EXPECT().Error(exampleError, "Verify reset password token failed")
 
 		response, returnedError := server.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
@@ -556,7 +562,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("VerifyResetPasswordToken_MissingLogger_Error", func(test *testing.T) {
-		controller, _, _, _, server := initialiseTest(test)
+		controller, _, _, _, _, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "test@email.com"
 
@@ -571,7 +577,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 	// ResetPassword
 	test.Run("ResetPassword_Success", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "token-value"
 		testPassword := "test-password"
@@ -594,7 +600,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("ResetPassword_Error", func(test *testing.T) {
-		controller, authenticationServiceMock, loggerMock, ctx, server := initialiseTest(test)
+		controller, authenticationServiceMock, _, loggerMock, ctx, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "token-value"
 		testPassword := "test-password"
@@ -618,7 +624,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	})
 
 	test.Run("ResetPassword_MissingLogger_Error", func(test *testing.T) {
-		controller, _, _, _, server := initialiseTest(test)
+		controller, _, _, _, _, server := initialiseTest(test)
 		defer controller.Finish()
 		testTokenValue := "token-value"
 		testPassword := "test-password"

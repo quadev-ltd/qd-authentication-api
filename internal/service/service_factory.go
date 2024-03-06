@@ -44,19 +44,22 @@ func (serviceFactory *Factory) CreateService(
 		TLSEnabled:                centralConfig.TLSEnabled,
 	}
 	emailService := NewEmailService(emailServiceConfig)
-	jwtAuthenticator, err := jwt.NewManager("./keys")
+	jwtManager, err := jwt.NewManager("./keys")
 	if err != nil {
 		return nil, err
 	}
+	tokenService := NewTokenService(repository.GetTokenRepository(), jwtManager)
 	authenticationService := NewAuthenticationService(
 		emailService,
+		tokenService,
 		repository.GetUserRepository(),
 		repository.GetTokenRepository(),
-		jwtAuthenticator,
+		jwtManager,
 	)
 
 	return &Service{
-		authenticationService: authenticationService,
-		repository:            repository,
+		authenticationService,
+		tokenService,
+		repository,
 	}, nil
 }

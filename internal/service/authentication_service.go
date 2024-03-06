@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -16,33 +15,21 @@ import (
 	"qd-authentication-api/internal/util"
 )
 
-// TODO: Analyse best expiry times for tokens
-// Expiry times for tokens
-const (
-	AuthenticationTokenExpiry = 2 * time.Hour      // Authentication token expiry set to 2 hours
-	RefreshTokenExpiry        = 7 * 24 * time.Hour // Refresh token expiry set to 7 days
-	VerificationTokenExpiry   = 24 * time.Hour     // Verification token expiry set to 24 hours
-	PasswordResetTokenExpiry  = 20 * time.Minute
-	RefreshTokenRenewalWindow = 12 * time.Hour // Refresh token renewal set to 7 days
-)
-
 // AuthenticationServicer is the interface for the authentication service
 type AuthenticationServicer interface {
-	GetPublicKey(ctx context.Context) (string, error)
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error
 	VerifyEmail(ctx context.Context, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
-	VerifyTokenAndDecodeEmail(ctx context.Context, token string) (*string, error)
 	ResendEmailVerification(ctx context.Context, email string) error
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
 	ForgotPassword(ctx context.Context, email string) error
-	VerifyResetPasswordToken(ctx context.Context, token string) error
 	ResetPassword(ctx context.Context, token, password string) error
 }
 
 // AuthenticationService is the implementation of the authentication service
 type AuthenticationService struct {
 	emailService     EmailServicer
+	tokenService     TokenServicer
 	userRepository   repository.UserRepositoryer
 	tokenRepository  repository.TokenRepositoryer
 	jwtAuthenticator jwt.Managerer
@@ -53,21 +40,18 @@ var _ AuthenticationServicer = &AuthenticationService{}
 // NewAuthenticationService creates a new authentication service
 func NewAuthenticationService(
 	emailService EmailServicer,
+	tokenService TokenServicer,
 	userRepository repository.UserRepositoryer,
 	tokenRepository repository.TokenRepositoryer,
 	jwtAuthenticator jwt.Managerer,
 ) AuthenticationServicer {
 	return &AuthenticationService{
 		emailService,
+		tokenService,
 		userRepository,
 		tokenRepository,
 		jwtAuthenticator,
 	}
-}
-
-// GetPublicKey ctx context.Contextgets the public key
-func (service *AuthenticationService) GetPublicKey(ctx context.Context) (string, error) {
-	return service.jwtAuthenticator.GetPublicKey(ctx)
 }
 
 // TODO pass an object DTO instead of all the parameters and check input validation
@@ -123,24 +107,12 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 	if !ok {
 		return fmt.Errorf("InsertedID is not of type primitive.ObjectID: %v", err)
 	}
-	verificationToken, err := util.GenerateVerificationToken()
+	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("Error generating verification token: %v", err)
-	}
-	verificationTokentExpiryDate := time.Now().Add(VerificationTokenExpiry)
-	emailVerificationToken := &model.Token{
-		UserID:    userID,
-		Token:     verificationToken,
-		ExpiresAt: verificationTokentExpiryDate,
-		Type:      commonJWT.EmailVerificationTokenType,
-		IssuedAt:  time.Now(),
-	}
-	_, err = service.tokenRepository.InsertToken(ctx, emailVerificationToken)
-	if err != nil {
-		return fmt.Errorf("Error inserting verification token in DB: %v", err)
+		return err
 	}
 
-	if err := service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, verificationToken); err != nil {
+	if err = service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, *emailVerificationToken); err != nil {
 		logger.Error(err, "Error sending verification email")
 		return &SendEmailError{Message: "Error sending verification email"}
 	}
@@ -150,18 +122,11 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 
 // VerifyEmail verifies a user's email
 func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificationToken string) error {
-	token, err := service.tokenRepository.GetByToken(ctx, verificationToken)
+	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, verificationToken)
 	if err != nil {
-		return &Error{Message: "Invalid verification token"}
+		return err
 	}
-	if token.Type != commonJWT.EmailVerificationTokenType {
-		return &Error{Message: "Wrong type of token"}
-	}
-	current := time.Now()
-	timeDifference := current.Sub(token.ExpiresAt)
-	if timeDifference >= 0 {
-		return &Error{Message: "Verification token expired"}
-	}
+
 	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
 	if err != nil {
 		return fmt.Errorf("Error getting user by ID: %v", err)
@@ -176,81 +141,11 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 		return fmt.Errorf("Error updating user: %v", err)
 	}
 
-	err = service.tokenRepository.Remove(ctx, token.Token)
+	err = service.tokenService.RemoveUsedToken(ctx, token.Token)
 	if err != nil {
-		return fmt.Errorf("Error removing token: %v", err)
+		return err
 	}
 	return nil
-}
-
-func (service *AuthenticationService) createToken(ctx context.Context, email string, expiry time.Duration, tokenType commonJWT.TokenType) (*string, *time.Time, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	tokenExpiryDate := time.Now().Add(expiry)
-	tokenString, err := service.jwtAuthenticator.SignToken(email, tokenExpiryDate, tokenType)
-	if err != nil {
-		logger.Error(err, "Error creating jwt token")
-		return nil, nil, &Error{
-			Message: "Error creating jwt token",
-		}
-	}
-	return tokenString, &tokenExpiryDate, nil
-}
-
-func (service *AuthenticationService) createTokenResponse(
-	ctx context.Context,
-	user *model.User,
-	refreshToken *string,
-) (*model.AuthTokensResponse, error) {
-	authTokenString,
-		authenticationTokenExpiration,
-		err := service.createToken(ctx, user.Email, AuthenticationTokenExpiry, commonJWT.AccessTokenType)
-	if err != nil {
-		return nil, &Error{
-			Message: "Error creating authentication token",
-		}
-	}
-
-	refreshTokenString,
-		refreshTokenExpiration,
-		err := service.createToken(ctx, user.Email, RefreshTokenExpiry, commonJWT.RefreshTokenType)
-	if err != nil {
-		return nil, &Error{
-			Message: "Error creating refresh token",
-		}
-	}
-
-	newRefreshToken := model.Token{
-		Token:     *refreshTokenString,
-		IssuedAt:  time.Now(),
-		ExpiresAt: *refreshTokenExpiration,
-		Revoked:   false,
-		Type:      commonJWT.RefreshTokenType,
-		UserID:    user.ID,
-	}
-
-	shouldReplaceExistingToken := refreshToken != nil
-	if shouldReplaceExistingToken {
-		err = service.tokenRepository.Remove(ctx, *refreshToken)
-		if err != nil {
-			return nil, fmt.Errorf("Refresh token is not listed in DB: %v", err)
-		}
-
-	}
-	_, err = service.tokenRepository.InsertToken(ctx, &newRefreshToken)
-	if err != nil {
-		return nil, fmt.Errorf("Could not insert new refresh token in DB: %v", err)
-	}
-
-	return &model.AuthTokensResponse{
-		AuthToken:          *authTokenString,
-		AuthTokenExpiry:    *authenticationTokenExpiration,
-		RefreshToken:       *refreshTokenString,
-		RefreshTokenExpiry: *refreshTokenExpiration,
-		UserEmail:          user.Email,
-	}, nil
 }
 
 // Authenticate authenticates a user and provides a token
@@ -276,23 +171,7 @@ func (service *AuthenticationService) Authenticate(ctx context.Context, email, p
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
-	return service.createTokenResponse(ctx, user, nil)
-}
-
-// VerifyTokenAndDecodeEmail verifies decodes the email from the jwt token
-func (service *AuthenticationService) VerifyTokenAndDecodeEmail(
-	ctx context.Context,
-	token string,
-) (*string, error) {
-	jwtToken, err := service.jwtAuthenticator.VerifyToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("Error verifying token: %v", err)
-	}
-	email, err := service.jwtAuthenticator.GetEmailFromToken(jwtToken)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting email from token: %v", err)
-	}
-	return email, nil
+	return service.tokenService.CreateJWTTokens(ctx, user, nil)
 }
 
 // ResendEmailVerification resends a verification email
@@ -311,28 +190,16 @@ func (service *AuthenticationService) ResendEmailVerification(
 		return &Error{Message: "Email already verified"}
 	}
 
-	verificationToken, err := util.GenerateVerificationToken()
+	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, user.ID)
 	if err != nil {
-		return fmt.Errorf("Error generating verification token: %v", err)
-	}
-	emailVerificationToken := &model.Token{
-		Token:     verificationToken,
-		IssuedAt:  time.Now(),
-		ExpiresAt: time.Now(),
-		Revoked:   false,
-		Type:      commonJWT.EmailVerificationTokenType,
-		UserID:    user.ID,
-	}
-	_, err = service.tokenRepository.InsertToken(ctx, emailVerificationToken)
-	if err != nil {
-		return fmt.Errorf("Error inserting the verification token in db: %v", err)
+		return err
 	}
 
 	if err := service.emailService.SendVerificationMail(
 		ctx,
 		user.Email,
 		user.FirstName,
-		verificationToken,
+		*emailVerificationToken,
 	); err != nil {
 		return fmt.Errorf("Error sending verification email: %v", err)
 	}
@@ -342,25 +209,13 @@ func (service *AuthenticationService) ResendEmailVerification(
 
 // RefreshToken refreshes an authentication token using a refresh token
 func (service *AuthenticationService) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
+	email, err := service.tokenService.VerifyJWTToken(ctx, refreshTokenString)
 	if err != nil {
 		return nil, err
 	}
-	// Verify the refresh token
-	token, err := service.jwtAuthenticator.VerifyToken(refreshTokenString)
+	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
-		logger.Error(err, "Error verifying refresh token")
-		return nil, &Error{
-			Message: "Invalid or expired refresh token",
-		}
-	}
-
-	email, err := service.jwtAuthenticator.GetEmailFromToken(token)
-	if err != nil {
-		logger.Error(err, "Error getting email from token")
-		return nil, &Error{
-			Message: "Error getting email from token",
-		}
+		return nil, err
 	}
 
 	// Retrieve user details from the database
@@ -372,7 +227,7 @@ func (service *AuthenticationService) RefreshToken(ctx context.Context, refreshT
 		}
 	}
 
-	return service.createTokenResponse(ctx, user, &refreshTokenString)
+	return service.tokenService.CreateJWTTokens(ctx, user, &refreshTokenString)
 }
 
 // ForgotPassword sends a password reset email
@@ -384,56 +239,19 @@ func (service *AuthenticationService) ForgotPassword(ctx context.Context, email 
 	if user.AccountStatus == model.AccountStatusUnverified {
 		return &Error{Message: fmt.Sprintf("Email account %s not verified yet", email)}
 	}
-	resetToken, err := util.GenerateVerificationToken()
-	if err != nil {
-		return fmt.Errorf("Error generating reset token: %v", err)
-	}
-	token := &model.Token{
-		UserID:    user.ID,
-		Token:     resetToken,
-		IssuedAt:  time.Now(),
-		ExpiresAt: time.Now().Add(PasswordResetTokenExpiry),
-		Revoked:   false,
-		Type:      commonJWT.ResetPasswordTokenType,
-	}
-	_, err = service.tokenRepository.InsertToken(ctx, token)
-	if err != nil {
-		return fmt.Errorf("Error inserting token in db: %v", err)
-	}
-	if err := service.emailService.SendPasswordResetMail(ctx, user.Email, user.FirstName, resetToken); err != nil {
-		return fmt.Errorf("Error sending password reset email: %v", err)
-	}
-	return nil
-}
-
-func (service *AuthenticationService) verifyResetPasswordTokenValidity(ctx context.Context, tokenValue string) (*model.Token, error) {
-	token, err := service.tokenRepository.GetByToken(ctx, tokenValue)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting token by its value: %v", err)
-	}
-	if token.Type != commonJWT.ResetPasswordTokenType {
-		return nil, &Error{Message: "Invalid token type"}
-	}
-	current := time.Now()
-	timeDifference := current.Sub(token.ExpiresAt)
-	if timeDifference >= 0 {
-		return nil, &Error{Message: "Token expired"}
-	}
-	return token, nil
-}
-
-// VerifyResetPasswordToken verifies a password reset token validity
-func (service *AuthenticationService) VerifyResetPasswordToken(ctx context.Context, tokenValue string) error {
-	_, err := service.verifyResetPasswordTokenValidity(ctx, tokenValue)
+	resetToken, err := service.tokenService.GeneratePasswordResetToken(ctx, user.ID)
 	if err != nil {
 		return err
+	}
+	if err := service.emailService.SendPasswordResetMail(ctx, user.Email, user.FirstName, *resetToken); err != nil {
+		return fmt.Errorf("Error sending password reset email: %v", err)
 	}
 	return nil
 }
 
 // ResetPassword resets the user password
 func (service *AuthenticationService) ResetPassword(ctx context.Context, tokenValue, password string) error {
-	token, err := service.verifyResetPasswordTokenValidity(ctx, tokenValue)
+	token, err := service.tokenService.VerifyResetPasswordToken(ctx, tokenValue)
 	if err != nil {
 		return err
 	}
