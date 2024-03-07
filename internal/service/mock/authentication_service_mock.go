@@ -165,17 +165,17 @@ func (mr *MockAuthenticationServicerMockRecorder) VerifyResetPasswordToken(ctx, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyResetPasswordToken", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyResetPasswordToken), ctx, token)
 }
 
-// VerifyTokenAndDecodeEmail mocks base method.
-func (m *MockAuthenticationServicer) VerifyTokenAndDecodeEmail(ctx context.Context, token string) (*string, error) {
+// VerifyJWTToken mocks base method.
+func (m *MockAuthenticationServicer) VerifyJWTToken(ctx context.Context, token string) (*string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyTokenAndDecodeEmail", ctx, token)
+	ret := m.ctrl.Call(m, "VerifyJWTToken", ctx, token)
 	ret0, _ := ret[0].(*string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// VerifyTokenAndDecodeEmail indicates an expected call of VerifyTokenAndDecodeEmail.
-func (mr *MockAuthenticationServicerMockRecorder) VerifyTokenAndDecodeEmail(ctx, token interface{}) *gomock.Call {
+// VerifyJWTToken indicates an expected call of VerifyJWTToken.
+func (mr *MockAuthenticationServicerMockRecorder) VerifyJWTToken(ctx, token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyTokenAndDecodeEmail", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyTokenAndDecodeEmail), ctx, token)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyJWTToken", reflect.TypeOf((*MockAuthenticationServicer)(nil).VerifyJWTToken), ctx, token)
 }

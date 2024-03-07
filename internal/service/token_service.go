@@ -22,7 +22,6 @@ type TokenServicer interface {
 	GenerateJWTTokens(ctx context.Context, user *model.User, refreshToken *string) (*model.AuthTokensResponse, error)
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
-	VerifyJWTTokenAndExtractEmail(ctx context.Context, token string) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*string, error)
 	VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error)
@@ -174,22 +173,6 @@ func (service *TokenService) GenerateJWTTokens(
 	}, nil
 }
 
-// VerifyJWTTokenAndExtractEmail verifies decodes the email from the jwt token
-func (service *TokenService) VerifyJWTTokenAndExtractEmail(
-	ctx context.Context,
-	token string,
-) (*string, error) {
-	jwtToken, err := service.jwtAuthenticator.VerifyToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("Error verifying token: %v", err)
-	}
-	email, err := service.jwtAuthenticator.GetEmailFromToken(jwtToken)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting email from token: %v", err)
-	}
-	return email, nil
-}
-
 // VerifyJWTToken refreshes an authentication token using a refresh token
 func (service *TokenService) VerifyJWTToken(ctx context.Context, tokenValue string) (*string, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
@@ -212,7 +195,7 @@ func (service *TokenService) VerifyJWTToken(ctx context.Context, tokenValue stri
 			Message: "Error getting email from token",
 		}
 	}
-	return email, err
+	return email, nil
 }
 
 func (service *TokenService) VerifyTokenValidity(ctx context.Context, tokenValue string, tokenType commonJWT.TokenType) (*model.Token, error) {

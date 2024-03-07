@@ -50,47 +50,47 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 }
 
 func TestTokenService(test *testing.T) {
-	// VerifyTokenAndDecodeEmail
-	test.Run("VerifyTokenAndDecodeEmail_VerifyToken_Error", func(test *testing.T) {
+	// VerifyJWTToken
+	test.Run("VerifyJWTToken_VerifyToken_Error", func(test *testing.T) {
 		// Arrange
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
 		token := "invalid-token"
-		mockedError := errors.New("Token verification failed")
 
-		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(nil, mockedError)
+		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error verifying refresh token")
 
 		// Act
-		email, err := mocks.TokenService.VerifyJWTTokenAndExtractEmail(mocks.Ctx, token)
+		email, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
 
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, email)
-		assert.Equal(test, "Error verifying token: Token verification failed", err.Error())
+		assert.Equal(test, "Invalid or expired refresh token", err.Error())
 	})
 
-	test.Run("VerifyTokenAndDecodeEmail_GetEmailFromToken_Error", func(test *testing.T) {
+	test.Run("VerifyJWTToken_GetEmailFromToken_Error", func(test *testing.T) {
 		// Arrange
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
 		token := "valid-token"
-		mockedError := errors.New("Error decoding email")
 
 		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
-		mocks.MockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, mockedError)
+		mocks.MockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error getting email from token")
 
 		// Act
-		email, err := mocks.TokenService.VerifyJWTTokenAndExtractEmail(mocks.Ctx, token)
+		email, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
 
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, email)
-		assert.Equal(test, "Error getting email from token: Error decoding email", err.Error())
+		assert.Equal(test, "Error getting email from token", err.Error())
 	})
 
-	test.Run("VerifyTokenAndDecodeEmail_Success", func(test *testing.T) {
+	test.Run("VerifyJWTToken_Success", func(test *testing.T) {
 		// Arrange
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
@@ -102,7 +102,7 @@ func TestTokenService(test *testing.T) {
 		mocks.MockJWTManager.EXPECT().GetEmailFromToken(&jwtToken).Return(&exampleEmail, nil)
 
 		// Act
-		email, err := mocks.TokenService.VerifyJWTTokenAndExtractEmail(mocks.Ctx, token)
+		email, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
 
 		// Assert
 		assert.NoError(test, err)

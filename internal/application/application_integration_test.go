@@ -10,13 +10,12 @@ import (
 	"time"
 
 	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 	commonUtil "github.com/quadev-ltd/qd-common/pkg/util"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/tryvium-travels/memongo"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -31,9 +30,6 @@ import (
 )
 
 const wrongEmail = "wrong@email.com"
-
-var jwtToken string
-var refreshToken string
 
 func isServerUp(test *testing.T, addr string, tlsEnabled bool) bool {
 	if tlsEnabled {
@@ -110,7 +106,67 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabl
 	return mockServer, listener
 }
 
+type EnvironmentParams struct {
+	MockMongoServer *memongo.Server
+	MockConfig      *commonConfig.Config
+	Application     Applicationer
+}
+
+var mockCentralConfig = commonConfig.Config{
+	TLSEnabled:                true,
+	EmailVerificationEndpoint: "http://localhost:2222/",
+	EmailService: commonConfig.Address{
+		Host: "qd.email.api",
+		Port: "1111",
+	},
+	AuthenticationService: commonConfig.Address{
+		Host: "qd.authentication.api",
+		Port: "3333",
+	},
+}
+
+func setUpTestEnvironment(t *testing.T) *EnvironmentParams {
+	mongoServer := mock.SetUpMongoServer(t)
+
+	var config config.Config
+	config.Load("internal/config")
+	config.AuthenticationDB.URI = mongoServer.URI()
+
+	application := NewApplication(&config, &mockCentralConfig)
+	go func() {
+		t.Logf("Starting server on %s...\n", application.GetGRPCServerAddress())
+		application.StartServer()
+	}()
+
+	waitForServerUp(t, application, mockCentralConfig.TLSEnabled)
+
+	return &EnvironmentParams{
+		MockMongoServer: mongoServer,
+		MockConfig:      &mockCentralConfig,
+		Application:     application,
+	}
+}
+
 func TestRegisterUserJourneys(t *testing.T) {
+	// Save current working directory and change it to be in the root folder of the project
+	originalWD, err := commonUtil.ChangeCurrentWorkingDirectory("../..")
+	if err != nil {
+		t.Fatalf("Failed to change working directory: %s", err)
+	}
+	// Defer the reset of the working directory
+	defer os.Chdir(*originalWD)
+	// Set mock email server
+	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf(
+		"%s:%s",
+		mockCentralConfig.EmailService.Host,
+		mockCentralConfig.EmailService.Port),
+		mockCentralConfig.TLSEnabled,
+	)
+	defer mockEmailServer.Stop()
+	// Logs configurations
+	zerolog.SetGlobalLevel(zerolog.Disabled)
+	os.Setenv(commonConfig.AppEnvironmentKey, "test")
+
 	email := "test@test.com"
 	password := "Password123!"
 	correlationID := "1234567890"
@@ -123,57 +179,50 @@ func TestRegisterUserJourneys(t *testing.T) {
 		DateOfBirth: dateOfBirth,
 	}
 
-	// Logs configurations
-	zerolog.SetGlobalLevel(zerolog.Disabled)
-	os.Setenv(commonConfig.AppEnvironmentKey, "test")
+	// mongoServer := mock.SetUpMongoServer(t)
+	// defer mongoServer.Stop()
 
-	mongoServer := mock.SetUpMongoServer(t)
-	defer mongoServer.Stop()
+	// var config config.Config
+	// config.Load("internal/config")
+	// config.AuthenticationDB.URI = mongoServer.URI()
+	// centralConfig := commonConfig.Config{
+	// 	TLSEnabled:                true,
+	// 	EmailVerificationEndpoint: "http://localhost:2222/",
+	// 	EmailService: commonConfig.Address{
+	// 		Host: "qd.email.api",
+	// 		Port: "1111",
+	// 	},
+	// 	AuthenticationService: commonConfig.Address{
+	// 		Host: "qd.authentication.api",
+	// 		Port: "3333",
+	// 	},
+	// }
 
-	// Save current working directory and change it
-	originalWD, err := commonUtil.ChangeCurrentWorkingDirectory("../..")
-	if err != nil {
-		t.Fatalf("Failed to change working directory: %s", err)
-	}
-	// Defer the reset of the working directory
-	defer os.Chdir(*originalWD)
+	// mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf(
+	// 	"%s:%s",
+	// 	centralConfig.EmailService.Host,
+	// 	centralConfig.EmailService.Port),
+	// 	centralConfig.TLSEnabled,
+	// )
+	// defer mockEmailServer.Stop()
 
-	var config config.Config
-	config.Load("internal/config")
-	config.AuthenticationDB.URI = mongoServer.URI()
-	centralConfig := commonConfig.Config{
-		TLSEnabled:                true,
-		EmailVerificationEndpoint: "http://localhost:2222/",
-		EmailService: commonConfig.Address{
-			Host: "qd.email.api",
-			Port: "1111",
-		},
-		AuthenticationService: commonConfig.Address{
-			Host: "qd.authentication.api",
-			Port: "3333",
-		},
-	}
+	// application := NewApplication(&config, &centralConfig)
+	// go func() {
+	// 	t.Logf("Starting server on %s...\n", application.GetGRPCServerAddress())
+	// 	application.StartServer()
+	// }()
+	// defer application.Close()
 
-	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf(
-		"%s:%s",
-		centralConfig.EmailService.Host,
-		centralConfig.EmailService.Port),
-		centralConfig.TLSEnabled,
-	)
-	defer mockEmailServer.Stop()
-
-	application := NewApplication(&config, &centralConfig)
-	go func() {
-		t.Log(fmt.Sprintf("Starting server on %s...\n", application.GetGRPCServerAddress()))
-		application.StartServer()
-	}()
-	defer application.Close()
-
-	waitForServerUp(t, application, centralConfig.TLSEnabled)
+	// waitForServerUp(t, application, centralConfig.TLSEnabled)
 
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -191,7 +240,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Success", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -207,12 +262,27 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Failure_Already_Existing_User", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		registerResponse, err := client.Register(
+			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
+			registerRequest,
+		)
+
+		assert.NoError(t, err)
+		assert.Equal(t, registerResponse.Success, true)
+		assert.Equal(t, registerResponse.Message, "Registration successful")
+
+		registerResponse, err = client.Register(
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			registerRequest,
 		)
@@ -223,7 +293,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Register_Failure_Send_Email_Error", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -244,7 +320,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Verify_Email_Error_Wrong_Token", func(t *testing.T) {
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		assert.NoError(t, err)
 
 		client := pb_authentication.NewAuthenticationServiceClient(connection)
@@ -260,36 +342,48 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Authenticate_Success", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
 
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		defer client.Disconnect(ctx)
+
+		// Get registered user
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
 
 		collection := client.Database("qd_authentication").Collection("user")
 		var foundUser model.User
-		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
+		err = collection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
-
-		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
-
-		authenticateResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: password,
 		})
 
-		jwtToken = authenticateResponse.AuthToken
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.NotNil(t, authenticateResponse.AuthToken)
@@ -297,33 +391,102 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
 	})
 
-	t.Run("ResendVerificationEmail_Success", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+	t.Run("Authenticate_Error", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
 
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		defer client.Disconnect(ctx)
+
+		// Get registered user
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
 
 		collection := client.Database("qd_authentication").Collection("user")
 		var foundUser model.User
-		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
+		err = collection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
 
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    foundUser.Email,
+			Password: "password",
+		})
+
+		assert.Error(t, err)
+		assert.Nil(t, authenticateResponse)
+		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password", err.Error())
+	})
+
+	t.Run("ResendVerificationEmail_Success", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		assert.NoError(t, err)
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		if err != nil {
+			t.Fatal(err)
+		}
 
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(ctx, &pb_authentication.ResendEmailVerificationRequest{
-			AuthToken: jwtToken,
+		// Get registered user
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		collection := client.Database("qd_authentication").Collection("user")
+		var foundUser model.User
+		err = collection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    foundUser.Email,
+			Password: password,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(ctxWithCorrelationID, &pb_authentication.ResendEmailVerificationRequest{
+			AuthToken: authenticateResponse.AuthToken,
 		})
 
 		assert.NoError(t, err)
@@ -333,25 +496,20 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("ResendVerificationEmail_JWT_Error", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
-		if err != nil {
-			log.Err(err)
-		}
-
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		assert.NoError(t, err)
 
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
-			ctx,
+			ctxWithCorrelationID,
 			&pb_authentication.ResendEmailVerificationRequest{
 				AuthToken: "jwtToken",
 			},
@@ -363,36 +521,52 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Verify_Email_Success", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 
-		err = client.Connect(ctx)
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		defer client.Disconnect(ctx)
+
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
 
 		userCollection := client.Database("qd_authentication").Collection("user")
 		tokenCollection := client.Database("qd_authentication").Collection("token")
 		var foundUser model.User
-		err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
+		err = userCollection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
 		var foundToken model.Token
-		err = tokenCollection.FindOne(ctx, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
 
-		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
-
-		verifyEmailResponse, err := grpcClient.VerifyEmail(ctx, &pb_authentication.VerifyEmailRequest{
+		verifyEmailResponse, err := grpcClient.VerifyEmail(ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
 			VerificationToken: foundToken.Token,
 		})
 
@@ -402,54 +576,20 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, verifyEmailResponse.Success, true)
 	})
 
-	t.Run("Authenticate_Error", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
-		if err != nil {
-			log.Err(err)
-		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
-
-		collection := client.Database("qd_authentication").Collection("user")
-		var foundUser model.User
-		err = collection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
-		if err != nil {
-			log.Err(err)
-		}
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
-
-		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
-
-		authenticateResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
-			Email:    foundUser.Email,
-			Password: "password",
-		})
-
-		assert.Error(t, err)
-		assert.Nil(t, authenticateResponse)
-		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password", err.Error())
-	})
-
 	t.Run("Refresh_Token_Error", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
 		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
@@ -463,184 +603,231 @@ func TestRegisterUserJourneys(t *testing.T) {
 	})
 
 	t.Run("Refresh_Token_Success", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
-
-		userCollection := client.Database("qd_authentication").Collection("user")
-		var foundUser model.User
-		err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
-		if err != nil {
-			log.Err(err)
-		}
-		tokenCollection := client.Database("qd_authentication").Collection("token")
-		var foundToken model.Token
-		err = tokenCollection.FindOne(ctx, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
-		if err != nil {
-			log.Err(err)
-		}
-		refreshToken = foundToken.Token
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		refreshTokenResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
-			Token: refreshToken,
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    registerRequest.Email,
+			Password: password,
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		refreshTokenResponse, err := grpcClient.RefreshToken(
+			ctxWithCorrelationID,
+			&pb_authentication.RefreshTokenRequest{
+				Token: authenticateResponse.RefreshToken,
+			},
+		)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, refreshTokenResponse)
 		assert.NotNil(t, refreshTokenResponse.AuthToken)
 		assert.NotNil(t, refreshTokenResponse.RefreshToken)
-		assert.Equal(t, foundUser.Email, refreshTokenResponse.UserEmail)
+		assert.Equal(t, registerRequest.Email, refreshTokenResponse.UserEmail)
 	})
 
-	t.Run("Refresh_Token_Not_Listed_Error", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+	t.Run("Refresh_Token_Type_Error", func(t *testing.T) {
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		refreshTokenResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
-			Token: refreshToken,
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    registerRequest.Email,
+			Password: password,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		refreshTokenResponse, err := grpcClient.RefreshToken(
+			ctxWithCorrelationID,
+			&pb_authentication.RefreshTokenRequest{
+				Token: authenticateResponse.AuthToken,
+			},
+		)
+
+		assert.Error(t, err)
+		assert.Nil(t, refreshTokenResponse)
+		assert.EqualError(t, err, "rpc error: code = Internal desc = Refresh token is not listed in DB: no token found with specified value")
+	})
+
+	t.Run("Refresh_Token_Not_Listed_Error", func(t *testing.T) {
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		refreshTokenResponse, err := grpcClient.RefreshToken(ctxWithCorrelationID, &pb_authentication.RefreshTokenRequest{
+			Token: "some-token",
 		})
 
 		assert.Error(t, err)
 		assert.Nil(t, refreshTokenResponse)
-		assert.Equal(t, "rpc error: code = Internal desc = Refresh token is not listed in DB: no token found with specified value", err.Error())
+		assert.Equal(t, "rpc error: code = Internal desc = Invalid or expired refresh token", err.Error())
 	})
 
-	t.Run("Forgot_Password_Success", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+	t.Run("Forgot_Password_NotVerified_Error", func(t *testing.T) {
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		forgotPasswordResponse, err := grpcClient.ForgotPassword(ctx, &pb_authentication.ForgotPasswordRequest{
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		forgotPasswordResponse, err := grpcClient.ForgotPassword(ctxWithCorrelationID, &pb_authentication.ForgotPasswordRequest{
 			Email: email,
 		})
 
+		assert.Error(t, err)
+		assert.Nil(t, forgotPasswordResponse)
+		assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = Email account test@test.com not verified yet")
+	})
+
+	t.Run("ComppleteResetPassword_Success", func(t *testing.T) {
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		userCollection := client.Database("qd_authentication").Collection("user")
+		tokenCollection := client.Database("qd_authentication").Collection("token")
+		var foundUser model.User
+		err = userCollection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var foundToken model.Token
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		_, err = grpcClient.VerifyEmail(
+			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
+			&pb_authentication.VerifyEmailRequest{
+				VerificationToken: foundToken.Token,
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		forgotPasswordResponse, err := grpcClient.ForgotPassword(ctxWithCorrelationID, &pb_authentication.ForgotPasswordRequest{
+			Email: email,
+		})
 		assert.NoError(t, err)
 		assert.NotNil(t, forgotPasswordResponse)
 		assert.Equal(t, "Forgot password request successful", forgotPasswordResponse.Message)
 		assert.True(t, forgotPasswordResponse.Success)
-	})
 
-	t.Run("VerifyResetPasswordToken_Success", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
-			log.Err(err)
+			t.Fatal(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
 
-		userCollection := client.Database("qd_authentication").Collection("user")
-		var foundUser model.User
-		err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
-		if err != nil {
-			log.Err(err)
-		}
-		tokenCollection := client.Database("qd_authentication").Collection("token")
-		var foundToken model.Token
-		err = tokenCollection.FindOne(ctx, bson.M{"userId": foundUser.ID, "type": commonJWT.ResetPasswordTokenType}).Decode(&foundToken)
-		if err != nil {
-			log.Err(err)
-		}
-		foundRefreshToken := foundToken.Token
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
-
-		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
-
-		forgotPassword, err := grpcClient.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: foundRefreshToken,
+		forgotPassword, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
+			Token: foundToken.Token,
 		})
 
 		assert.NoError(t, err)
 		assert.NotNil(t, forgotPassword)
 		assert.True(t, forgotPassword.IsValid)
 		assert.Equal(t, "Verify reset password token successful", forgotPassword.Message)
-	})
 
-	t.Run("ResetPassword_Success", func(t *testing.T) {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoServer.URI()))
-		if err != nil {
-			log.Err(err)
-		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		err = client.Connect(ctx)
-		if err != nil {
-			log.Err(err)
-		}
-		defer client.Disconnect(ctx)
-
-		userCollection := client.Database("qd_authentication").Collection("user")
-		var foundUser model.User
-		err = userCollection.FindOne(ctx, bson.M{"email": email}).Decode(&foundUser)
-		if err != nil {
-			log.Err(err)
-		}
-		tokenCollection := client.Database("qd_authentication").Collection("token")
-		var foundToken model.Token
-		err = tokenCollection.FindOne(ctx, bson.M{"userId": foundUser.ID, "type": commonJWT.ResetPasswordTokenType}).Decode(&foundToken)
-		if err != nil {
-			log.Err(err)
-		}
-		resetPasswordToken := foundToken.Token
-		newPassword := "Passwrod@@@123!"
-
-		connection, err := commonTLS.CreateGRPCConnection(application.GetGRPCServerAddress(), centralConfig.TLSEnabled)
-		assert.NoError(t, err)
-
-		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
-
-		verifyResetPasswordTokenResponse, err := grpcClient.VerifyResetPasswordToken(ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: resetPasswordToken,
-		})
-
-		assert.NoError(t, err)
-		assert.NotNil(t, verifyResetPasswordTokenResponse)
-		assert.True(t, verifyResetPasswordTokenResponse.IsValid)
-		assert.Equal(t, "Verify reset password token successful", verifyResetPasswordTokenResponse.Message)
-
-		resetPasswordResponse, err := grpcClient.ResetPassword(ctx, &pb_authentication.ResetPasswordRequest{
-			Token:       resetPasswordToken,
+		newPassword := "NewPassword@000!"
+		resetPasswordResponse, err := grpcClient.ResetPassword(ctxWithCorrelationID, &pb_authentication.ResetPasswordRequest{
+			Token:       foundToken.Token,
 			NewPassword: newPassword,
 		})
 
@@ -649,7 +836,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.True(t, resetPasswordResponse.Success)
 		assert.Equal(t, "Reset password successful", resetPasswordResponse.Message)
 
-		authenticateResponse, err := grpcClient.Authenticate(ctx, &pb_authentication.AuthenticateRequest{
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: newPassword,
 		})
