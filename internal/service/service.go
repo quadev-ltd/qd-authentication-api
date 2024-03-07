@@ -29,10 +29,12 @@ func (service *Service) GetAuthenticationService() UserServicer {
 	return service.authenticationService
 }
 
+// GetTokenService Returns the token service
 func (service *Service) GetTokenService() TokenServicer {
 	return service.tokenService
 }
 
+// GetPasswordService Returns the password service
 func (service *Service) GetPasswordService() PasswordServicer {
 	return service.passwordService
 }

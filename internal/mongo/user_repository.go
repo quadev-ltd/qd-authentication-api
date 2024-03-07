@@ -98,7 +98,7 @@ func (userRepository *UserRepository) UpdateStatus(ctx context.Context, user *mo
 	return nil
 }
 
-// UpdateStatus updates a user in the mongo database
+// UpdatePassword updates a user in the mongo database
 func (userRepository *UserRepository) UpdatePassword(ctx context.Context, user *model.User) error {
 	update := bson.M{
 		"$set": bson.M{
@@ -109,6 +109,7 @@ func (userRepository *UserRepository) UpdatePassword(ctx context.Context, user *
 	return userRepository.Update(ctx, user, update)
 }
 
+// Update updates a user in the mongo database
 func (userRepository *UserRepository) Update(ctx context.Context, user *model.User, dataUpdate primitive.M) error {
 	collection := userRepository.getCollection()
 	filter := bson.M{"email": user.Email}

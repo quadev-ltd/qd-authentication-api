@@ -119,6 +119,7 @@ func (service *TokenService) GenerateJWTToken(
 	return tokenString, &tokenExpiryDate, nil
 }
 
+// GenerateJWTTokens creates a jwt access and refresh token
 func (service *TokenService) GenerateJWTTokens(
 	ctx context.Context,
 	user *model.User,
@@ -198,6 +199,7 @@ func (service *TokenService) VerifyJWTToken(ctx context.Context, tokenValue stri
 	return email, nil
 }
 
+// VerifyTokenValidity verifies a token validity
 func (service *TokenService) VerifyTokenValidity(ctx context.Context, tokenValue string, tokenType commonJWT.TokenType) (*model.Token, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
@@ -228,6 +230,7 @@ func (service *TokenService) VerifyResetPasswordToken(ctx context.Context, token
 	return token, nil
 }
 
+// VerifyEmailVerificationToken verifies an email verification token validity
 func (service *TokenService) VerifyEmailVerificationToken(ctx context.Context, tokenValue string) (*model.Token, error) {
 	token, err := service.VerifyTokenValidity(ctx, tokenValue, commonJWT.EmailVerificationTokenType)
 	if err != nil {

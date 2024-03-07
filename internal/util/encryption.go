@@ -19,6 +19,7 @@ func GenerateSalt(length int) (string, error) {
 }
 
 // TODO: unit test
+
 // GenerateVerificationToken generates a random verification token
 func GenerateVerificationToken() (string, error) {
 	b := make([]byte, 32)
