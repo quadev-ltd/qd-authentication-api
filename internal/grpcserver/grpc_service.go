@@ -19,7 +19,7 @@ import (
 
 // AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
-	authenticationService servicePkg.AuthenticationServicer
+	authenticationService servicePkg.UserServicer
 	tokenService          servicePkg.TokenServicer
 	passwordService       servicePkg.PasswordServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
@@ -27,7 +27,7 @@ type AuthenticationServiceServer struct {
 
 // NewAuthenticationServiceServer creates a new authentication service server
 func NewAuthenticationServiceServer(
-	authenticationService servicePkg.AuthenticationServicer,
+	authenticationService servicePkg.UserServicer,
 	tokenService servicePkg.TokenServicer,
 	passwordService servicePkg.PasswordServicer,
 ) *AuthenticationServiceServer {

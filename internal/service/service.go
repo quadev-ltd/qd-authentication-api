@@ -8,7 +8,7 @@ import (
 
 // Servicer is the interface for the service
 type Servicer interface {
-	GetAuthenticationService() AuthenticationServicer
+	GetAuthenticationService() UserServicer
 	GetTokenService() TokenServicer
 	GetPasswordService() PasswordServicer
 	Close() error
@@ -16,7 +16,7 @@ type Servicer interface {
 
 // Service is the implementation of the service
 type Service struct {
-	authenticationService AuthenticationServicer
+	authenticationService UserServicer
 	tokenService          TokenServicer
 	passwordService       PasswordServicer
 	repository            repository.Storer
@@ -25,7 +25,7 @@ type Service struct {
 var _ Servicer = &Service{}
 
 // GetAuthenticationService Returns the authentication service
-func (service *Service) GetAuthenticationService() AuthenticationServicer {
+func (service *Service) GetAuthenticationService() UserServicer {
 	return service.authenticationService
 }
 

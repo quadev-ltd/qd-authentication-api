@@ -16,7 +16,7 @@ import (
 type Factoryer interface {
 	Create(
 		grpcServerAddress string,
-		authenticationService service.AuthenticationServicer,
+		authenticationService service.UserServicer,
 		tokenService service.TokenServicer,
 		passwordService service.PasswordServicer,
 		logFactory log.Factoryer,
@@ -32,7 +32,7 @@ var _ Factoryer = &Factory{}
 // Create creates a gRPC server
 func (grpcServerFactory *Factory) Create(
 	grpcServerAddress string,
-	authenticationService service.AuthenticationServicer,
+	authenticationService service.UserServicer,
 	tokenService service.TokenServicer,
 	passwordService service.PasswordServicer,
 	logFactory log.Factoryer,

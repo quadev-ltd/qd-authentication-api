@@ -14,8 +14,8 @@ import (
 	"qd-authentication-api/internal/util"
 )
 
-// AuthenticationServicer is the interface for the authentication service
-type AuthenticationServicer interface {
+// UserServicer is the interface for the authentication service
+type UserServicer interface {
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error
 	VerifyEmail(ctx context.Context, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
@@ -23,22 +23,22 @@ type AuthenticationServicer interface {
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
 }
 
-// AuthenticationService is the implementation of the authentication service
-type AuthenticationService struct {
+// UserService is the implementation of the authentication service
+type UserService struct {
 	emailService   EmailServicer
 	tokenService   TokenServicer
 	userRepository repository.UserRepositoryer
 }
 
-var _ AuthenticationServicer = &AuthenticationService{}
+var _ UserServicer = &UserService{}
 
-// NewAuthenticationService creates a new authentication service
-func NewAuthenticationService(
+// NewUserService creates a new authentication service
+func NewUserService(
 	emailService EmailServicer,
 	tokenService TokenServicer,
 	userRepository repository.UserRepositoryer,
-) AuthenticationServicer {
-	return &AuthenticationService{
+) UserServicer {
+	return &UserService{
 		emailService,
 		tokenService,
 		userRepository,
@@ -48,7 +48,7 @@ func NewAuthenticationService(
 // TODO pass an object DTO instead of all the parameters and check input validation
 
 // Register registers a new user
-func (service *AuthenticationService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
+func (service *UserService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err
@@ -112,7 +112,7 @@ func (service *AuthenticationService) Register(ctx context.Context, email, passw
 }
 
 // VerifyEmail verifies a user's email
-func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificationToken string) error {
+func (service *UserService) VerifyEmail(ctx context.Context, verificationToken string) error {
 	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, verificationToken)
 	if err != nil {
 		return err
@@ -140,7 +140,7 @@ func (service *AuthenticationService) VerifyEmail(ctx context.Context, verificat
 }
 
 // Authenticate authenticates a user and provides a token
-func (service *AuthenticationService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
+func (service *UserService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (service *AuthenticationService) Authenticate(ctx context.Context, email, p
 }
 
 // ResendEmailVerification resends a verification email
-func (service *AuthenticationService) ResendEmailVerification(
+func (service *UserService) ResendEmailVerification(
 	ctx context.Context,
 	email string,
 ) error {
@@ -199,7 +199,7 @@ func (service *AuthenticationService) ResendEmailVerification(
 }
 
 // RefreshToken refreshes an authentication token using a refresh token
-func (service *AuthenticationService) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
+func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
 	email, err := service.tokenService.VerifyJWTToken(ctx, refreshTokenString)
 	if err != nil {
 		return nil, err

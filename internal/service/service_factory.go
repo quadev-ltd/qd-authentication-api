@@ -49,7 +49,7 @@ func (serviceFactory *Factory) CreateServiceManager(
 		return nil, err
 	}
 	tokenService := NewTokenService(repository.GetTokenRepository(), jwtManager)
-	authenticationService := NewAuthenticationService(
+	userService := NewUserService(
 		emailService,
 		tokenService,
 		repository.GetUserRepository(),
@@ -61,7 +61,7 @@ func (serviceFactory *Factory) CreateServiceManager(
 	)
 
 	return &Service{
-		authenticationService,
+		userService,
 		tokenService,
 		passwordService,
 		repository,

@@ -39,15 +39,15 @@ type AuthServiceMockedParams struct {
 	MockUserRepo          repositoryMock.MockUserRepositoryer
 	MockEmailService      serviceMock.MockEmailServicer
 	MockTokenService      serviceMock.MockTokenServicer
-	AuthenticationService AuthenticationServicer
+	AuthenticationService UserServicer
 }
 
 // TODO: return an object
-func createAuthenticationService(controller *gomock.Controller) *AuthServiceMockedParams {
+func createUserService(controller *gomock.Controller) *AuthServiceMockedParams {
 	mockUserRepo := repositoryMock.NewMockUserRepositoryer(controller)
 	mockEmailService := serviceMock.NewMockEmailServicer(controller)
 	mockTokenService := serviceMock.NewMockTokenServicer(controller)
-	authenticationService := NewAuthenticationService(
+	userService := NewUserService(
 		mockEmailService,
 		mockTokenService,
 		mockUserRepo,
@@ -57,7 +57,7 @@ func createAuthenticationService(controller *gomock.Controller) *AuthServiceMock
 		*mockUserRepo,
 		*mockEmailService,
 		*mockTokenService,
-		authenticationService,
+		userService,
 	}
 }
 
@@ -67,7 +67,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
@@ -92,7 +92,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(true, nil)
@@ -114,7 +114,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), invalidEmail).Return(false, errExample)
@@ -136,7 +136,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Arrange
 		controller := gomock.NewController(test)
 		defer controller.Finish()
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), invalidEmail).Return(false, nil)
@@ -161,7 +161,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		invalidDateOfBirth := time.Time{}
 		logMock := loggerMock.NewMockLoggerer(controller)
 
@@ -187,7 +187,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
@@ -212,7 +212,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
@@ -268,7 +268,7 @@ func TestAuthenticationService(test *testing.T) {
 		defer controller.Finish()
 		errExample := errors.New("Test error")
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
@@ -303,7 +303,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testUser := model.NewUser()
 		testToken := model.NewToken(newRefreshTokenValue)
@@ -347,7 +347,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testToken := model.NewToken(newRefreshTokenValue)
 
@@ -387,7 +387,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testToken := model.NewToken(newRefreshTokenValue)
 
@@ -406,7 +406,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testToken := model.NewToken(newRefreshTokenValue)
 		testUser := model.NewUser()
@@ -427,7 +427,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testToken := model.NewToken(newRefreshTokenValue)
 		testUser := model.NewUser()
@@ -449,7 +449,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testToken := model.NewToken(newRefreshTokenValue)
 		testUser := model.NewUser()
@@ -473,7 +473,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		email := "test@example.com"
@@ -498,7 +498,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		email := "test@example.com"
@@ -520,7 +520,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		email := "test@example.com"
@@ -544,7 +544,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		user := model.NewUser()
@@ -643,7 +643,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		user := model.NewUser()
@@ -675,7 +675,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		errExample := errors.New("User repository error")
 
@@ -694,7 +694,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
 
@@ -715,7 +715,7 @@ func TestAuthenticationService(test *testing.T) {
 		user := model.NewUser()
 		user.AccountStatus = model.AccountStatusVerified
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
 
@@ -733,7 +733,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testUser := model.NewUser()
 
@@ -752,7 +752,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testUser := model.NewUser()
 		errExample := errors.New("Email service error")
@@ -778,7 +778,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 
 		testUser := model.NewUser()
 
@@ -804,7 +804,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		token := "test-token"
@@ -859,7 +859,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		token := "test_token"
@@ -958,7 +958,7 @@ func TestAuthenticationService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mocks := createAuthenticationService(controller)
+		mocks := createUserService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		email := "email@example.com"
