@@ -106,7 +106,6 @@ func (service AuthenticationServiceServer) Register(
 				Message: "Registration successful. However, verification email failed to send",
 			}, nil
 		}
-		logger.Error(registerError, "Registration failed")
 		err := status.Errorf(codes.Internal, "Registration failed: internal server error")
 		return nil, err
 	}

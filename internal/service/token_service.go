@@ -7,6 +7,7 @@ import (
 
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
+	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"qd-authentication-api/internal/jwt"
@@ -54,9 +55,14 @@ func (service *TokenService) generateVerificationToken(
 	userID primitive.ObjectID,
 	tokenType commonJWT.TokenType,
 ) (*string, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	verificationToken, err := util.GenerateVerificationToken()
 	if err != nil {
-		return nil, fmt.Errorf("Error generating verification token: %v", err)
+		logger.Error(err, "Error generating verification token")
+		return nil, &Error{Message: "Error generating verification token"}
 	}
 	verificationTokentExpiryDate := time.Now().Add(VerificationTokenExpiry)
 	emailVerificationToken := &model.Token{
@@ -68,7 +74,8 @@ func (service *TokenService) generateVerificationToken(
 	}
 	_, err = service.tokenRepository.InsertToken(ctx, emailVerificationToken)
 	if err != nil {
-		return nil, fmt.Errorf("Error inserting verification token in DB: %v", err)
+		logger.Error(err, "Error inserting verification token in DB")
+		return nil, fmt.Errorf("Error storing verification token")
 	}
 	return &verificationToken, nil
 }
@@ -85,16 +92,30 @@ func (service *TokenService) GeneratePasswordResetToken(ctx context.Context, use
 
 // RemoveUsedToken removes a token from the database
 func (service *TokenService) RemoveUsedToken(ctx context.Context, token string) error {
-	err := service.tokenRepository.Remove(ctx, token)
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
-		return fmt.Errorf("Error removing token: %v", err)
+		return err
+	}
+	err = service.tokenRepository.Remove(ctx, token)
+	if err != nil {
+		logger.Error(err, "Error removing token")
+		return &Error{Message: "Could not remove old token"}
 	}
 	return nil
 }
 
 // GetPublicKey ctx context.Contextgets the public key
 func (service *TokenService) GetPublicKey(ctx context.Context) (string, error) {
-	return service.jwtManager.GetPublicKey(ctx)
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return "", err
+	}
+	key, err := service.jwtManager.GetPublicKey(ctx)
+	if err != nil {
+		logger.Error(err, "Error getting public key")
+		return "", &Error{Message: "Error getting public key"}
+	}
+	return key, nil
 }
 
 // GenerateJWTToken creates a jwt token
@@ -104,7 +125,7 @@ func (service *TokenService) GenerateJWTToken(
 	expiry time.Duration,
 	tokenType commonJWT.TokenType,
 ) (*string, *time.Time, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,22 +146,22 @@ func (service *TokenService) GenerateJWTTokens(
 	user *model.User,
 	refreshToken *string,
 ) (*model.AuthTokensResponse, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	authTokenString,
 		authenticationTokenExpiration,
 		err := service.GenerateJWTToken(ctx, user.Email, AuthenticationTokenExpiry, commonJWT.AccessTokenType)
 	if err != nil {
-		return nil, &Error{
-			Message: "Error creating authentication token",
-		}
+		return nil, fmt.Errorf("Error creating authentication token: %v", err)
 	}
 
 	refreshTokenString,
 		refreshTokenExpiration,
 		err := service.GenerateJWTToken(ctx, user.Email, RefreshTokenExpiry, commonJWT.RefreshTokenType)
 	if err != nil {
-		return nil, &Error{
-			Message: "Error creating refresh token",
-		}
+		return nil, fmt.Errorf("Error creating refresh token: %v", err)
 	}
 
 	newRefreshToken := &model.Token{
@@ -156,13 +177,15 @@ func (service *TokenService) GenerateJWTTokens(
 	if shouldReplaceExistingToken {
 		err = service.tokenRepository.Remove(ctx, *refreshToken)
 		if err != nil {
-			return nil, fmt.Errorf("Refresh token is not listed in DB: %v", err)
+			logger.Error(err, "Error removing old refresh token")
+			return nil, fmt.Errorf("Error removing old refresh token")
 		}
 
 	}
 	_, err = service.tokenRepository.InsertToken(ctx, newRefreshToken)
 	if err != nil {
-		return nil, fmt.Errorf("Could not insert new refresh token in DB: %v", err)
+		logger.Error(err, "Error inserting new refresh token in DB")
+		return nil, fmt.Errorf("Could not store new refresh token")
 	}
 
 	return &model.AuthTokensResponse{
@@ -202,7 +225,7 @@ func (service *TokenService) VerifyJWTToken(
 	return claims, nil
 }
 
-// VerifyTokenValidity verifies a token validity
+// VerifyTokenValidity verifies a email verification or password reset token validity
 func (service *TokenService) VerifyTokenValidity(ctx context.Context, tokenValue string, tokenType commonJWT.TokenType) (*model.Token, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {

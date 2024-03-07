@@ -56,7 +56,8 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 	}
 	userExists, err := service.userRepository.ExistsByEmail(ctx, email)
 	if err != nil {
-		return fmt.Errorf("Error checking user existence by email: %v", err)
+		logger.Error(err, fmt.Sprintf("Error checking user existence by email: %v", email))
+		return fmt.Errorf("Error checking user existence by email: %v", email)
 	}
 	if userExists {
 		return &model.EmailInUseError{Email: email}
@@ -69,7 +70,8 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 
 	hashedPassword, salt, err := util.GenerateHash(password)
 	if err != nil {
-		return fmt.Errorf("Error generating password hash: %v", err)
+		logger.Error(err, "Error generating password hash")
+		return fmt.Errorf("Error generating password hash")
 	}
 
 	user := &model.User{
@@ -91,13 +93,14 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 	// Create the user in the repository
 	insertedID, err := service.userRepository.InsertUser(ctx, user)
 	if err != nil {
-		return fmt.Errorf("Error creating user: %v", err)
+		logger.Error(err, "Error inserting user in DB")
+		return fmt.Errorf("Error storing user")
 	}
 
 	// Create the verification token
 	userID, ok := insertedID.(primitive.ObjectID)
 	if !ok {
-		return fmt.Errorf("InsertedID is not of type primitive.ObjectID: %v", err)
+		return fmt.Errorf("InsertedID is not of type primitive.ObjectID")
 	}
 	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, userID)
 	if err != nil {
@@ -105,7 +108,6 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 	}
 
 	if err = service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, *emailVerificationToken); err != nil {
-		logger.Error(err, "Error sending verification email")
 		return &SendEmailError{Message: "Error sending verification email"}
 	}
 
@@ -114,6 +116,10 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 
 // VerifyEmail verifies a user's email
 func (service *UserService) VerifyEmail(ctx context.Context, verificationToken string) error {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return err
+	}
 	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, verificationToken)
 	if err != nil {
 		return err
@@ -121,7 +127,8 @@ func (service *UserService) VerifyEmail(ctx context.Context, verificationToken s
 
 	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
 	if err != nil {
-		return fmt.Errorf("Error getting user by ID: %v", err)
+		logger.Error(err, "Error getting user by ID")
+		return &Error{Message: "Invalid verification token"}
 	}
 	if user.AccountStatus == model.AccountStatusVerified {
 		return &Error{Message: "Email already verified"}
@@ -130,7 +137,8 @@ func (service *UserService) VerifyEmail(ctx context.Context, verificationToken s
 	user.AccountStatus = model.AccountStatusVerified
 
 	if err := service.userRepository.UpdateStatus(ctx, user); err != nil {
-		return fmt.Errorf("Error updating user: %v", err)
+		logger.Error(err, "Error updating user status")
+		return fmt.Errorf("Error updating user status")
 	}
 
 	err = service.tokenService.RemoveUsedToken(ctx, token.Token)
@@ -148,7 +156,7 @@ func (service *UserService) Authenticate(ctx context.Context, email, password st
 	}
 	user, resultError := service.userRepository.GetByEmail(ctx, email)
 	if resultError != nil {
-		logger.Error(resultError, "Error getting user by email")
+		logger.Error(resultError, fmt.Sprintf("Error getting user by email: %v", email))
 		return nil, &Error{
 			Message: "Error getting user by email",
 		}
@@ -171,9 +179,14 @@ func (service *UserService) ResendEmailVerification(
 	ctx context.Context,
 	email string,
 ) error {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return err
+	}
 	user, err := service.userRepository.GetByEmail(ctx, email)
 	if err != nil {
-		return fmt.Errorf("Error getting user by email: %v", err)
+		logger.Error(err, fmt.Sprintf("Error getting user by email: %v", email))
+		return fmt.Errorf("Error searching user by email")
 	}
 	if user == nil {
 		return &Error{Message: "Invalid email"}
@@ -216,9 +229,9 @@ func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString
 	// Retrieve user details from the database
 	user, err := service.userRepository.GetByEmail(ctx, claims.Email)
 	if err != nil {
-		logger.Error(err, "Error getting user by email")
+		logger.Error(err, "Error getting user by email claim")
 		return nil, &Error{
-			Message: "Error getting user by email",
+			Message: "Invalid token",
 		}
 	}
 

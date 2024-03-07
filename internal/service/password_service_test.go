@@ -63,14 +63,14 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenValue, nil)
 		mocks.MockEmailService.EXPECT().SendPasswordResetMail(
-			context.Background(),
+			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
 			gomock.Any(),
 		).Return(nil)
 
 		// Act
-		err := mocks.PasswordService.ForgotPassword(context.Background(), testEmail)
+		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
 
 		// Assert
 		assert.NoError(test, err)
@@ -87,14 +87,14 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenValue, nil)
 		mocks.MockEmailService.EXPECT().SendPasswordResetMail(
-			context.Background(),
+			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
 			gomock.Any(),
 		).Return(errExample)
 
 		// Act
-		err := mocks.PasswordService.ForgotPassword(context.Background(), testEmail)
+		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
 
 		// Assert
 		assert.Error(test, err)
@@ -112,11 +112,11 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(nil, errExample)
 
 		// Act
-		err := mocks.PasswordService.ForgotPassword(context.Background(), testEmail)
+		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, "test-error", err.Error())
+		assert.Equal(test, "Could not generate reset password token: test-error", err.Error())
 	})
 
 	test.Run("ForgotPassword_Unverified_Error", func(test *testing.T) {
@@ -129,7 +129,7 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 
 		// Act
-		err := mocks.PasswordService.ForgotPassword(context.Background(), testEmail)
+		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
 
 		// Assert
 		assert.Error(test, err)
@@ -142,13 +142,13 @@ func TestPasswordService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errExample)
-
+		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user by email")
 		// Act
-		err := mocks.PasswordService.ForgotPassword(context.Background(), testEmail)
+		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, "Error getting user by email: test-error", err.Error())
+		assert.Equal(test, "Error getting user by email", err.Error())
 	})
 
 	// 	// ResetPassword
@@ -191,6 +191,7 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error updating user")
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
@@ -199,7 +200,7 @@ func TestPasswordService(test *testing.T) {
 		)
 
 		assert.Error(test, err)
-		assert.Equal(test, "Error updating user: test-error", err.Error())
+		assert.Equal(test, "Error updating user", err.Error())
 	})
 
 	test.Run("ResetPassword_SimplePassword_Error", func(test *testing.T) {
@@ -241,6 +242,7 @@ func TestPasswordService(test *testing.T) {
 
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user assigned to the token")
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
@@ -249,7 +251,7 @@ func TestPasswordService(test *testing.T) {
 		)
 
 		assert.Error(test, err)
-		assert.Equal(test, "Error getting user assigned to the token: test-error", err.Error())
+		assert.Equal(test, "Error getting user assigned to the token", err.Error())
 	})
 
 	test.Run("ResetPassword_Token_Error", func(test *testing.T) {
@@ -273,6 +275,6 @@ func TestPasswordService(test *testing.T) {
 		)
 
 		assert.Error(test, err)
-		assert.Equal(test, "test-error", err.Error())
+		assert.Equal(test, "Unable to verify reset password token: test-error", err.Error())
 	})
 }
