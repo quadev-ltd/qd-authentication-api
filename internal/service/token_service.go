@@ -18,15 +18,15 @@ import (
 // TokenServicer is the interface for the authentication service
 type TokenServicer interface {
 	GetPublicKey(ctx context.Context) (string, error)
+	GenerateJWTToken(ctx context.Context, email string, expiry time.Duration, tokenType commonJWT.TokenType) (*string, *time.Time, error)
+	GenerateJWTTokens(ctx context.Context, user *model.User, refreshToken *string) (*model.AuthTokensResponse, error)
+	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
+	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	VerifyJWTTokenAndExtractEmail(ctx context.Context, token string) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*string, error)
-	CreateToken(ctx context.Context, email string, expiry time.Duration, tokenType commonJWT.TokenType) (*string, *time.Time, error)
-	CreateJWTTokens(ctx context.Context, user *model.User, refreshToken *string) (*model.AuthTokensResponse, error)
 	VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error)
 	RemoveUsedToken(ctx context.Context, token string) error
-	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
-	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 }
 
 // TokenService is the implementation of the authentication service
@@ -48,8 +48,8 @@ func NewTokenService(
 	}
 }
 
-// TODO pass an object DTO instead of all the parameters and check input validation
-
+// TODO: pass an object DTO instead of all the parameters and check input validation
+// TODO: Inject GenerateVerificationToken or use JWT tokens
 func (service *TokenService) generateVerificationToken(
 	ctx context.Context,
 	userID primitive.ObjectID,
@@ -98,8 +98,13 @@ func (service *TokenService) GetPublicKey(ctx context.Context) (string, error) {
 	return service.jwtAuthenticator.GetPublicKey(ctx)
 }
 
-// CreateToken creates a jwt token
-func (service *TokenService) CreateToken(ctx context.Context, email string, expiry time.Duration, tokenType commonJWT.TokenType) (*string, *time.Time, error) {
+// GenerateJWTToken creates a jwt token
+func (service *TokenService) GenerateJWTToken(
+	ctx context.Context,
+	email string,
+	expiry time.Duration,
+	tokenType commonJWT.TokenType,
+) (*string, *time.Time, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -115,14 +120,14 @@ func (service *TokenService) CreateToken(ctx context.Context, email string, expi
 	return tokenString, &tokenExpiryDate, nil
 }
 
-func (service *TokenService) CreateJWTTokens(
+func (service *TokenService) GenerateJWTTokens(
 	ctx context.Context,
 	user *model.User,
 	refreshToken *string,
 ) (*model.AuthTokensResponse, error) {
 	authTokenString,
 		authenticationTokenExpiration,
-		err := service.CreateToken(ctx, user.Email, AuthenticationTokenExpiry, commonJWT.AccessTokenType)
+		err := service.GenerateJWTToken(ctx, user.Email, AuthenticationTokenExpiry, commonJWT.AccessTokenType)
 	if err != nil {
 		return nil, &Error{
 			Message: "Error creating authentication token",
@@ -131,14 +136,14 @@ func (service *TokenService) CreateJWTTokens(
 
 	refreshTokenString,
 		refreshTokenExpiration,
-		err := service.CreateToken(ctx, user.Email, RefreshTokenExpiry, commonJWT.RefreshTokenType)
+		err := service.GenerateJWTToken(ctx, user.Email, RefreshTokenExpiry, commonJWT.RefreshTokenType)
 	if err != nil {
 		return nil, &Error{
 			Message: "Error creating refresh token",
 		}
 	}
 
-	newRefreshToken := model.Token{
+	newRefreshToken := &model.Token{
 		Token:     *refreshTokenString,
 		IssuedAt:  time.Now(),
 		ExpiresAt: *refreshTokenExpiration,
@@ -155,7 +160,7 @@ func (service *TokenService) CreateJWTTokens(
 		}
 
 	}
-	_, err = service.tokenRepository.InsertToken(ctx, &newRefreshToken)
+	_, err = service.tokenRepository.InsertToken(ctx, newRefreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("Could not insert new refresh token in DB: %v", err)
 	}
@@ -186,13 +191,13 @@ func (service *TokenService) VerifyJWTTokenAndExtractEmail(
 }
 
 // VerifyJWTToken refreshes an authentication token using a refresh token
-func (service *TokenService) VerifyJWTToken(ctx context.Context, refreshTokenString string) (*string, error) {
+func (service *TokenService) VerifyJWTToken(ctx context.Context, tokenValue string) (*string, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	// Verify the refresh token
-	token, err := service.jwtAuthenticator.VerifyToken(refreshTokenString)
+	token, err := service.jwtAuthenticator.VerifyToken(tokenValue)
 	if err != nil {
 		logger.Error(err, "Error verifying refresh token")
 		return nil, &Error{

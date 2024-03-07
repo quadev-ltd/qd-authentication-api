@@ -38,35 +38,35 @@ func (m *MockTokenServicer) EXPECT() *MockTokenServicerMockRecorder {
 	return m.recorder
 }
 
-// CreateJWTTokens mocks base method.
-func (m *MockTokenServicer) CreateJWTTokens(ctx context.Context, user *model.User, refreshToken *string) (*model.AuthTokensResponse, error) {
+// GenerateJWTTokens mocks base method.
+func (m *MockTokenServicer) GenerateJWTTokens(ctx context.Context, user *model.User, refreshToken *string) (*model.AuthTokensResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateJWTTokens", ctx, user, refreshToken)
+	ret := m.ctrl.Call(m, "GenerateJWTTokens", ctx, user, refreshToken)
 	ret0, _ := ret[0].(*model.AuthTokensResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CreateJWTTokens indicates an expected call of CreateJWTTokens.
-func (mr *MockTokenServicerMockRecorder) CreateJWTTokens(ctx, user, refreshToken interface{}) *gomock.Call {
+// GenerateJWTTokens indicates an expected call of GenerateJWTTokens.
+func (mr *MockTokenServicerMockRecorder) GenerateJWTTokens(ctx, user, refreshToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateJWTTokens", reflect.TypeOf((*MockTokenServicer)(nil).CreateJWTTokens), ctx, user, refreshToken)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateJWTTokens", reflect.TypeOf((*MockTokenServicer)(nil).GenerateJWTTokens), ctx, user, refreshToken)
 }
 
-// CreateToken mocks base method.
-func (m *MockTokenServicer) CreateToken(ctx context.Context, email string, expiry time.Duration, tokenType jwt.TokenType) (*string, *time.Time, error) {
+// GenerateJWTToken mocks base method.
+func (m *MockTokenServicer) GenerateJWTToken(ctx context.Context, email string, expiry time.Duration, tokenType jwt.TokenType) (*string, *time.Time, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateToken", ctx, email, expiry, tokenType)
+	ret := m.ctrl.Call(m, "GenerateJWTToken", ctx, email, expiry, tokenType)
 	ret0, _ := ret[0].(*string)
 	ret1, _ := ret[1].(*time.Time)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// CreateToken indicates an expected call of CreateToken.
-func (mr *MockTokenServicerMockRecorder) CreateToken(ctx, email, expiry, tokenType interface{}) *gomock.Call {
+// GenerateJWTToken indicates an expected call of GenerateJWTToken.
+func (mr *MockTokenServicerMockRecorder) GenerateJWTToken(ctx, email, expiry, tokenType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateToken", reflect.TypeOf((*MockTokenServicer)(nil).CreateToken), ctx, email, expiry, tokenType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateJWTToken", reflect.TypeOf((*MockTokenServicer)(nil).GenerateJWTToken), ctx, email, expiry, tokenType)
 }
 
 // GenerateEmailVerificationToken mocks base method.

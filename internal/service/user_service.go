@@ -162,7 +162,7 @@ func (service *UserService) Authenticate(ctx context.Context, email, password st
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
-	return service.tokenService.CreateJWTTokens(ctx, user, nil)
+	return service.tokenService.GenerateJWTTokens(ctx, user, nil)
 }
 
 // ResendEmailVerification resends a verification email
@@ -218,5 +218,5 @@ func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString
 		}
 	}
 
-	return service.tokenService.CreateJWTTokens(ctx, user, &refreshTokenString)
+	return service.tokenService.GenerateJWTTokens(ctx, user, &refreshTokenString)
 }

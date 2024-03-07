@@ -20,34 +20,42 @@ type PasswordServiceMockedParams struct {
 	MockUserRepo     repositoryMock.MockUserRepositoryer
 	MockEmailService serviceMock.MockEmailServicer
 	MockTokenService serviceMock.MockTokenServicer
+	MockLogger       *loggerMock.MockLoggerer
 	PasswordService  PasswordServicer
+	Controller       *gomock.Controller
+	Ctx              context.Context
 }
 
-func createPasswordService(controller *gomock.Controller) *PasswordServiceMockedParams {
+func createPasswordService(test *testing.T) *PasswordServiceMockedParams {
+	controller := gomock.NewController(test)
 	mockUserRepo := repositoryMock.NewMockUserRepositoryer(controller)
 	mockEmailService := serviceMock.NewMockEmailServicer(controller)
 	mockTokenService := serviceMock.NewMockTokenServicer(controller)
+	mockLogger := loggerMock.NewMockLoggerer(controller)
 	passwordService := NewPasswordService(
 		mockEmailService,
 		mockTokenService,
 		mockUserRepo,
 	)
+	ctx := context.WithValue(context.Background(), log.LoggerKey, mockLogger)
 
 	return &PasswordServiceMockedParams{
 		*mockUserRepo,
 		*mockEmailService,
 		*mockTokenService,
+		mockLogger,
 		passwordService,
+		controller,
+		ctx,
 	}
 }
 
 func TestPasswordService(test *testing.T) {
 	// ForgotPassword
 	test.Run("ForgotPassword_Success", func(test *testing.T) {
-		controller := gomock.NewController(test)
-		defer controller.Finish()
 
-		mocks := createPasswordService(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testUser.AccountStatus = model.AccountStatusVerified
@@ -69,10 +77,9 @@ func TestPasswordService(test *testing.T) {
 	})
 
 	test.Run("ForgotPassword_SendEmail_Error", func(test *testing.T) {
-		controller := gomock.NewController(test)
-		defer controller.Finish()
 
-		mocks := createPasswordService(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testUser.AccountStatus = model.AccountStatusVerified
@@ -95,10 +102,8 @@ func TestPasswordService(test *testing.T) {
 	})
 
 	test.Run("ForgotPassword_GenerateToken_Error", func(test *testing.T) {
-		controller := gomock.NewController(test)
-		defer controller.Finish()
-
-		mocks := createPasswordService(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testUser.AccountStatus = model.AccountStatusVerified
@@ -114,35 +119,10 @@ func TestPasswordService(test *testing.T) {
 		assert.Equal(test, "test-error", err.Error())
 	})
 
-	// 	test.Run("ForgotPassword_InsertToken_Error", func(test *testing.T) {
-	// 		controller := gomock.NewController(test)
-	// 		defer controller.Finish()
-
-	// 		mockUserRepo,
-	// 			mockTokenRepo,
-	// 			_,
-	// 			_,
-	// 			PasswordService := createPasswordService(controller)
-
-	// 		testUser := model.NewUser()
-	// 		testUser.AccountStatus = model.AccountStatusVerified
-
-	// 		mockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-	// 		mockTokenRepo.EXPECT().InsertToken(gomock.Any(), gomock.Any()).Return(nil, errExample)
-
-	// 		// Act
-	// 		err := PasswordService.ForgotPassword(context.Background(), testEmail)
-
-	// 		// Assert
-	// 		assert.Error(test, err)
-	// 		assert.Equal(test, "Error inserting token in db: test-error", err.Error())
-	// 	})
-
 	test.Run("ForgotPassword_Unverified_Error", func(test *testing.T) {
-		controller := gomock.NewController(test)
-		defer controller.Finish()
 
-		mocks := createPasswordService(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 
@@ -157,10 +137,9 @@ func TestPasswordService(test *testing.T) {
 	})
 
 	test.Run("ForgotPassword_GetByEmail_Error", func(test *testing.T) {
-		controller := gomock.NewController(test)
-		defer controller.Finish()
 
-		mocks := createPasswordService(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errExample)
 
@@ -175,10 +154,8 @@ func TestPasswordService(test *testing.T) {
 	// 	// ResetPassword
 	test.Run("ResetPassword_Success", func(test *testing.T) {
 		// Arrange
-		controller := gomock.NewController(test)
-		defer controller.Finish()
-		mocks := createPasswordService(controller)
-		logMock := loggerMock.NewMockLoggerer(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
@@ -191,10 +168,8 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(nil)
 
-		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
-
 		err := mocks.PasswordService.ResetPassword(
-			ctx,
+			mocks.Ctx,
 			testToken.Token,
 			testPassword,
 		)
@@ -203,10 +178,8 @@ func TestPasswordService(test *testing.T) {
 
 	test.Run("ResetPassword_Update_Error", func(test *testing.T) {
 		// Arrange
-		controller := gomock.NewController(test)
-		defer controller.Finish()
-		mocks := createPasswordService(controller)
-		logMock := loggerMock.NewMockLoggerer(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
@@ -219,10 +192,8 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(errExample)
 
-		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
-
 		err := mocks.PasswordService.ResetPassword(
-			ctx,
+			mocks.Ctx,
 			testToken.Token,
 			testPassword,
 		)
@@ -233,10 +204,8 @@ func TestPasswordService(test *testing.T) {
 
 	test.Run("ResetPassword_SimplePassword_Error", func(test *testing.T) {
 		// Arrange
-		controller := gomock.NewController(test)
-		defer controller.Finish()
-		mocks := createPasswordService(controller)
-		logMock := loggerMock.NewMockLoggerer(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
@@ -248,10 +217,8 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 
-		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
-
 		err := mocks.PasswordService.ResetPassword(
-			ctx,
+			mocks.Ctx,
 			testToken.Token,
 			testPassword,
 		)
@@ -262,10 +229,8 @@ func TestPasswordService(test *testing.T) {
 
 	test.Run("ResetPassword_GetByUserID_Error", func(test *testing.T) {
 		// Arrange
-		controller := gomock.NewController(test)
-		defer controller.Finish()
-		mocks := createPasswordService(controller)
-		logMock := loggerMock.NewMockLoggerer(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
@@ -277,10 +242,8 @@ func TestPasswordService(test *testing.T) {
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(nil, errExample)
 
-		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
-
 		err := mocks.PasswordService.ResetPassword(
-			ctx,
+			mocks.Ctx,
 			testToken.Token,
 			testPassword,
 		)
@@ -291,10 +254,8 @@ func TestPasswordService(test *testing.T) {
 
 	test.Run("ResetPassword_Token_Error", func(test *testing.T) {
 		// Arrange
-		controller := gomock.NewController(test)
-		defer controller.Finish()
-		mocks := createPasswordService(controller)
-		logMock := loggerMock.NewMockLoggerer(controller)
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
@@ -305,10 +266,8 @@ func TestPasswordService(test *testing.T) {
 
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(nil, errExample)
 
-		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
-
 		err := mocks.PasswordService.ResetPassword(
-			ctx,
+			mocks.Ctx,
 			testToken.Token,
 			testPassword,
 		)
