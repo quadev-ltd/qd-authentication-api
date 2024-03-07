@@ -283,12 +283,14 @@ func TestTokenService(test *testing.T) {
 			gomock.Any(),
 			gomock.Any(),
 		).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error inserting verification token in DB")
 
 		token, resultError := mocks.TokenService.GenerateEmailVerificationToken(mocks.Ctx, userID)
 
 		// Assert
 		assert.Error(test, resultError)
 		assert.Nil(test, token)
+		assert.EqualError(test, resultError, "Error storing verification token")
 	})
 
 	// GeneratePasswordResetToken
@@ -318,6 +320,7 @@ func TestTokenService(test *testing.T) {
 			gomock.Any(),
 			gomock.Any(),
 		).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error inserting verification token in DB")
 
 		token, resultError := mocks.TokenService.GeneratePasswordResetToken(mocks.Ctx, userID)
 
@@ -627,6 +630,7 @@ func TestTokenService(test *testing.T) {
 			nil,
 			errExample,
 		)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error inserting new refresh token in DB")
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
 			testUser,
@@ -636,7 +640,7 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, response)
-		assert.EqualError(test, err, "Could not insert new refresh token in DB: test-error")
+		assert.EqualError(test, err, "Could not store new refresh token")
 	})
 
 	test.Run("GenerateJWTTokens_Remove_Error", func(test *testing.T) {
@@ -667,6 +671,7 @@ func TestTokenService(test *testing.T) {
 			gomock.Any(),
 			refreshTokenValue,
 		).Return(errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error removing old refresh token")
 
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
@@ -677,7 +682,7 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, response)
-		assert.EqualError(test, err, "Refresh token is not listed in DB: test-error")
+		assert.EqualError(test, err, "Error removing old refresh token")
 	})
 
 	test.Run("GenerateJWTTokens_RefreshTokenGeneration_Error", func(test *testing.T) {
@@ -714,7 +719,7 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, response)
-		assert.EqualError(test, err, "Error creating refresh token")
+		assert.EqualError(test, err, "Error creating refresh token: Error creating jwt token")
 	})
 
 	test.Run("GenerateJWTTokens_AccessTokenGeneration_Error", func(test *testing.T) {
@@ -743,6 +748,6 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, response)
-		assert.EqualError(test, err, "Error creating authentication token")
+		assert.EqualError(test, err, "Error creating authentication token: Error creating jwt token")
 	})
 }

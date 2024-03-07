@@ -115,7 +115,6 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mocks.MockAuthenticationService.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(mockValidationError)
-		mocks.MockLogger.EXPECT().Error(mockValidationError, "Registration failed")
 
 		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
 

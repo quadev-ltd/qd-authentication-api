@@ -42,11 +42,16 @@ func NewEmailService(config EmailServiceConfig) *EmailService {
 }
 
 func (service *EmailService) sendMail(ctx context.Context, dest string, subject string, body string) error {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return err
+	}
 	emailServiceGRPCAddress := fmt.Sprintf("%s:%s", service.config.GRPCHost, service.config.GRPCPort)
 
 	conn, err := commonTLS.CreateGRPCConnection(emailServiceGRPCAddress, service.config.TLSEnabled)
 	if err != nil {
-		return fmt.Errorf("Could not connect to email service: %v", err)
+		logger.Error(err, "Could not connect to email service")
+		return fmt.Errorf("Could not connect to email service")
 	}
 	defer conn.Close()
 
@@ -58,21 +63,24 @@ func (service *EmailService) sendMail(ctx context.Context, dest string, subject 
 		Body:    body,
 	}
 
-	correlationID, error := commonLogger.GetCorrelationIDFromContext(ctx)
-	if error != nil {
-		return fmt.Errorf("Error getting correlation ID from context: %v", error)
+	newOutgoingCtx, err := commonLogger.TransferCorrelationIDToOutgoingContext(ctx)
+	if err != nil {
+		logger.Error(err, "Error getting correlation ID from context")
+		return fmt.Errorf("Error getting correlation ID from context")
 	}
-	newOutgoingCtx := commonLogger.AddCorrelationIDToOutgoingContext(ctx, *correlationID)
+
 	clientCtx, cancel := context.WithTimeout(newOutgoingCtx, time.Second*10)
 	defer cancel()
 
 	res, err := emailClient.SendEmail(clientCtx, req)
 	if err != nil {
-		return fmt.Errorf("Error sending email via gRPC: %v", err)
+		logger.Error(err, "Error sending email data via gRPC")
+		return fmt.Errorf("Error sending email data via gRPC")
 	}
 
 	if !res.GetSuccess() {
-		return fmt.Errorf("Failed to send email: %s", res.GetMessage())
+		logger.Error(err, "Failed to send email")
+		return fmt.Errorf("Failed to send email")
 	}
 
 	return nil
@@ -89,8 +97,8 @@ func (service *EmailService) CreateVerificationEmailContent(ctx context.Context,
 // SendVerificationMail sends a verification email to the given destination
 func (service *EmailService) SendVerificationMail(ctx context.Context, destination, userName, verificationToken string) error {
 	subject, body := service.CreateVerificationEmailContent(ctx, destination, userName, verificationToken)
-	error := service.sendMail(ctx, destination, subject, body)
-	return error
+	err := service.sendMail(ctx, destination, subject, body)
+	return err
 }
 
 // CreatePasswordResetEmailContent creates the content of the verification email
@@ -110,6 +118,6 @@ func (service *EmailService) CreatePasswordResetEmailContent(ctx context.Context
 // SendPasswordResetMail sends a verification email to the given destination
 func (service *EmailService) SendPasswordResetMail(ctx context.Context, destination, userName, verificationToken string) error {
 	subject, body := service.CreatePasswordResetEmailContent(ctx, destination, userName, verificationToken)
-	error := service.sendMail(ctx, destination, subject, body)
-	return error
+	err := service.sendMail(ctx, destination, subject, body)
+	return err
 }
