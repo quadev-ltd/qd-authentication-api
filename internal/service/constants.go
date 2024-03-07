@@ -1,6 +1,8 @@
 package service
 
-import "time"
+import (
+	"time"
+)
 
 // TODO: Analyse best expiry times for tokens
 // Expiry times for tokens

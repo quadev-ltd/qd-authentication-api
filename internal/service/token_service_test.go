@@ -13,24 +13,30 @@ import (
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	"github.com/stretchr/testify/assert"
 
-	jwtSignerMock "qd-authentication-api/internal/jwt/mock"
+	jwtManagerMock "qd-authentication-api/internal/jwt/mock"
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
 )
 
-func createTokenService(controller *gomock.Controller) (
-	*repositoryMock.MockTokenRepositoryer,
-	jwtSignerMock.MockManagerer,
-	TokenServicer,
-) {
+type TokenAuthenServiceMockedParams struct {
+	MockTokenRepo  repositoryMock.MockTokenRepositoryer
+	MockJWTManager jwtManagerMock.MockManagerer
+	TokenService   TokenServicer
+}
+
+func createTokenService(controller *gomock.Controller) *TokenAuthenServiceMockedParams {
 	mockTokenRepo := repositoryMock.NewMockTokenRepositoryer(controller)
-	mockJWTManager := jwtSignerMock.NewMockManagerer(controller)
+	mockJWTManager := jwtManagerMock.NewMockManagerer(controller)
 	tokenService := NewTokenService(
 		mockTokenRepo,
 		mockJWTManager,
 	)
 
-	return mockTokenRepo, *mockJWTManager, tokenService
+	return &TokenAuthenServiceMockedParams{
+		*mockTokenRepo,
+		*mockJWTManager,
+		tokenService,
+	}
 }
 
 func TestTokenService(test *testing.T) {
@@ -40,15 +46,15 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, mockJWTManager, tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 
 		token := "invalid-token"
 		mockedError := errors.New("Token verification failed")
 
-		mockJWTManager.EXPECT().VerifyToken(token).Return(nil, mockedError)
+		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(nil, mockedError)
 
 		// Act
-		email, err := tokenService.VerifyJWTTokenAndExtractEmail(context.Background(), token)
+		email, err := mocks.TokenService.VerifyJWTTokenAndExtractEmail(context.Background(), token)
 
 		// Assert
 		assert.Error(test, err)
@@ -61,16 +67,16 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, mockJWTManager, tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 
 		token := "valid-token"
 		mockedError := errors.New("Error decoding email")
 
-		mockJWTManager.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
-		mockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, mockedError)
+		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
+		mocks.MockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, mockedError)
 
 		// Act
-		email, err := tokenService.VerifyJWTTokenAndExtractEmail(context.Background(), token)
+		email, err := mocks.TokenService.VerifyJWTTokenAndExtractEmail(context.Background(), token)
 
 		// Assert
 		assert.Error(test, err)
@@ -83,16 +89,16 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_, mockJWTManager, tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 
 		exampleEmail := "example@email.com"
 		token := "valid-token"
 		jwtToken := jwt.Token{}
-		mockJWTManager.EXPECT().VerifyToken(token).Return(&jwtToken, nil)
-		mockJWTManager.EXPECT().GetEmailFromToken(&jwtToken).Return(&exampleEmail, nil)
+		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwtToken, nil)
+		mocks.MockJWTManager.EXPECT().GetEmailFromToken(&jwtToken).Return(&exampleEmail, nil)
 
 		// Act
-		email, err := tokenService.VerifyJWTTokenAndExtractEmail(context.Background(), token)
+		email, err := mocks.TokenService.VerifyJWTTokenAndExtractEmail(context.Background(), token)
 
 		// Assert
 		assert.NoError(test, err)
@@ -106,22 +112,20 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_,
-			mockJWTManager,
-			tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		token := "test_token"
 		errorMessage := "Database error"
 		errorExample := errors.New(errorMessage)
 
-		mockJWTManager.EXPECT().VerifyToken(gomock.Any()).Return(nil, errorExample)
+		mocks.MockJWTManager.EXPECT().VerifyToken(gomock.Any()).Return(nil, errorExample)
 		logMock.EXPECT().Error(errorExample, "Error verifying refresh token")
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
 		// Test RefreshToken
-		user, err := tokenService.VerifyJWTToken(ctx, token)
+		user, err := mocks.TokenService.VerifyJWTToken(ctx, token)
 
 		// Assert
 		assert.Error(test, err)
@@ -134,23 +138,21 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_,
-			mockJWTManager,
-			tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		token := "test_token"
 		errorMessage := "Database error"
 		errorExample := errors.New(errorMessage)
 
-		mockJWTManager.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
-		mockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, errorExample)
+		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
+		mocks.MockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, errorExample)
 		logMock.EXPECT().Error(errorExample, "Error getting email from token")
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
 		// Test RefreshToken
-		user, err := tokenService.VerifyJWTToken(ctx, token)
+		user, err := mocks.TokenService.VerifyJWTToken(ctx, token)
 
 		// Assert
 		assert.Error(test, err)
@@ -163,22 +165,20 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		_,
-			mockJWTManager,
-			tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		jwtToken := &jwt.Token{}
 		email := "email@example.com"
 		user := model.NewUser()
 
-		mockJWTManager.EXPECT().VerifyToken(refreshToken).Return(jwtToken, nil)
-		mockJWTManager.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)
+		mocks.MockJWTManager.EXPECT().VerifyToken(refreshTokenValue).Return(jwtToken, nil)
+		mocks.MockJWTManager.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
 		// Test RefreshToken
-		resultUser, resultError := tokenService.VerifyJWTToken(ctx, refreshToken)
+		resultUser, resultError := mocks.TokenService.VerifyJWTToken(ctx, refreshTokenValue)
 
 		// Assert
 		assert.NoError(test, resultError)
@@ -191,20 +191,18 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockTokenRepo,
-			_,
-			tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
 		testToken.Type = commonJWT.ResetPasswordTokenType
 
-		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
+		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
 
 		// Act
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
-		token, err := tokenService.VerifyResetPasswordToken(ctx, testTokenValue)
+		token, err := mocks.TokenService.VerifyResetPasswordToken(ctx, testTokenValue)
 
 		// Assert
 		assert.NoError(test, err)
@@ -216,9 +214,7 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockTokenRepo,
-			_,
-			tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		testTokenValue := "test-token"
@@ -226,12 +222,12 @@ func TestTokenService(test *testing.T) {
 		testToken.Type = commonJWT.ResetPasswordTokenType
 		testToken.ExpiresAt = time.Now().Add(-1 * time.Second)
 
-		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
+		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
 		// Act
-		token, err := tokenService.VerifyResetPasswordToken(ctx, testTokenValue)
+		token, err := mocks.TokenService.VerifyResetPasswordToken(ctx, testTokenValue)
 
 		// Assert
 		assert.Nil(test, token)
@@ -243,20 +239,18 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockTokenRepo,
-			_,
-			tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
 
-		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
+		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
 
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
 
 		// Act
-		token, err := tokenService.VerifyResetPasswordToken(ctx, testTokenValue)
+		token, err := mocks.TokenService.VerifyResetPasswordToken(ctx, testTokenValue)
 
 		// Assert
 		assert.Nil(test, token)
@@ -268,19 +262,17 @@ func TestTokenService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		mockTokenRepo,
-			_,
-			tokenService := createTokenService(controller)
+		mocks := createTokenService(controller)
 		logMock := loggerMock.NewMockLoggerer(controller)
 
 		testTokenValue := "test-token"
 		exampleError := errors.New("test-error")
 
-		mockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(nil, exampleError)
+		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(nil, exampleError)
 		logMock.EXPECT().Error(exampleError, "Error getting token by its value")
 		// Act
 		ctx := context.WithValue(context.Background(), log.LoggerKey, logMock)
-		token, err := tokenService.VerifyResetPasswordToken(ctx, testTokenValue)
+		token, err := mocks.TokenService.VerifyResetPasswordToken(ctx, testTokenValue)
 
 		// Assert
 		assert.Nil(test, token)

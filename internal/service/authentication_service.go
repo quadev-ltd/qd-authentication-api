@@ -9,7 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
-	"qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
 	"qd-authentication-api/internal/util"
@@ -22,17 +21,13 @@ type AuthenticationServicer interface {
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
 	ResendEmailVerification(ctx context.Context, email string) error
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
-	ForgotPassword(ctx context.Context, email string) error
-	ResetPassword(ctx context.Context, token, password string) error
 }
 
 // AuthenticationService is the implementation of the authentication service
 type AuthenticationService struct {
-	emailService     EmailServicer
-	tokenService     TokenServicer
-	userRepository   repository.UserRepositoryer
-	tokenRepository  repository.TokenRepositoryer
-	jwtAuthenticator jwt.Managerer
+	emailService   EmailServicer
+	tokenService   TokenServicer
+	userRepository repository.UserRepositoryer
 }
 
 var _ AuthenticationServicer = &AuthenticationService{}
@@ -42,15 +37,11 @@ func NewAuthenticationService(
 	emailService EmailServicer,
 	tokenService TokenServicer,
 	userRepository repository.UserRepositoryer,
-	tokenRepository repository.TokenRepositoryer,
-	jwtAuthenticator jwt.Managerer,
 ) AuthenticationServicer {
 	return &AuthenticationService{
 		emailService,
 		tokenService,
 		userRepository,
-		tokenRepository,
-		jwtAuthenticator,
 	}
 }
 
@@ -228,50 +219,4 @@ func (service *AuthenticationService) RefreshToken(ctx context.Context, refreshT
 	}
 
 	return service.tokenService.CreateJWTTokens(ctx, user, &refreshTokenString)
-}
-
-// ForgotPassword sends a password reset email
-func (service *AuthenticationService) ForgotPassword(ctx context.Context, email string) error {
-	user, err := service.userRepository.GetByEmail(ctx, email)
-	if err != nil {
-		return fmt.Errorf("Error getting user by email: %v", err)
-	}
-	if user.AccountStatus == model.AccountStatusUnverified {
-		return &Error{Message: fmt.Sprintf("Email account %s not verified yet", email)}
-	}
-	resetToken, err := service.tokenService.GeneratePasswordResetToken(ctx, user.ID)
-	if err != nil {
-		return err
-	}
-	if err := service.emailService.SendPasswordResetMail(ctx, user.Email, user.FirstName, *resetToken); err != nil {
-		return fmt.Errorf("Error sending password reset email: %v", err)
-	}
-	return nil
-}
-
-// ResetPassword resets the user password
-func (service *AuthenticationService) ResetPassword(ctx context.Context, tokenValue, password string) error {
-	token, err := service.tokenService.VerifyResetPasswordToken(ctx, tokenValue)
-	if err != nil {
-		return err
-	}
-	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
-	if err != nil {
-		return fmt.Errorf("Error getting user assigned to the token: %v", err)
-	}
-	if !model.IsPasswordComplex(password) {
-		return &NoComplexPasswordError{
-			Message: "Password does not meet complexity requirements",
-		}
-	}
-	hashedPassword, salt, err := util.GenerateHash(password)
-	if err != nil {
-		return fmt.Errorf("Error generating password hash: %v", err)
-	}
-	user.PasswordHash = string(hashedPassword)
-	user.PasswordSalt = *salt
-	if err := service.userRepository.UpdatePassword(ctx, user); err != nil {
-		return fmt.Errorf("Error updating user: %v", err)
-	}
-	return nil
 }

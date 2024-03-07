@@ -37,7 +37,7 @@ func NewApplication(config *config.Config, centralConfig *commonConfig.Config) A
 		logger.Info("TLS is disabled")
 	}
 
-	service, err := (&service.Factory{}).CreateService(config, centralConfig)
+	serviceManager, err := (&service.Factory{}).CreateServiceManager(config, centralConfig)
 	if err != nil {
 		logger.Error(err, "Failed to create authentication service")
 		return nil
@@ -50,8 +50,9 @@ func NewApplication(config *config.Config, centralConfig *commonConfig.Config) A
 	)
 	grpcServiceServer, err := (&grpcFactory.Factory{}).Create(
 		grpcServerAddress,
-		service.GetAuthenticationService(),
-		service.GetTokenService(),
+		serviceManager.GetAuthenticationService(),
+		serviceManager.GetTokenService(),
+		serviceManager.GetPasswordService(),
 		logFactory,
 		centralConfig.TLSEnabled,
 	)
@@ -61,7 +62,7 @@ func NewApplication(config *config.Config, centralConfig *commonConfig.Config) A
 		return nil
 	}
 
-	return New(grpcServiceServer, grpcServerAddress, service, logger)
+	return New(grpcServiceServer, grpcServerAddress, serviceManager, logger)
 }
 
 // New creates a new application with raw parameters

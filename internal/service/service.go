@@ -10,6 +10,7 @@ import (
 type Servicer interface {
 	GetAuthenticationService() AuthenticationServicer
 	GetTokenService() TokenServicer
+	GetPasswordService() PasswordServicer
 	Close() error
 }
 
@@ -17,6 +18,7 @@ type Servicer interface {
 type Service struct {
 	authenticationService AuthenticationServicer
 	tokenService          TokenServicer
+	passwordService       PasswordServicer
 	repository            repository.Storer
 }
 
@@ -29,6 +31,10 @@ func (service *Service) GetAuthenticationService() AuthenticationServicer {
 
 func (service *Service) GetTokenService() TokenServicer {
 	return service.tokenService
+}
+
+func (service *Service) GetPasswordService() PasswordServicer {
+	return service.passwordService
 }
 
 // Close closes the service

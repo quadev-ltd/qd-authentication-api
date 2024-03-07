@@ -247,12 +247,3 @@ func (service *TokenService) VerifyEmailVerificationToken(ctx context.Context, t
 	}
 	return token, nil
 }
-
-// RemoveUsedToken removes a token from the database
-func (service *AuthenticationService) RemoveUsedToken(ctx context.Context, token string) error {
-	err := service.tokenRepository.Remove(ctx, token)
-	if err != nil {
-		return fmt.Errorf("Error removing token: %v", err)
-	}
-	return nil
-}

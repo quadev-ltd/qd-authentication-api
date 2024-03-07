@@ -13,7 +13,7 @@ import (
 
 // Factoryer is a factory for creating a service
 type Factoryer interface {
-	CreateService(*config.Config, *commonConfig.Config) (Servicer, error)
+	CreateServiceManager(*config.Config, *commonConfig.Config) (Servicer, error)
 }
 
 // Factory is the implementation of the service factory
@@ -21,8 +21,8 @@ type Factory struct{}
 
 var _ Factoryer = &Factory{}
 
-// CreateService creates a service
-func (serviceFactory *Factory) CreateService(
+// CreateServiceManager creates a service
+func (serviceFactory *Factory) CreateServiceManager(
 	config *config.Config,
 	centralConfig *commonConfig.Config,
 ) (Servicer, error) {
@@ -53,13 +53,17 @@ func (serviceFactory *Factory) CreateService(
 		emailService,
 		tokenService,
 		repository.GetUserRepository(),
-		repository.GetTokenRepository(),
-		jwtManager,
+	)
+	passwordService := NewPasswordService(
+		emailService,
+		tokenService,
+		repository.GetUserRepository(),
 	)
 
 	return &Service{
 		authenticationService,
 		tokenService,
+		passwordService,
 		repository,
 	}, nil
 }

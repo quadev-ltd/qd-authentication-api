@@ -21,6 +21,7 @@ import (
 type AuthenticationServiceServer struct {
 	authenticationService servicePkg.AuthenticationServicer
 	tokenService          servicePkg.TokenServicer
+	passwordService       servicePkg.PasswordServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
@@ -28,10 +29,12 @@ type AuthenticationServiceServer struct {
 func NewAuthenticationServiceServer(
 	authenticationService servicePkg.AuthenticationServicer,
 	tokenService servicePkg.TokenServicer,
+	passwordService servicePkg.PasswordServicer,
 ) *AuthenticationServiceServer {
 	return &AuthenticationServiceServer{
 		authenticationService: authenticationService,
 		tokenService:          tokenService,
+		passwordService:       passwordService,
 	}
 }
 
@@ -265,7 +268,7 @@ func (service AuthenticationServiceServer) ForgotPassword(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	error := service.authenticationService.ForgotPassword(ctx, request.Email)
+	error := service.passwordService.ForgotPassword(ctx, request.Email)
 	if error != nil {
 		if serviceErr, ok := error.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -313,7 +316,7 @@ func (service AuthenticationServiceServer) ResetPassword(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	resetPasswordError := service.authenticationService.ResetPassword(ctx, request.Token, request.NewPassword)
+	resetPasswordError := service.passwordService.ResetPassword(ctx, request.Token, request.NewPassword)
 	if resetPasswordError != nil {
 		if serviceErr, ok := resetPasswordError.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())

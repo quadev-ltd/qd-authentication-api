@@ -18,6 +18,7 @@ type Factoryer interface {
 		grpcServerAddress string,
 		authenticationService service.AuthenticationServicer,
 		tokenService service.TokenServicer,
+		passwordService service.PasswordServicer,
 		logFactory log.Factoryer,
 		tlsEnabled bool,
 	) (grpcserver.GRPCServicer, error)
@@ -33,6 +34,7 @@ func (grpcServerFactory *Factory) Create(
 	grpcServerAddress string,
 	authenticationService service.AuthenticationServicer,
 	tokenService service.TokenServicer,
+	passwordService service.PasswordServicer,
 	logFactory log.Factoryer,
 	tlsEnabled bool,
 ) (grpcserver.GRPCServicer, error) {
@@ -49,6 +51,7 @@ func (grpcServerFactory *Factory) Create(
 	authenticationServiceGRPCServer := NewAuthenticationServiceServer(
 		authenticationService,
 		tokenService,
+		passwordService,
 	)
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(log.CreateLoggerInterceptor(logFactory)),
