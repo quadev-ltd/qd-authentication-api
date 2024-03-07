@@ -8,11 +8,13 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	jwtPkg "qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
 	serviceMock "qd-authentication-api/internal/service/mock"
@@ -33,6 +35,16 @@ var (
 	errExample        = errors.New("test-error")
 	refreshTokenValue = "refresh-token"
 	testTokenValue    = "test-token"
+	accessTokenClaims = &jwtPkg.TokenClaims{
+		Email:  testEmail,
+		Type:   string(commonJWT.AccessTokenType),
+		Expiry: time.Now().Add(5 * time.Minute),
+	}
+	refreshTokenClaims = &jwtPkg.TokenClaims{
+		Email:  accessTokenClaims.Email,
+		Type:   string(commonJWT.RefreshTokenType),
+		Expiry: accessTokenClaims.Expiry,
+	}
 )
 
 type AuthServiceMockedParams struct {
@@ -633,21 +645,36 @@ func TestAuthenticationService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		token := "test_token"
-		email := "email@example.com"
-		errorMessage := "Database error"
-		errorExample := errors.New(errorMessage)
-
-		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), token).Return(&email, nil)
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(nil, errorExample)
-		mocks.MockLogger.EXPECT().Error(errorExample, "Error getting user by email")
+		mocks.MockTokenService.EXPECT().VerifyJWTToken(
+			gomock.Any(),
+			testTokenValue,
+		).Return(refreshTokenClaims, nil)
+		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user by email")
 
 		// Test RefreshToken
-		user, err := mocks.AuthenticationService.RefreshToken(mocks.Ctx, token)
+		user, err := mocks.AuthenticationService.RefreshToken(mocks.Ctx, testTokenValue)
 
 		assert.Error(test, err)
 		assert.Equal(test, "Error getting user by email", err.Error())
 		assert.Nil(test, user)
+	})
+
+	test.Run("RefreshToken_InvalidType_Error", func(test *testing.T) {
+		// Arrange
+
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), refreshTokenValue).Return(accessTokenClaims, nil)
+
+		// Test RefreshToken
+		resultUser, resultError := mocks.AuthenticationService.RefreshToken(mocks.Ctx, refreshTokenValue)
+
+		// Assert
+		assert.Error(test, resultError)
+		assert.EqualError(test, resultError, "Invalid token type")
+		assert.Nil(test, resultUser)
 	})
 
 	test.Run("RefreshToken_Success", func(test *testing.T) {
@@ -656,15 +683,14 @@ func TestAuthenticationService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		email := "email@example.com"
 		user := model.NewUser()
 		tokenResponse := &model.AuthTokensResponse{
 			AuthToken:    "test",
 			RefreshToken: "test",
 		}
 
-		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), refreshTokenValue).Return(&email, nil)
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
+		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), refreshTokenValue).Return(refreshTokenClaims, nil)
+		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
 		mocks.MockTokenService.EXPECT().GenerateJWTTokens(gomock.Any(), user, &refreshTokenValue).Return(tokenResponse, nil)
 
 		// Test RefreshToken

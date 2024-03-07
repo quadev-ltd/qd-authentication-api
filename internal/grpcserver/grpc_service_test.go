@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	"github.com/stretchr/testify/assert"
@@ -15,6 +16,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	jwtPkg "qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/service"
 	"qd-authentication-api/internal/service/mock"
@@ -78,6 +80,11 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	authenticateRequest := &pb_authentication.AuthenticateRequest{
 		Email:    "test@example.com",
 		Password: "password",
+	}
+	exampleClaims := &jwtPkg.TokenClaims{
+		Email:  "test@example.com",
+		Type:   string(commonJWT.AccessTokenType),
+		Expiry: time.Now().Add(5 * time.Minute),
 	}
 	test.Run("Registration_Error_Validation", func(test *testing.T) {
 		mocks := initialiseTest(test)
@@ -366,15 +373,17 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		expectedError := &service.Error{Message: "test error"}
-		testEmail := "example@email.com"
 		mocks.MockTokenService.EXPECT().
 			VerifyJWTToken(gomock.Any(), gomock.Any()).
-			Return(&testEmail, nil)
+			Return(exampleClaims, nil)
 		mocks.MockAuthenticationService.EXPECT().
-			ResendEmailVerification(gomock.Any(), testEmail).
+			ResendEmailVerification(gomock.Any(), exampleClaims.Email).
 			Return(expectedError)
 
-		response, returnedError := mocks.AuthenticationServer.ResendEmailVerification(mocks.Ctx, &pb_authentication.ResendEmailVerificationRequest{})
+		response, returnedError := mocks.AuthenticationServer.ResendEmailVerification(
+			mocks.Ctx,
+			&pb_authentication.ResendEmailVerificationRequest{},
+		)
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
@@ -386,12 +395,11 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		expectedError := errors.New("test error")
-		testEmail := "example@email.com"
 		mocks.MockTokenService.EXPECT().
 			VerifyJWTToken(gomock.Any(), gomock.Any()).
-			Return(&testEmail, nil)
+			Return(exampleClaims, nil)
 		mocks.MockAuthenticationService.EXPECT().
-			ResendEmailVerification(gomock.Any(), testEmail).
+			ResendEmailVerification(gomock.Any(), exampleClaims.Email).
 			Return(expectedError)
 		mocks.MockLogger.EXPECT().Error(expectedError, "Failed to resend email verification")
 
@@ -406,12 +414,11 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 
-		testEmail := "example@email.com"
 		mocks.MockTokenService.EXPECT().
 			VerifyJWTToken(gomock.Any(), gomock.Any()).
-			Return(&testEmail, nil)
+			Return(exampleClaims, nil)
 		mocks.MockAuthenticationService.EXPECT().
-			ResendEmailVerification(gomock.Any(), testEmail).
+			ResendEmailVerification(gomock.Any(), exampleClaims.Email).
 			Return(nil)
 		mocks.MockLogger.EXPECT().Info("Email verification sent successfully")
 

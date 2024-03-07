@@ -22,7 +22,7 @@ type TokenServicer interface {
 	GenerateJWTTokens(ctx context.Context, user *model.User, refreshToken *string) (*model.AuthTokensResponse, error)
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
-	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*string, error)
+	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error)
 	VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error)
 	RemoveUsedToken(ctx context.Context, token string) error
@@ -30,8 +30,8 @@ type TokenServicer interface {
 
 // TokenService is the implementation of the authentication service
 type TokenService struct {
-	tokenRepository  repository.TokenRepositoryer
-	jwtAuthenticator jwt.Managerer
+	tokenRepository repository.TokenRepositoryer
+	jwtManager      jwt.Managerer
 }
 
 var _ TokenServicer = &TokenService{}
@@ -94,7 +94,7 @@ func (service *TokenService) RemoveUsedToken(ctx context.Context, token string) 
 
 // GetPublicKey ctx context.Contextgets the public key
 func (service *TokenService) GetPublicKey(ctx context.Context) (string, error) {
-	return service.jwtAuthenticator.GetPublicKey(ctx)
+	return service.jwtManager.GetPublicKey(ctx)
 }
 
 // GenerateJWTToken creates a jwt token
@@ -109,7 +109,7 @@ func (service *TokenService) GenerateJWTToken(
 		return nil, nil, err
 	}
 	tokenExpiryDate := time.Now().Add(expiry)
-	tokenString, err := service.jwtAuthenticator.SignToken(email, tokenExpiryDate, tokenType)
+	tokenString, err := service.jwtManager.SignToken(email, tokenExpiryDate, tokenType)
 	if err != nil {
 		logger.Error(err, "Error creating jwt token")
 		return nil, nil, &Error{
@@ -175,13 +175,16 @@ func (service *TokenService) GenerateJWTTokens(
 }
 
 // VerifyJWTToken refreshes an authentication token using a refresh token
-func (service *TokenService) VerifyJWTToken(ctx context.Context, tokenValue string) (*string, error) {
+func (service *TokenService) VerifyJWTToken(
+	ctx context.Context,
+	tokenValue string,
+) (*jwt.TokenClaims, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	// Verify the refresh token
-	token, err := service.jwtAuthenticator.VerifyToken(tokenValue)
+	token, err := service.jwtManager.VerifyToken(tokenValue)
 	if err != nil {
 		logger.Error(err, "Error verifying refresh token")
 		return nil, &Error{
@@ -189,14 +192,14 @@ func (service *TokenService) VerifyJWTToken(ctx context.Context, tokenValue stri
 		}
 	}
 
-	email, err := service.jwtAuthenticator.GetEmailFromToken(token)
+	claims, err := service.jwtManager.GetClaimsFromToken(token)
 	if err != nil {
-		logger.Error(err, "Error getting email from token")
+		logger.Error(err, "Error getting claims from token")
 		return nil, &Error{
-			Message: "Error getting email from token",
+			Message: "Error getting claims from token",
 		}
 	}
-	return email, nil
+	return claims, nil
 }
 
 // VerifyTokenValidity verifies a token validity

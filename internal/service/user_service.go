@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -200,9 +201,12 @@ func (service *UserService) ResendEmailVerification(
 
 // RefreshToken refreshes an authentication token using a refresh token
 func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
-	email, err := service.tokenService.VerifyJWTToken(ctx, refreshTokenString)
+	claims, err := service.tokenService.VerifyJWTToken(ctx, refreshTokenString)
 	if err != nil {
 		return nil, err
+	}
+	if claims.Type != string(commonJWT.RefreshTokenType) {
+		return nil, &Error{Message: "Invalid token type"}
 	}
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
@@ -210,7 +214,7 @@ func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString
 	}
 
 	// Retrieve user details from the database
-	user, err := service.userRepository.GetByEmail(ctx, *email)
+	user, err := service.userRepository.GetByEmail(ctx, claims.Email)
 	if err != nil {
 		logger.Error(err, "Error getting user by email")
 		return nil, &Error{

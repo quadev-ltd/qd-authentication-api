@@ -78,8 +78,8 @@ func TestTokenService(test *testing.T) {
 		token := "valid-token"
 
 		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
-		mocks.MockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, errExample)
-		mocks.MockLogger.EXPECT().Error(errExample, "Error getting email from token")
+		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(gomock.Any()).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error getting claims from token")
 
 		// Act
 		email, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
@@ -87,7 +87,7 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, email)
-		assert.Equal(test, "Error getting email from token", err.Error())
+		assert.Equal(test, "Error getting claims from token", err.Error())
 	})
 
 	test.Run("VerifyJWTToken_Success", func(test *testing.T) {
@@ -95,19 +95,20 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		exampleEmail := "example@email.com"
 		token := "valid-token"
 		jwtToken := jwt.Token{}
 		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwtToken, nil)
-		mocks.MockJWTManager.EXPECT().GetEmailFromToken(&jwtToken).Return(&exampleEmail, nil)
+		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(&jwtToken).Return(accessTokenClaims, nil)
 
 		// Act
-		email, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
+		resultClaims, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
 
 		// Assert
 		assert.NoError(test, err)
-		assert.NotNil(test, email)
-		assert.Equal(test, exampleEmail, *email)
+		assert.NotNil(test, resultClaims)
+		assert.Equal(test, accessTokenClaims.Email, resultClaims.Email)
+		assert.Equal(test, accessTokenClaims.Type, resultClaims.Type)
+		assert.Equal(test, accessTokenClaims.Expiry, resultClaims.Expiry)
 	})
 
 	// RefreshToken
@@ -142,15 +143,15 @@ func TestTokenService(test *testing.T) {
 		errorExample := errors.New(errorMessage)
 
 		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwt.Token{}, nil)
-		mocks.MockJWTManager.EXPECT().GetEmailFromToken(gomock.Any()).Return(nil, errorExample)
-		mocks.MockLogger.EXPECT().Error(errorExample, "Error getting email from token")
+		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(gomock.Any()).Return(nil, errorExample)
+		mocks.MockLogger.EXPECT().Error(errorExample, "Error getting claims from token")
 
 		// Test RefreshToken
 		user, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, "Error getting email from token", err.Error())
+		assert.Equal(test, "Error getting claims from token", err.Error())
 		assert.Nil(test, user)
 	})
 
@@ -160,19 +161,19 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		jwtToken := &jwt.Token{}
-		email := "email@example.com"
-		user := model.NewUser()
 
 		mocks.MockJWTManager.EXPECT().VerifyToken(refreshTokenValue).Return(jwtToken, nil)
-		mocks.MockJWTManager.EXPECT().GetEmailFromToken(jwtToken).Return(&email, nil)
+		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(jwtToken).Return(accessTokenClaims, nil)
 
 		// Test RefreshToken
-		resultUser, resultError := mocks.TokenService.VerifyJWTToken(mocks.Ctx, refreshTokenValue)
+		resultClaims, resultError := mocks.TokenService.VerifyJWTToken(mocks.Ctx, refreshTokenValue)
 
 		// Assert
 		assert.NoError(test, resultError)
-		assert.NotNil(test, resultUser)
-		assert.Equal(test, testEmail, user.Email)
+		assert.NotNil(test, resultClaims)
+		assert.Equal(test, accessTokenClaims.Email, resultClaims.Email)
+		assert.Equal(test, accessTokenClaims.Type, resultClaims.Type)
+		assert.Equal(test, accessTokenClaims.Expiry, resultClaims.Expiry)
 	})
 
 	// VerifyResetPasswordToken

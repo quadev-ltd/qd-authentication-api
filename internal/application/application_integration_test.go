@@ -687,7 +687,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, refreshTokenResponse)
-		assert.EqualError(t, err, "rpc error: code = Internal desc = Refresh token is not listed in DB: no token found with specified value")
+		assert.EqualError(t, err, "rpc error: code = Internal desc = Invalid token type")
 	})
 
 	t.Run("Refresh_Token_Not_Listed_Error", func(t *testing.T) {

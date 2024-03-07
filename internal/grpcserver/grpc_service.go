@@ -160,7 +160,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	email, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	claims, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -169,7 +169,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
 
-	err = service.authenticationService.ResendEmailVerification(ctx, *email)
+	err = service.authenticationService.ResendEmailVerification(ctx, claims.Email)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
