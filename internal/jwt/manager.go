@@ -9,12 +9,18 @@ import (
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 )
 
+type TokenClaims struct {
+	Email  string
+	Type   string
+	Expiry time.Time
+}
+
 // Managerer is an interface for JWTAuthenticator
 type Managerer interface {
 	GetPublicKey(ctx context.Context) (string, error)
 	SignToken(email string, expiry time.Time, tokenType commonJWT.TokenType) (*string, error)
 	VerifyToken(token string) (*jwt.Token, error)
-	GetEmailFromToken(token *jwt.Token) (*string, error)
+	GetClaimsFromToken(token *jwt.Token) (*TokenClaims, error)
 }
 
 // Manager is responsible for generating and verifying JWT tokens
@@ -67,7 +73,23 @@ func (authenticator *Manager) VerifyToken(tokenString string) (*jwt.Token, error
 	return authenticator.tokenVerifier.Verify(tokenString)
 }
 
-// GetEmailFromToken gets the email from a JWT token
-func (authenticator *Manager) GetEmailFromToken(token *jwt.Token) (*string, error) {
-	return authenticator.tokenInspector.GetEmailFromToken(token)
+// GetClaimsFromToken gets the email from a JWT token
+func (authenticator *Manager) GetClaimsFromToken(token *jwt.Token) (*TokenClaims, error) {
+	email, err := authenticator.tokenInspector.GetEmailFromToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting email from token: %v", err)
+	}
+	tokenType, err := authenticator.tokenInspector.GetTypeFromToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting type claim from token: %v", err)
+	}
+	expiry, err := authenticator.tokenInspector.GetExpiryFromToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting expiry claim from token: %v", err)
+	}
+	return &TokenClaims{
+		Email:  *email,
+		Type:   *tokenType,
+		Expiry: *expiry,
+	}, nil
 }

@@ -19,16 +19,22 @@ import (
 
 // AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
-	authenticationService servicePkg.AuthenticationServicer
+	authenticationService servicePkg.UserServicer
+	tokenService          servicePkg.TokenServicer
+	passwordService       servicePkg.PasswordServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
 // NewAuthenticationServiceServer creates a new authentication service server
 func NewAuthenticationServiceServer(
-	authenticationService servicePkg.AuthenticationServicer,
+	authenticationService servicePkg.UserServicer,
+	tokenService servicePkg.TokenServicer,
+	passwordService servicePkg.PasswordServicer,
 ) *AuthenticationServiceServer {
 	return &AuthenticationServiceServer{
 		authenticationService: authenticationService,
+		tokenService:          tokenService,
+		passwordService:       passwordService,
 	}
 }
 
@@ -43,7 +49,7 @@ func (service AuthenticationServiceServer) GetPublicKey(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	publicKey, err := service.authenticationService.GetPublicKey(ctx)
+	publicKey, err := service.tokenService.GetPublicKey(ctx)
 	if err != nil {
 		logger.Error(err, "Failed to get public key")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
@@ -154,20 +160,21 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	email, error := service.authenticationService.VerifyTokenAndDecodeEmail(ctx, request.AuthToken)
-	if error != nil {
-		if serviceErr, ok := error.(*servicePkg.Error); ok {
+	claims, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		logger.Error(error, "Failed to verify JWT token")
+		logger.Error(err, "Failed to verify JWT token")
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
-	error = service.authenticationService.ResendEmailVerification(ctx, *email)
-	if error != nil {
-		if serviceErr, ok := error.(*servicePkg.Error); ok {
+
+	err = service.authenticationService.ResendEmailVerification(ctx, claims.Email)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		logger.Error(error, "Failed to resend email verification")
+		logger.Error(err, "Failed to resend email verification")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 	logger.Info("Email verification sent successfully")
@@ -261,7 +268,7 @@ func (service AuthenticationServiceServer) ForgotPassword(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	error := service.authenticationService.ForgotPassword(ctx, request.Email)
+	error := service.passwordService.ForgotPassword(ctx, request.Email)
 	if error != nil {
 		if serviceErr, ok := error.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -285,12 +292,12 @@ func (service AuthenticationServiceServer) VerifyResetPasswordToken(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	error := service.authenticationService.VerifyResetPasswordToken(ctx, request.Token)
-	if error != nil {
-		if serviceErr, ok := error.(*servicePkg.Error); ok {
+	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.Token)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		logger.Error(error, "Verify reset password token failed")
+		logger.Error(err, "Verify reset password token failed")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
 	logger.Info("Verify reset password token successful")
@@ -309,7 +316,7 @@ func (service AuthenticationServiceServer) ResetPassword(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	resetPasswordError := service.authenticationService.ResetPassword(ctx, request.Token, request.NewPassword)
+	resetPasswordError := service.passwordService.ResetPassword(ctx, request.Token, request.NewPassword)
 	if resetPasswordError != nil {
 		if serviceErr, ok := resetPasswordError.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())

@@ -18,6 +18,8 @@ func GenerateSalt(length int) (string, error) {
 	return base64.StdEncoding.EncodeToString(salt), nil
 }
 
+// TODO: unit test
+
 // GenerateVerificationToken generates a random verification token
 func GenerateVerificationToken() (string, error) {
 	b := make([]byte, 32)

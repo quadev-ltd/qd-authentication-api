@@ -6,6 +6,7 @@ package mock
 
 import (
 	context "context"
+	jwt1 "qd-authentication-api/internal/jwt"
 	reflect "reflect"
 	time "time"
 
@@ -37,19 +38,19 @@ func (m *MockManagerer) EXPECT() *MockManagererMockRecorder {
 	return m.recorder
 }
 
-// GetEmailFromToken mocks base method.
-func (m *MockManagerer) GetEmailFromToken(token *jwt.Token) (*string, error) {
+// GetClaimsFromToken mocks base method.
+func (m *MockManagerer) GetClaimsFromToken(token *jwt.Token) (*jwt1.TokenClaims, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEmailFromToken", token)
-	ret0, _ := ret[0].(*string)
+	ret := m.ctrl.Call(m, "GetClaimsFromToken", token)
+	ret0, _ := ret[0].(*jwt1.TokenClaims)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetEmailFromToken indicates an expected call of GetEmailFromToken.
-func (mr *MockManagererMockRecorder) GetEmailFromToken(token interface{}) *gomock.Call {
+// GetClaimsFromToken indicates an expected call of GetClaimsFromToken.
+func (mr *MockManagererMockRecorder) GetClaimsFromToken(token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEmailFromToken", reflect.TypeOf((*MockManagerer)(nil).GetEmailFromToken), token)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetClaimsFromToken", reflect.TypeOf((*MockManagerer)(nil).GetClaimsFromToken), token)
 }
 
 // GetPublicKey mocks base method.
