@@ -170,7 +170,7 @@ func (service *UserService) Authenticate(ctx context.Context, email, password st
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
-	return service.tokenService.GenerateJWTTokens(ctx, user, nil)
+	return service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
 }
 
 // ResendEmailVerification resends a verification email
@@ -220,19 +220,6 @@ func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString
 	if claims.Type != commonToken.RefreshTokenType {
 		return nil, &Error{Message: "Invalid token type"}
 	}
-	logger, err := log.GetLoggerFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
 
-	// Retrieve user details from the database
-	user, err := service.userRepository.GetByEmail(ctx, claims.Email)
-	if err != nil {
-		logger.Error(err, "Error getting user by email claim")
-		return nil, &Error{
-			Message: "Invalid token",
-		}
-	}
-
-	return service.tokenService.GenerateJWTTokens(ctx, user, &refreshTokenString)
+	return service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID)
 }

@@ -212,7 +212,6 @@ func TestTokenService(test *testing.T) {
 
 	// VerifyResetPasswordToken
 	test.Run("VerifyResetPasswordToken_Success", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -232,7 +231,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("VerifyResetPasswordToken_Expired_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -253,7 +251,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("VerifyResetPasswordToken_TokenType_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -272,7 +269,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("VerifyResetPasswordToken_MissingToken_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -292,7 +288,6 @@ func TestTokenService(test *testing.T) {
 
 	// GenerateEmailVerificationToken
 	test.Run("GenerateEmailVerificationToken_Success", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -309,7 +304,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("GenerateEmailVerificationToken_Insert_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -329,7 +323,6 @@ func TestTokenService(test *testing.T) {
 
 	// GeneratePasswordResetToken
 	test.Run("GeneratePasswordResetToken_Success", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -346,7 +339,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("GeneratePasswordResetToken_Insert_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -365,7 +357,6 @@ func TestTokenService(test *testing.T) {
 
 	// VerifyEmailVerificationToken
 	test.Run("VerifyEmailVerificationToken_Expired_Success", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -387,7 +378,6 @@ func TestTokenService(test *testing.T) {
 		assert.Equal(test, testToken.Revoked, token.Revoked)
 	})
 	test.Run("VerifyEmailVerificationToken_Expired_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -410,7 +400,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("VerifyEmailVerificationToken_Type_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -433,7 +422,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("VerifyEmailVerificationToken_Value_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -457,7 +445,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("VerifyResetPasswordToken_Type_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -481,11 +468,12 @@ func TestTokenService(test *testing.T) {
 
 	// GenerateJWTToken
 	test.Run("GenerateJWTToken_Success", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		mocks.MockJWTManager.EXPECT().SignToken(exampleAccessTokenClaims).Return(
+		mocks.MockJWTManager.EXPECT().SignToken(
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
+		).Return(
 			&testTokenValue,
 			nil,
 		)
@@ -502,10 +490,11 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("GenerateJWTToken_Signing_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
-		mocks.MockJWTManager.EXPECT().SignToken(exampleAccessTokenClaims).Return(
+		mocks.MockJWTManager.EXPECT().SignToken(
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
+		).Return(
 			nil,
 			errExample,
 		)
@@ -524,7 +513,6 @@ func TestTokenService(test *testing.T) {
 
 	// GenerateJWTTokens
 	test.Run("GenerateJWTTokens_Success", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -547,17 +535,10 @@ func TestTokenService(test *testing.T) {
 			&newRefreshTokenValue,
 			nil,
 		)
-		mocks.MockTokenRepo.EXPECT().InsertToken(
-			gomock.Any(),
-			gomock.Any(),
-		).Return(
-			primitive.NewObjectID(),
-			nil,
-		)
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser,
-			nil,
+			testUser.Email,
+			testUser.ID.Hex(),
 		)
 
 		// Assert
@@ -565,147 +546,9 @@ func TestTokenService(test *testing.T) {
 		assert.NotNil(test, response)
 		assert.Equal(test, newRefreshTokenValue, response.RefreshToken)
 		assert.Equal(test, testTokenValue, response.AuthToken)
-	})
-	test.Run("GenerateJWTTokens_Success", func(test *testing.T) {
-
-		mocks := createTokenService(test)
-		defer mocks.Controller.Finish()
-
-		testUser := model.NewUser()
-		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
-		if err != nil {
-			test.Fatal(err)
-		}
-		testUser.ID = userID
-
-		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
-		).Return(
-			&testTokenValue,
-			nil,
-		)
-		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
-		).Return(
-			&newRefreshTokenValue,
-			nil,
-		)
-		mocks.MockTokenRepo.EXPECT().Remove(
-			gomock.Any(),
-			refreshTokenValue,
-		).Return(nil)
-		mocks.MockTokenRepo.EXPECT().InsertToken(
-			gomock.Any(),
-			gomock.Any(),
-		).Return(
-			primitive.NewObjectID(),
-			nil,
-		)
-		response, err := mocks.TokenService.GenerateJWTTokens(
-			mocks.Ctx,
-			testUser,
-			&refreshTokenValue,
-		)
-
-		// Assert
-		assert.NoError(test, err)
-		assert.NotNil(test, response)
-		assert.Equal(test, newRefreshTokenValue, response.RefreshToken)
-		assert.Equal(test, testTokenValue, response.AuthToken)
-	})
-
-	test.Run("GenerateJWTTokens_InsertToken_Error", func(test *testing.T) {
-
-		mocks := createTokenService(test)
-		defer mocks.Controller.Finish()
-
-		testUser := model.NewUser()
-		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
-		if err != nil {
-			test.Fatal(err)
-		}
-		testUser.ID = userID
-
-		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
-		).Return(
-			&testTokenValue,
-			nil,
-		)
-		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
-		).Return(
-			&newRefreshTokenValue,
-			nil,
-		)
-		mocks.MockTokenRepo.EXPECT().Remove(
-			gomock.Any(),
-			refreshTokenValue,
-		).Return(nil)
-		mocks.MockTokenRepo.EXPECT().InsertToken(
-			gomock.Any(),
-			gomock.Any(),
-		).Return(
-			nil,
-			errExample,
-		)
-		mocks.MockLogger.EXPECT().Error(errExample, "Error inserting new refresh token in DB")
-		response, err := mocks.TokenService.GenerateJWTTokens(
-			mocks.Ctx,
-			testUser,
-			&refreshTokenValue,
-		)
-
-		// Assert
-		assert.Error(test, err)
-		assert.Nil(test, response)
-		assert.EqualError(test, err, "Could not store new refresh token")
-	})
-
-	test.Run("GenerateJWTTokens_Remove_Error", func(test *testing.T) {
-
-		mocks := createTokenService(test)
-		defer mocks.Controller.Finish()
-
-		testUser := model.NewUser()
-		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
-		if err != nil {
-			test.Fatal(err)
-		}
-		testUser.ID = userID
-
-		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
-		).Return(
-			&testTokenValue,
-			nil,
-		)
-		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
-		).Return(
-			&newRefreshTokenValue,
-			nil,
-		)
-		mocks.MockTokenRepo.EXPECT().Remove(
-			gomock.Any(),
-			refreshTokenValue,
-		).Return(errExample)
-		mocks.MockLogger.EXPECT().Error(errExample, "Error removing old refresh token")
-
-		response, err := mocks.TokenService.GenerateJWTTokens(
-			mocks.Ctx,
-			testUser,
-			&refreshTokenValue,
-		)
-
-		// Assert
-		assert.Error(test, err)
-		assert.Nil(test, response)
-		assert.EqualError(test, err, "Error removing old refresh token")
 	})
 
 	test.Run("GenerateJWTTokens_RefreshTokenGeneration_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -732,8 +575,8 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser,
-			&refreshTokenValue,
+			testUser.Email,
+			testUser.ID.Hex(),
 		)
 
 		// Assert
@@ -743,7 +586,6 @@ func TestTokenService(test *testing.T) {
 	})
 
 	test.Run("GenerateJWTTokens_AccessTokenGeneration_Error", func(test *testing.T) {
-
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -764,8 +606,8 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser,
-			&refreshTokenValue,
+			testUser.Email,
+			testUser.ID.Hex(),
 		)
 
 		// Assert
