@@ -22,7 +22,7 @@ type Config struct {
 	App               string
 	AuthenticationKey string `mapstructure:"authentication_key"`
 	AuthenticationDB  db     `mapstructure:"authentication_db"`
-	AWS               commonAWS.AWSConfig
+	AWS               commonAWS.Config
 }
 
 // Load loads the configuration from the given path yml file

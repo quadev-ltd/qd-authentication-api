@@ -9,9 +9,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
@@ -22,29 +22,29 @@ import (
 )
 
 const (
-	testEmail            = "test@example.com"
-	testPassword         = "Password123!"
-	testFirstName        = "John"
-	testLastName         = "Doe"
-	invalidEmail         = "invalid-email"
-	newRefreshTokenValue = "test_token_example"
+	testEmail     = "test@example.com"
+	testPassword  = "Password123!"
+	testFirstName = "John"
+	testLastName  = "Doe"
+	invalidEmail  = "invalid-email"
 )
 
 var (
-	testDateOfBirth   = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
-	userID            = primitive.NewObjectID()
-	errExample        = errors.New("test-error")
-	refreshTokenValue = "refresh-token"
-	testTokenValue    = "test-token"
-	accessTokenClaims = &jwtPkg.TokenClaims{
+	testDateOfBirth      = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
+	userID               = primitive.NewObjectID()
+	errExample           = errors.New("test-error")
+	refreshTokenValue    = "refresh-token"
+	testTokenValue       = "test-token"
+	newRefreshTokenValue = "test_token_example"
+	accessTokenClaims    = &jwtPkg.TokenClaims{
 		Email:  testEmail,
-		Type:   string(commonJWT.AccessTokenType),
+		Type:   commonToken.AccessTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
 	refreshTokenClaims = &jwtPkg.TokenClaims{
-		Email:  accessTokenClaims.Email,
-		Type:   string(commonJWT.RefreshTokenType),
-		Expiry: accessTokenClaims.Expiry,
+		Email:  testEmail,
+		Type:   commonToken.RefreshTokenType,
+		Expiry: time.Now().Add(5 * time.Minute),
 	}
 )
 
@@ -661,7 +661,6 @@ func TestAuthenticationService(test *testing.T) {
 
 	test.Run("RefreshToken_InvalidType_Error", func(test *testing.T) {
 		// Arrange
-
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 

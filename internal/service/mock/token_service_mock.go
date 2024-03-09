@@ -6,13 +6,11 @@ package mock
 
 import (
 	context "context"
-	jwt0 "qd-authentication-api/internal/jwt"
+	jwt "qd-authentication-api/internal/jwt"
 	model "qd-authentication-api/internal/model"
 	reflect "reflect"
-	time "time"
 
 	gomock "github.com/golang/mock/gomock"
-	jwt "github.com/quadev-ltd/qd-common/pkg/jwt"
 	primitive "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -55,19 +53,18 @@ func (mr *MockTokenServicerMockRecorder) GenerateEmailVerificationToken(ctx, use
 }
 
 // GenerateJWTToken mocks base method.
-func (m *MockTokenServicer) GenerateJWTToken(ctx context.Context, email string, expiry time.Duration, tokenType jwt.TokenType) (*string, *time.Time, error) {
+func (m *MockTokenServicer) GenerateJWTToken(ctx context.Context, claims *jwt.TokenClaims) (*string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateJWTToken", ctx, email, expiry, tokenType)
+	ret := m.ctrl.Call(m, "GenerateJWTToken", ctx, claims)
 	ret0, _ := ret[0].(*string)
-	ret1, _ := ret[1].(*time.Time)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GenerateJWTToken indicates an expected call of GenerateJWTToken.
-func (mr *MockTokenServicerMockRecorder) GenerateJWTToken(ctx, email, expiry, tokenType interface{}) *gomock.Call {
+func (mr *MockTokenServicerMockRecorder) GenerateJWTToken(ctx, claims interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateJWTToken", reflect.TypeOf((*MockTokenServicer)(nil).GenerateJWTToken), ctx, email, expiry, tokenType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateJWTToken", reflect.TypeOf((*MockTokenServicer)(nil).GenerateJWTToken), ctx, claims)
 }
 
 // GenerateJWTTokens mocks base method.
@@ -145,10 +142,10 @@ func (mr *MockTokenServicerMockRecorder) VerifyEmailVerificationToken(ctx, token
 }
 
 // VerifyJWTToken mocks base method.
-func (m *MockTokenServicer) VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt0.TokenClaims, error) {
+func (m *MockTokenServicer) VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyJWTToken", ctx, refreshTokenString)
-	ret0, _ := ret[0].(*jwt0.TokenClaims)
+	ret0, _ := ret[0].(*jwt.TokenClaims)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

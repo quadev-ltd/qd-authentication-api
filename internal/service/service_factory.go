@@ -9,6 +9,7 @@ import (
 	"qd-authentication-api/internal/config"
 	"qd-authentication-api/internal/jwt"
 	mongo "qd-authentication-api/internal/mongo"
+	"qd-authentication-api/internal/util"
 )
 
 // Factoryer is a factory for creating a service
@@ -48,7 +49,8 @@ func (serviceFactory *Factory) CreateServiceManager(
 	if err != nil {
 		return nil, err
 	}
-	tokenService := NewTokenService(repository.GetTokenRepository(), jwtManager)
+	timeProvider := &util.RealTimeProvider{}
+	tokenService := NewTokenService(repository.GetTokenRepository(), jwtManager, *timeProvider)
 	userService := NewUserService(
 		emailService,
 		tokenService,

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
 
 	"qd-authentication-api/internal/model"
@@ -57,11 +57,11 @@ func TestMongoTokenRepository(test *testing.T) {
 		assert.NoError(test, err)
 
 		issueAt := time.Now()
-		expiresAt := time.Now().Add(33 * time.Hour)
-		token.Type = commonJWT.RefreshTokenType
+		expires_at := time.Now().Add(33 * time.Hour)
+		token.Type = commonToken.AccessTokenType
 		token.Revoked = true
 		token.IssuedAt = issueAt
-		token.ExpiresAt = expiresAt
+		token.ExpiresAt = expires_at
 
 		err = repo.Update(context.Background(), token)
 		assert.NoError(test, err)
@@ -69,10 +69,10 @@ func TestMongoTokenRepository(test *testing.T) {
 		foundToken, err := repo.GetByToken(context.Background(), token.Token)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundToken)
-		assert.Equal(test, commonJWT.RefreshTokenType, foundToken.Type)
+		assert.Equal(test, commonToken.AccessTokenType, foundToken.Type)
 		assert.True(test, foundToken.Revoked)
 		assert.Equal(test, issueAt, token.IssuedAt)
-		assert.Equal(test, expiresAt, token.ExpiresAt)
+		assert.Equal(test, expires_at, token.ExpiresAt)
 	})
 	test.Run("Update_User_Not_Found", func(test *testing.T) {
 		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)

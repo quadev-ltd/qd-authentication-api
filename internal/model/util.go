@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -14,7 +14,7 @@ func NewToken(token string) *Token {
 		Token:     token,
 		IssuedAt:  time.Now(),
 		ExpiresAt: time.Now().Add(2 * time.Hour),
-		Type:      commonJWT.EmailVerificationTokenType,
+		Type:      commonToken.EmailVerificationTokenType,
 		Revoked:   false,
 	}
 }

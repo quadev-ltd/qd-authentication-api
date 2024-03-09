@@ -7,18 +7,20 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 )
 
 type TokenClaims struct {
 	Email  string
-	Type   string
+	Type   commonToken.TokenType
 	Expiry time.Time
+	UserID string
 }
 
 // Managerer is an interface for JWTAuthenticator
 type Managerer interface {
 	GetPublicKey(ctx context.Context) (string, error)
-	SignToken(email string, expiry time.Time, tokenType commonJWT.TokenType) (*string, error)
+	SignToken(tokenClaims *TokenClaims) (*string, error)
 	VerifyToken(token string) (*jwt.Token, error)
 	GetClaimsFromToken(token *jwt.Token) (*TokenClaims, error)
 }
@@ -64,8 +66,14 @@ func (authenticator *Manager) GetPublicKey(ctx context.Context) (string, error) 
 }
 
 // SignToken signs a JWT token
-func (authenticator *Manager) SignToken(email string, expiry time.Time, tokenType commonJWT.TokenType) (*string, error) {
-	return authenticator.tokenSigner.SignToken(email, expiry, tokenType)
+func (authenticator *Manager) SignToken(tokenClaims *TokenClaims) (*string, error) {
+	claims := []commonJWT.ClaimPair{
+		{Key: commonJWT.EmailClaim, Value: tokenClaims.Email},
+		{Key: commonJWT.TypeClaim, Value: tokenClaims.Type},
+		{Key: commonJWT.ExpiryClaim, Value: tokenClaims.Expiry},
+		{Key: commonJWT.UserIDClaim, Value: tokenClaims.UserID},
+	}
+	return authenticator.tokenSigner.SignToken(claims...)
 }
 
 // VerifyToken verifies a JWT token

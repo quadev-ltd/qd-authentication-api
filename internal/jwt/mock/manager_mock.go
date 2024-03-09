@@ -6,13 +6,11 @@ package mock
 
 import (
 	context "context"
-	jwt1 "qd-authentication-api/internal/jwt"
+	jwt0 "qd-authentication-api/internal/jwt"
 	reflect "reflect"
-	time "time"
 
 	jwt "github.com/golang-jwt/jwt"
 	gomock "github.com/golang/mock/gomock"
-	jwt0 "github.com/quadev-ltd/qd-common/pkg/jwt"
 )
 
 // MockManagerer is a mock of Managerer interface.
@@ -39,10 +37,10 @@ func (m *MockManagerer) EXPECT() *MockManagererMockRecorder {
 }
 
 // GetClaimsFromToken mocks base method.
-func (m *MockManagerer) GetClaimsFromToken(token *jwt.Token) (*jwt1.TokenClaims, error) {
+func (m *MockManagerer) GetClaimsFromToken(token *jwt.Token) (*jwt0.TokenClaims, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetClaimsFromToken", token)
-	ret0, _ := ret[0].(*jwt1.TokenClaims)
+	ret0, _ := ret[0].(*jwt0.TokenClaims)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -69,18 +67,18 @@ func (mr *MockManagererMockRecorder) GetPublicKey(ctx interface{}) *gomock.Call 
 }
 
 // SignToken mocks base method.
-func (m *MockManagerer) SignToken(email string, expiry time.Time, tokenType jwt0.TokenType) (*string, error) {
+func (m *MockManagerer) SignToken(tokenClaims *jwt0.TokenClaims) (*string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SignToken", email, expiry, tokenType)
+	ret := m.ctrl.Call(m, "SignToken", tokenClaims)
 	ret0, _ := ret[0].(*string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SignToken indicates an expected call of SignToken.
-func (mr *MockManagererMockRecorder) SignToken(email, expiry, tokenType interface{}) *gomock.Call {
+func (mr *MockManagererMockRecorder) SignToken(tokenClaims interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignToken", reflect.TypeOf((*MockManagerer)(nil).SignToken), email, expiry, tokenType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SignToken", reflect.TypeOf((*MockManagerer)(nil).SignToken), tokenClaims)
 }
 
 // VerifyToken mocks base method.
