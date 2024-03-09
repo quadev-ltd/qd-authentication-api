@@ -20,17 +20,18 @@ func TestMongoTokenRepository(test *testing.T) {
 
 		repo := NewTokenRepository(client)
 
-		token := model.NewToken("test_token")
+		token := model.NewToken("test_token_hash", "test_token_salt")
 
 		// Test Create
 		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)
 
 		// Test GetByEmail
-		foundToken, err := repo.GetByToken(context.Background(), token.Token)
+		foundToken, err := repo.GetByToken(context.Background(), token.TokenHash)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundToken)
-		assert.Equal(test, token.Token, foundToken.Token)
+		assert.Equal(test, token.TokenHash, foundToken.TokenHash)
+		assert.Equal(test, token.Salt, foundToken.Salt)
 	})
 	test.Run("GetByToken_Not_Found", func(test *testing.T) {
 		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
@@ -51,7 +52,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 		repo := NewTokenRepository(client)
-		token := model.NewToken("test_token")
+		token := model.NewToken("test_token_hash", "test_token")
 
 		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)
@@ -66,7 +67,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		err = repo.Update(context.Background(), token)
 		assert.NoError(test, err)
 
-		foundToken, err := repo.GetByToken(context.Background(), token.Token)
+		foundToken, err := repo.GetByToken(context.Background(), token.TokenHash)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundToken)
 		assert.Equal(test, commonToken.AccessTokenType, foundToken.Type)
@@ -81,7 +82,7 @@ func TestMongoTokenRepository(test *testing.T) {
 
 		repo := NewTokenRepository(client)
 
-		token := model.NewToken("test_token")
+		token := model.NewToken("test_token_hash", "test_token")
 
 		// Test Update
 		error = repo.Update(context.Background(), token)
@@ -94,15 +95,15 @@ func TestMongoTokenRepository(test *testing.T) {
 		defer client.Disconnect(context.Background())
 		defer mongoServer.Stop()
 		repo := NewTokenRepository(client)
-		token := model.NewToken("test_token")
+		token := model.NewToken("test_token_hash", "test_token")
 
 		_, err = repo.InsertToken(context.Background(), token)
 		assert.NoError(test, err)
 
-		err = repo.Remove(context.Background(), token.Token)
+		err = repo.Remove(context.Background(), token)
 		assert.NoError(test, err)
 
-		foundToken, err := repo.GetByToken(context.Background(), token.Token)
+		foundToken, err := repo.GetByToken(context.Background(), token.TokenHash)
 		assert.Error(test, err)
 		assert.Equal(test, "Error finding token by email: mongo: no documents in result", err.Error())
 		assert.Nil(test, foundToken)

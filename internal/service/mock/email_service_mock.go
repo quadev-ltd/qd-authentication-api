@@ -49,15 +49,15 @@ func (mr *MockEmailServicerMockRecorder) SendPasswordResetMail(ctx, dest, userNa
 }
 
 // SendVerificationMail mocks base method.
-func (m *MockEmailServicer) SendVerificationMail(ctx context.Context, dest, userName, verificationToken string) error {
+func (m *MockEmailServicer) SendVerificationMail(ctx context.Context, dest, userName, userID, verificationToken string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendVerificationMail", ctx, dest, userName, verificationToken)
+	ret := m.ctrl.Call(m, "SendVerificationMail", ctx, dest, userName, userID, verificationToken)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SendVerificationMail indicates an expected call of SendVerificationMail.
-func (mr *MockEmailServicerMockRecorder) SendVerificationMail(ctx, dest, userName, verificationToken interface{}) *gomock.Call {
+func (mr *MockEmailServicerMockRecorder) SendVerificationMail(ctx, dest, userName, userID, verificationToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendVerificationMail", reflect.TypeOf((*MockEmailServicer)(nil).SendVerificationMail), ctx, dest, userName, verificationToken)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendVerificationMail", reflect.TypeOf((*MockEmailServicer)(nil).SendVerificationMail), ctx, dest, userName, userID, verificationToken)
 }

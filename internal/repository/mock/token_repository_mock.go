@@ -66,7 +66,7 @@ func (mr *MockTokenRepositoryerMockRecorder) InsertToken(ctx, token interface{})
 }
 
 // Remove mocks base method.
-func (m *MockTokenRepositoryer) Remove(ctx context.Context, token string) error {
+func (m *MockTokenRepositoryer) Remove(ctx context.Context, token *model.Token) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Remove", ctx, token)
 	ret0, _ := ret[0].(error)

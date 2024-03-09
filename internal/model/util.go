@@ -8,10 +8,11 @@ import (
 )
 
 // NewToken creates a new token
-func NewToken(token string) *Token {
+func NewToken(tokenHash, tokenSalt string) *Token {
 	return &Token{
 		UserID:    primitive.NewObjectID(),
-		Token:     token,
+		TokenHash: tokenHash,
+		Salt:      tokenSalt,
 		IssuedAt:  time.Now(),
 		ExpiresAt: time.Now().Add(2 * time.Hour),
 		Type:      commonToken.EmailVerificationTokenType,

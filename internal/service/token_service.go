@@ -25,7 +25,7 @@ type TokenServicer interface {
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error)
 	VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error)
-	RemoveUsedToken(ctx context.Context, token string) error
+	RemoveUsedToken(ctx context.Context, token *model.Token) error
 }
 
 // TokenService is the implementation of the authentication service
@@ -66,10 +66,16 @@ func (service *TokenService) generateVerificationToken(
 		logger.Error(err, "Error generating verification token")
 		return nil, &Error{Message: "Error generating verification token"}
 	}
+	tokenHash, salt, err := util.GenerateHash(verificationToken, false)
+	if err != nil {
+		logger.Error(err, "Error hashing verification token")
+		return nil, &Error{Message: "Error hashing verification token"}
+	}
 	verificationTokentExpiryDate := service.timeProvider.Now().Add(VerificationTokenExpiry)
 	emailVerificationToken := &model.Token{
 		UserID:    userID,
-		Token:     verificationToken,
+		TokenHash: string(tokenHash),
+		Salt:      *salt,
 		ExpiresAt: verificationTokentExpiryDate,
 		Type:      tokenType,
 		IssuedAt:  service.timeProvider.Now(),
@@ -93,7 +99,7 @@ func (service *TokenService) GeneratePasswordResetToken(ctx context.Context, use
 }
 
 // RemoveUsedToken removes a token from the database
-func (service *TokenService) RemoveUsedToken(ctx context.Context, token string) error {
+func (service *TokenService) RemoveUsedToken(ctx context.Context, token *model.Token) error {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err

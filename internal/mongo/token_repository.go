@@ -34,7 +34,7 @@ func (tokenRepository *TokenRepository) InsertToken(ctx context.Context, token *
 func (tokenRepository *TokenRepository) GetByToken(ctx context.Context, token string) (*model.Token, error) {
 	collection := tokenRepository.getCollection()
 
-	filter := bson.M{"token": token}
+	filter := bson.M{"token_hash": token}
 	var foundToken model.Token
 
 	err := collection.FindOne(ctx, filter).Decode(&foundToken)
@@ -48,7 +48,7 @@ func (tokenRepository *TokenRepository) GetByToken(ctx context.Context, token st
 // Update updates a token in the mongo database
 func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model.Token) error {
 	collection := tokenRepository.getCollection()
-	filter := bson.M{"token": token.Token, "user_id": token.UserID}
+	filter := bson.M{"token_hash": token.TokenHash, "salt": token.Salt, "user_id": token.UserID}
 	update := bson.M{
 		"$set": bson.M{
 			"issued_at":  token.IssuedAt,
@@ -71,9 +71,9 @@ func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model
 }
 
 // Remove removes a token from the mongo database
-func (tokenRepository *TokenRepository) Remove(ctx context.Context, token string) error {
+func (tokenRepository *TokenRepository) Remove(ctx context.Context, token *model.Token) error {
 	collection := tokenRepository.getCollection()
-	filter := bson.M{"token": token}
+	filter := bson.M{"user_id": token.UserID, "token_hash": token.TokenHash, "salt": token.Salt, "type": token.Type}
 
 	result, err := collection.DeleteOne(ctx, filter)
 	if err != nil {

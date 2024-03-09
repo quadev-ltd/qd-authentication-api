@@ -567,7 +567,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		}
 
 		verifyEmailResponse, err := grpcClient.VerifyEmail(ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
-			VerificationToken: foundToken.Token,
+			VerificationToken: foundToken.TokenHash,
 		})
 
 		assert.NoError(t, err)
@@ -796,7 +796,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		_, err = grpcClient.VerifyEmail(
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
-				VerificationToken: foundToken.Token,
+				VerificationToken: foundToken.TokenHash,
 			},
 		)
 		if err != nil {
@@ -817,7 +817,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		}
 
 		forgotPassword, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: foundToken.Token,
+			Token: foundToken.TokenHash,
 		})
 
 		assert.NoError(t, err)
@@ -827,7 +827,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		newPassword := "NewPassword@000!"
 		resetPasswordResponse, err := grpcClient.ResetPassword(ctxWithCorrelationID, &pb_authentication.ResetPasswordRequest{
-			Token:       foundToken.Token,
+			Token:       foundToken.TokenHash,
 			NewPassword: newPassword,
 		})
 

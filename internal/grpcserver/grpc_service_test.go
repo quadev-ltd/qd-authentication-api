@@ -549,7 +549,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
 			gomock.Any(),
 			testTokenValue,
-		).Return(&model.Token{Token: testTokenValue}, nil)
+		).Return(&model.Token{TokenHash: testTokenValue}, nil)
 		mocks.MockLogger.EXPECT().Info("Verify reset password token successful")
 
 		response, returnedError := mocks.AuthenticationServer.VerifyResetPasswordToken(mocks.Ctx, &pb_authentication.VerifyResetPasswordTokenRequest{

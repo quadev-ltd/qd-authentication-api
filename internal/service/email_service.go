@@ -22,7 +22,7 @@ type EmailServiceConfig struct {
 
 // EmailServicer is the interface for the email service
 type EmailServicer interface {
-	SendVerificationMail(ctx context.Context, dest string, userName, verificationToken string) error
+	SendVerificationMail(ctx context.Context, dest string, userName, userID, verificationToken string) error
 	SendPasswordResetMail(ctx context.Context, dest string, userName, resetToken string) error
 }
 
@@ -86,16 +86,28 @@ func (service *EmailService) sendMail(ctx context.Context, dest string, subject 
 }
 
 // CreateVerificationEmailContent creates the content of the verification email
-func (service *EmailService) CreateVerificationEmailContent(ctx context.Context, destination string, userName, verificationToken string) (string, string) {
+func (service *EmailService) CreateVerificationEmailContent(
+	ctx context.Context,
+	destination,
+	userName,
+	userID,
+	verificationToken string,
+) (string, string) {
 	subject := fmt.Sprintf("Welcome to %s", service.config.AppName)
-	emailVerificationLink := fmt.Sprintf("%s%s%s", service.config.EmailVerificationEndpoint, "user/email/", verificationToken)
+	emailVerificationLink := fmt.Sprintf("%suser/%s/email/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
 	body := fmt.Sprintf("Hi %s,\nYou've just signed up to %s!\nWe need to verify your email.\nPlease click on the following link to verify your account:\n%s\n\nThanks.", userName, service.config.AppName, emailVerificationLink)
 	return subject, body
 }
 
 // SendVerificationMail sends a verification email to the given destination
-func (service *EmailService) SendVerificationMail(ctx context.Context, destination, userName, verificationToken string) error {
-	subject, body := service.CreateVerificationEmailContent(ctx, destination, userName, verificationToken)
+func (service *EmailService) SendVerificationMail(
+	ctx context.Context,
+	destination,
+	userName,
+	userID,
+	verificationToken string,
+) error {
+	subject, body := service.CreateVerificationEmailContent(ctx, destination, userName, userID, verificationToken)
 	err := service.sendMail(ctx, destination, subject, body)
 	return err
 }

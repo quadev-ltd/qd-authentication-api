@@ -18,9 +18,9 @@ import (
 // UserServicer is the interface for the authentication service
 type UserServicer interface {
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error
+	ResendEmailVerification(ctx context.Context, email string) error
 	VerifyEmail(ctx context.Context, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
-	ResendEmailVerification(ctx context.Context, email string) error
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
 }
 
@@ -67,7 +67,7 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 			Message: "Password does not meet complexity requirements",
 		}
 	}
-	hashedPassword, salt, err := util.GenerateHash(password)
+	hashedPassword, salt, err := util.GenerateHash(password, true)
 	if err != nil {
 		logger.Error(err, "Error generating password hash")
 		return fmt.Errorf("Error generating password hash")
@@ -106,71 +106,17 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 		return err
 	}
 
-	if err = service.emailService.SendVerificationMail(ctx, user.Email, user.FirstName, *emailVerificationToken); err != nil {
+	if err = service.emailService.SendVerificationMail(
+		ctx,
+		user.Email,
+		user.FirstName,
+		userID.Hex(),
+		*emailVerificationToken,
+	); err != nil {
 		return &SendEmailError{Message: "Error sending verification email"}
 	}
 
 	return nil
-}
-
-// VerifyEmail verifies a user's email
-func (service *UserService) VerifyEmail(ctx context.Context, verificationToken string) error {
-	logger, err := log.GetLoggerFromContext(ctx)
-	if err != nil {
-		return err
-	}
-	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, verificationToken)
-	if err != nil {
-		return err
-	}
-
-	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
-	if err != nil {
-		logger.Error(err, "Error getting user by ID")
-		return &Error{Message: "Invalid verification token"}
-	}
-	if user.AccountStatus == model.AccountStatusVerified {
-		return &Error{Message: "Email already verified"}
-	}
-
-	user.AccountStatus = model.AccountStatusVerified
-
-	if err := service.userRepository.UpdateStatus(ctx, user); err != nil {
-		logger.Error(err, "Error updating user status")
-		return fmt.Errorf("Error updating user status")
-	}
-
-	err = service.tokenService.RemoveUsedToken(ctx, token.Token)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Authenticate authenticates a user and provides a token
-func (service *UserService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	user, resultError := service.userRepository.GetByEmail(ctx, email)
-	if resultError != nil {
-		logger.Error(resultError, fmt.Sprintf("Error getting user by email: %v", email))
-		return nil, &Error{
-			Message: "Error getting user by email",
-		}
-	}
-
-	if user == nil {
-		return nil, &model.WrongEmailOrPassword{FieldName: "Email"}
-	}
-
-	resultError = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password+user.PasswordSalt))
-	if resultError != nil {
-		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
-	}
-
-	return service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
 }
 
 // ResendEmailVerification resends a verification email
@@ -203,12 +149,73 @@ func (service *UserService) ResendEmailVerification(
 		ctx,
 		user.Email,
 		user.FirstName,
+		user.ID.Hex(),
 		*emailVerificationToken,
 	); err != nil {
 		return fmt.Errorf("Error sending verification email: %v", err)
 	}
 
 	return nil
+}
+
+// VerifyEmail verifies a user's email
+func (service *UserService) VerifyEmail(ctx context.Context, verificationToken string) error {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, verificationToken)
+	if err != nil {
+		return err
+	}
+
+	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
+	if err != nil {
+		logger.Error(err, "Error getting user by ID")
+		return &Error{Message: "Invalid verification token"}
+	}
+	if user.AccountStatus == model.AccountStatusVerified {
+		return &Error{Message: "Email already verified"}
+	}
+
+	user.AccountStatus = model.AccountStatusVerified
+
+	if err := service.userRepository.UpdateStatus(ctx, user); err != nil {
+		logger.Error(err, "Error updating user status")
+		return fmt.Errorf("Error updating user status")
+	}
+
+	err = service.tokenService.RemoveUsedToken(ctx, token)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Authenticate authenticates a user and provides a token
+func (service *UserService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	user, resultError := service.userRepository.GetByEmail(ctx, email)
+	if resultError != nil {
+		logger.Error(resultError, fmt.Sprintf("Error getting user by email: %v", email))
+		return nil, &Error{
+			Message: "Error getting user by email",
+		}
+	}
+
+	if user == nil {
+		return nil, &model.WrongEmailOrPassword{FieldName: "Email"}
+	}
+
+	resultError = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password+user.PasswordSalt))
+	if resultError != nil {
+		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
+	}
+
+	return service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
 }
 
 // RefreshToken refreshes an authentication token using a refresh token
