@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
 
 	"qd-authentication-api/internal/model"
@@ -160,7 +160,7 @@ func TestPasswordService(test *testing.T) {
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
@@ -184,7 +184,7 @@ func TestPasswordService(test *testing.T) {
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
@@ -211,7 +211,7 @@ func TestPasswordService(test *testing.T) {
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "simplePasswwrod123"
 
@@ -236,7 +236,7 @@ func TestPasswordService(test *testing.T) {
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
@@ -262,7 +262,7 @@ func TestPasswordService(test *testing.T) {
 		testUser := model.NewUser()
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 

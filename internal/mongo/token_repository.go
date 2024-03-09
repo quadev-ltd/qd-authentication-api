@@ -48,13 +48,13 @@ func (tokenRepository *TokenRepository) GetByToken(ctx context.Context, token st
 // Update updates a token in the mongo database
 func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model.Token) error {
 	collection := tokenRepository.getCollection()
-	filter := bson.M{"token": token.Token, "userId": token.UserID}
+	filter := bson.M{"token": token.Token, "user_id": token.UserID}
 	update := bson.M{
 		"$set": bson.M{
-			"issuedAt":  token.IssuedAt,
-			"expiresAt": token.ExpiresAt,
-			"revoked":   token.Revoked,
-			"type":      token.Type,
+			"issued_at":  token.IssuedAt,
+			"expires_at": token.ExpiresAt,
+			"revoked":    token.Revoked,
+			"type":       token.Type,
 		},
 	}
 

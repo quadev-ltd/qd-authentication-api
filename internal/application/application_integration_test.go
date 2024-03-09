@@ -561,7 +561,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 		var foundToken model.Token
-		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"user_id": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -788,7 +788,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 		var foundToken model.Token
-		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"user_id": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -811,7 +811,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, "Forgot password request successful", forgotPasswordResponse.Message)
 		assert.True(t, forgotPasswordResponse.Success)
 
-		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userId": foundUser.ID}).Decode(&foundToken)
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"user_id": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
 			t.Fatal(err)
 		}

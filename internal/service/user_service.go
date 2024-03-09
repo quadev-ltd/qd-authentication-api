@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
@@ -67,7 +67,6 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 			Message: "Password does not meet complexity requirements",
 		}
 	}
-
 	hashedPassword, salt, err := util.GenerateHash(password)
 	if err != nil {
 		logger.Error(err, "Error generating password hash")
@@ -218,7 +217,7 @@ func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString
 	if err != nil {
 		return nil, err
 	}
-	if claims.Type != string(commonJWT.RefreshTokenType) {
+	if claims.Type != commonToken.RefreshTokenType {
 		return nil, &Error{Message: "Invalid token type"}
 	}
 	logger, err := log.GetLoggerFromContext(ctx)

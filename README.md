@@ -9,6 +9,7 @@ Set up host redirections in `/etc/hosts` file:
 Add corresponding certificates in `/certs` folder in the root  
 run `go run cmd/maing.go` to start the service.
 
+
 ## Tests
 Gomock is used to create mocks for service unit testing, and Testify is used s assertion library and to provide a better layout and organization of test results. Mocks can easily be updated when services are changed.
 For example:
@@ -43,7 +44,6 @@ GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 
 
 
-##  TODOs
 <!-- TODOs -->
 <!--
     Refactor register (devide into parts)

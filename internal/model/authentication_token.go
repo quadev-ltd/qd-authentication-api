@@ -9,4 +9,5 @@ type AuthTokensResponse struct {
 	RefreshToken       string    `json:"refresh_token"`
 	RefreshTokenExpiry time.Time `json:"refresh_token_expiry"`
 	UserEmail          string    `json:"user_email"`
+	UserID             string    `json:"user_id"`
 }

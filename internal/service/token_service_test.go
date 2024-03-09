@@ -3,20 +3,24 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/mock/gomock"
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	jwtPkg "qd-authentication-api/internal/jwt"
 	jwtManagerMock "qd-authentication-api/internal/jwt/mock"
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
+	"qd-authentication-api/internal/util"
 )
 
 type TokenAuthenServiceMockedParams struct {
@@ -33,9 +37,11 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 	mockTokenRepo := repositoryMock.NewMockTokenRepositoryer(controller)
 	mockJWTManager := jwtManagerMock.NewMockManagerer(controller)
 	mockLogger := loggerMock.NewMockLoggerer(controller)
+	mockTimeProvider := &util.MockTimeProvider{}
 	tokenService := NewTokenService(
 		mockTokenRepo,
 		mockJWTManager,
+		mockTimeProvider,
 	)
 	ctx := context.WithValue(context.Background(), log.LoggerKey, mockLogger)
 
@@ -49,7 +55,35 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 	}
 }
 
+type tokenClaimsMatcher struct {
+	expected *jwtPkg.TokenClaims
+}
+
+func (m tokenClaimsMatcher) Matches(x interface{}) bool {
+	actual, ok := x.(*jwtPkg.TokenClaims)
+	if !ok {
+		return false
+	}
+	return reflect.DeepEqual(m.expected, actual)
+}
+
+func (m tokenClaimsMatcher) String() string {
+	return fmt.Sprintf("is equal to %v", m.expected)
+}
+
 func TestTokenService(test *testing.T) {
+	exampleAccessTokenClaims := &jwtPkg.TokenClaims{
+		Email:  testEmail,
+		Type:   commonToken.AccessTokenType,
+		Expiry: util.MockedTime.Add(AuthenticationTokenDuration),
+		UserID: userID.Hex(),
+	}
+	exampleRefreshTokenClaims := &jwtPkg.TokenClaims{
+		Email:  testEmail,
+		Type:   commonToken.RefreshTokenType,
+		Expiry: util.MockedTime.Add(RefreshTokenDuration),
+		UserID: userID.Hex(),
+	}
 	// VerifyJWTToken
 	test.Run("VerifyJWTToken_VerifyToken_Error", func(test *testing.T) {
 		// Arrange
@@ -184,7 +218,7 @@ func TestTokenService(test *testing.T) {
 
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 
 		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
 
@@ -204,8 +238,8 @@ func TestTokenService(test *testing.T) {
 
 		testTokenValue := "test-token"
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
-		testToken.ExpiresAt = time.Now().Add(-1 * time.Second)
+		testToken.Type = commonToken.ResetPasswordTokenType
+		testToken.ExpiresAt = util.MockedTime.Add(-1 * time.Second)
 
 		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
 
@@ -336,7 +370,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testToken := model.NewToken(testTokenValue)
-		testToken.ExpiresAt = time.Now().Add(10 * time.Second)
+		testToken.ExpiresAt = util.MockedTime.Add(1 * time.Second)
 
 		mocks.MockTokenRepo.EXPECT().GetByToken(
 			gomock.Any(),
@@ -358,7 +392,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		expiredToken := model.NewToken(testTokenValue)
-		expiredToken.ExpiresAt = time.Now().Add(-1 * time.Second)
+		expiredToken.ExpiresAt = util.MockedTime.Add(-1 * time.Second)
 
 		mocks.MockTokenRepo.EXPECT().GetByToken(
 			gomock.Any(),
@@ -381,7 +415,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 
 		mocks.MockTokenRepo.EXPECT().GetByToken(
 			gomock.Any(),
@@ -404,7 +438,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.ResetPasswordTokenType
+		testToken.Type = commonToken.ResetPasswordTokenType
 
 		mocks.MockTokenRepo.EXPECT().GetByToken(
 			gomock.Any(),
@@ -428,7 +462,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testToken := model.NewToken(testTokenValue)
-		testToken.Type = commonJWT.EmailVerificationTokenType
+		testToken.Type = commonToken.EmailVerificationTokenType
 
 		mocks.MockTokenRepo.EXPECT().GetByToken(
 			gomock.Any(),
@@ -451,26 +485,19 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
-		).Return(
+		mocks.MockJWTManager.EXPECT().SignToken(exampleAccessTokenClaims).Return(
 			&testTokenValue,
 			nil,
 		)
 
-		response, expiryDate, err := mocks.TokenService.GenerateJWTToken(
+		response, err := mocks.TokenService.GenerateJWTToken(
 			mocks.Ctx,
-			testEmail,
-			AuthenticationTokenExpiry,
-			commonJWT.AccessTokenType,
+			exampleAccessTokenClaims,
 		)
 
 		// Assert
 		assert.NoError(test, err)
 		assert.NotNil(test, response)
-		assert.NotNil(test, expiryDate)
 		assert.Equal(test, testTokenValue, *response)
 	})
 
@@ -478,28 +505,20 @@ func TestTokenService(test *testing.T) {
 
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
-
-		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
-		).Return(
+		mocks.MockJWTManager.EXPECT().SignToken(exampleAccessTokenClaims).Return(
 			nil,
 			errExample,
 		)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error creating jwt token")
 
-		response, expiryDate, err := mocks.TokenService.GenerateJWTToken(
+		response, err := mocks.TokenService.GenerateJWTToken(
 			mocks.Ctx,
-			testEmail,
-			AuthenticationTokenExpiry,
-			commonJWT.AccessTokenType,
+			exampleAccessTokenClaims,
 		)
 
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, response)
-		assert.Nil(test, expiryDate)
 		assert.Equal(test, "Error creating jwt token", err.Error())
 	})
 
@@ -510,20 +529,20 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		newRefreshTokenValue := "new-refresh-token"
+		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
 		).Return(
 			&testTokenValue,
 			nil,
 		)
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.RefreshTokenType,
+			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
 		).Return(
 			&newRefreshTokenValue,
 			nil,
@@ -553,20 +572,20 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		newRefreshTokenValue := "new-refresh-token"
+		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
 		).Return(
 			&testTokenValue,
 			nil,
 		)
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.RefreshTokenType,
+			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
 		).Return(
 			&newRefreshTokenValue,
 			nil,
@@ -601,20 +620,20 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		newRefreshTokenValue := "new-refresh-token"
+		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
 		).Return(
 			&testTokenValue,
 			nil,
 		)
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.RefreshTokenType,
+			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
 		).Return(
 			&newRefreshTokenValue,
 			nil,
@@ -649,20 +668,20 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		newRefreshTokenValue := "new-refresh-token"
+		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
 		).Return(
 			&testTokenValue,
 			nil,
 		)
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.RefreshTokenType,
+			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
 		).Return(
 			&newRefreshTokenValue,
 			nil,
@@ -691,19 +710,20 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
+		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
 		).Return(
 			&testTokenValue,
 			nil,
 		)
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.RefreshTokenType,
+			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
 		).Return(
 			nil,
 			errExample,
@@ -728,11 +748,14 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
+		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			testEmail,
-			gomock.Any(),
-			commonJWT.AccessTokenType,
+			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
 		).Return(
 			nil,
 			errExample,

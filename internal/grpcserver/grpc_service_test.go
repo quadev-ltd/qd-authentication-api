@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
-	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -83,7 +83,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	}
 	exampleClaims := &jwtPkg.TokenClaims{
 		Email:  "test@example.com",
-		Type:   string(commonJWT.AccessTokenType),
+		Type:   commonToken.AccessTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
 	test.Run("Registration_Error_Validation", func(test *testing.T) {
