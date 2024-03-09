@@ -19,7 +19,7 @@ import (
 type TokenServicer interface {
 	GetPublicKey(ctx context.Context) (string, error)
 	GenerateJWTToken(ctx context.Context, claims *jwt.TokenClaims) (*string, error)
-	GenerateJWTTokens(ctx context.Context, user *model.User, refreshToken *string) (*model.AuthTokensResponse, error)
+	GenerateJWTTokens(ctx context.Context, userEmail, userID string) (*model.AuthTokensResponse, error)
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error)
@@ -142,19 +142,14 @@ func (service *TokenService) GenerateJWTToken(
 // GenerateJWTTokens creates a jwt access and refresh token
 func (service *TokenService) GenerateJWTTokens(
 	ctx context.Context,
-	user *model.User,
-	refreshToken *string,
+	userEmail,
+	userID string,
 ) (*model.AuthTokensResponse, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	// Access token creation
 	authenticationTokenExpiration := service.timeProvider.Now().Add(AuthenticationTokenDuration)
 	accessTokenClaims := &jwt.TokenClaims{
-		Email:  user.Email,
-		UserID: user.ID.Hex(),
+		Email:  userEmail,
+		UserID: userID,
 		Type:   commonToken.AccessTokenType,
 		Expiry: authenticationTokenExpiration,
 	}
@@ -166,8 +161,8 @@ func (service *TokenService) GenerateJWTTokens(
 	// Refresh token creation
 	refreshTokenExpiration := service.timeProvider.Now().Add(RefreshTokenDuration)
 	refreshTokenClaims := &jwt.TokenClaims{
-		Email:  user.Email,
-		UserID: user.ID.Hex(),
+		Email:  userEmail,
+		UserID: userID,
 		Type:   commonToken.RefreshTokenType,
 		Expiry: refreshTokenExpiration,
 	}
@@ -176,38 +171,13 @@ func (service *TokenService) GenerateJWTTokens(
 		return nil, fmt.Errorf("Error creating refresh token: %v", err)
 	}
 
-	// Persisting refresh token in DB to enhance security
-	newRefreshToken := &model.Token{
-		Token:     *refreshTokenString,
-		IssuedAt:  service.timeProvider.Now(),
-		ExpiresAt: refreshTokenExpiration,
-		Revoked:   false,
-		Type:      commonToken.AccessTokenType,
-		UserID:    user.ID,
-	}
-
-	shouldReplaceExistingToken := refreshToken != nil
-	if shouldReplaceExistingToken {
-		err = service.tokenRepository.Remove(ctx, *refreshToken)
-		if err != nil {
-			logger.Error(err, "Error removing old refresh token")
-			return nil, fmt.Errorf("Error removing old refresh token")
-		}
-
-	}
-	_, err = service.tokenRepository.InsertToken(ctx, newRefreshToken)
-	if err != nil {
-		logger.Error(err, "Error inserting new refresh token in DB")
-		return nil, fmt.Errorf("Could not store new refresh token")
-	}
-
 	return &model.AuthTokensResponse{
 		AuthToken:          *authTokenString,
 		AuthTokenExpiry:    authenticationTokenExpiration,
 		RefreshToken:       *refreshTokenString,
 		RefreshTokenExpiry: refreshTokenExpiration,
-		UserEmail:          user.Email,
-		UserID:             user.ID.Hex(),
+		UserEmail:          userEmail,
+		UserID:             userID,
 	}, nil
 }
 

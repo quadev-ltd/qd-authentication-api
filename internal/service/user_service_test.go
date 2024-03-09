@@ -388,10 +388,10 @@ func TestAuthenticationService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		errorMessage := "Database error"
-		errorExample := errors.New(errorMessage)
+		errExample := errors.New(errorMessage)
 
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errorExample)
-		mocks.MockLogger.EXPECT().Error(errorExample, fmt.Sprintf("Error getting user by email: %v", testEmail))
+		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, fmt.Sprintf("Error getting user by email: %v", testEmail))
 
 		// Test Authenticate
 		user, err := mocks.AuthenticationService.Authenticate(mocks.Ctx, testEmail, "password")
@@ -451,7 +451,11 @@ func TestAuthenticationService(test *testing.T) {
 		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
-		mocks.MockTokenService.EXPECT().GenerateJWTTokens(gomock.Any(), user, nil).Return(nil, errExample)
+		mocks.MockTokenService.EXPECT().GenerateJWTTokens(
+			gomock.Any(),
+			user.Email,
+			user.ID.Hex(),
+		).Return(nil, errExample)
 
 		// Test Authenticate
 		resultUser, resultError := mocks.AuthenticationService.Authenticate(
@@ -481,7 +485,11 @@ func TestAuthenticationService(test *testing.T) {
 		}
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
-		mocks.MockTokenService.EXPECT().GenerateJWTTokens(gomock.Any(), user, nil).Return(tokenResponse, nil)
+		mocks.MockTokenService.EXPECT().GenerateJWTTokens(
+			gomock.Any(),
+			user.Email,
+			user.ID.Hex(),
+		).Return(tokenResponse, nil)
 
 		// Act
 		tokens, resultError := mocks.AuthenticationService.Authenticate(mocks.Ctx, testEmail, testPassword)
@@ -624,38 +632,15 @@ func TestAuthenticationService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		token := "test-token"
-		errorMessage := "Database error"
-		errorExample := errors.New(errorMessage)
 
-		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), token).Return(nil, errorExample)
+		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), token).Return(nil, errExample)
 
 		// Test RefreshToken
 		user, err := mocks.AuthenticationService.RefreshToken(mocks.Ctx, token)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, errorExample.Error(), err.Error())
-		assert.Nil(test, user)
-	})
-
-	test.Run("RefreshToken_User_Not_Found", func(test *testing.T) {
-		// Arrange
-
-		mocks := createUserService(test)
-		defer mocks.Controller.Finish()
-
-		mocks.MockTokenService.EXPECT().VerifyJWTToken(
-			gomock.Any(),
-			testTokenValue,
-		).Return(refreshTokenClaims, nil)
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errExample)
-		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user by email claim")
-
-		// Test RefreshToken
-		user, err := mocks.AuthenticationService.RefreshToken(mocks.Ctx, testTokenValue)
-
-		assert.Error(test, err)
-		assert.Equal(test, "Invalid token", err.Error())
+		assert.Equal(test, errExample.Error(), err.Error())
 		assert.Nil(test, user)
 	})
 
@@ -667,7 +652,10 @@ func TestAuthenticationService(test *testing.T) {
 		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), refreshTokenValue).Return(accessTokenClaims, nil)
 
 		// Test RefreshToken
-		resultUser, resultError := mocks.AuthenticationService.RefreshToken(mocks.Ctx, refreshTokenValue)
+		resultUser, resultError := mocks.AuthenticationService.RefreshToken(
+			mocks.Ctx,
+			refreshTokenValue,
+		)
 
 		// Assert
 		assert.Error(test, resultError)
@@ -681,22 +669,31 @@ func TestAuthenticationService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		user := model.NewUser()
 		tokenResponse := &model.AuthTokensResponse{
+			UserEmail:    refreshTokenClaims.Email,
 			AuthToken:    "test",
 			RefreshToken: "test",
 		}
 
-		mocks.MockTokenService.EXPECT().VerifyJWTToken(gomock.Any(), refreshTokenValue).Return(refreshTokenClaims, nil)
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
-		mocks.MockTokenService.EXPECT().GenerateJWTTokens(gomock.Any(), user, &refreshTokenValue).Return(tokenResponse, nil)
+		mocks.MockTokenService.EXPECT().VerifyJWTToken(
+			gomock.Any(),
+			refreshTokenValue,
+		).Return(refreshTokenClaims, nil)
+		mocks.MockTokenService.EXPECT().GenerateJWTTokens(
+			gomock.Any(),
+			refreshTokenClaims.Email,
+			refreshTokenClaims.UserID,
+		).Return(tokenResponse, nil)
 
 		// Test RefreshToken
-		resultUser, resultError := mocks.AuthenticationService.RefreshToken(mocks.Ctx, refreshTokenValue)
+		resultTokens, resultError := mocks.AuthenticationService.RefreshToken(mocks.Ctx, refreshTokenValue)
 
 		// Assert
 		assert.NoError(test, resultError)
-		assert.NotNil(test, resultUser)
-		assert.Equal(test, testEmail, user.Email)
+		assert.NotNil(test, resultTokens)
+		assert.Equal(test, refreshTokenClaims.Email, resultTokens.UserEmail)
+		assert.Equal(test, refreshTokenClaims.UserID, resultTokens.UserID)
+		assert.Equal(test, tokenResponse.AuthToken, resultTokens.AuthToken)
+		assert.Equal(test, tokenResponse.RefreshToken, resultTokens.RefreshToken)
 	})
 }
