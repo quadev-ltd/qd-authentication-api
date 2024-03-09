@@ -10,6 +10,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	token "github.com/quadev-ltd/qd-common/pkg/token"
+	primitive "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // MockTokenRepositoryer is a mock of TokenRepositoryer interface.
@@ -48,6 +50,21 @@ func (m *MockTokenRepositoryer) GetByToken(ctx context.Context, token string) (*
 func (mr *MockTokenRepositoryerMockRecorder) GetByToken(ctx, token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByToken", reflect.TypeOf((*MockTokenRepositoryer)(nil).GetByToken), ctx, token)
+}
+
+// GetByUserIDAndTokenType mocks base method.
+func (m *MockTokenRepositoryer) GetByUserIDAndTokenType(ctx context.Context, userID primitive.ObjectID, tokenType token.TokenType) (*model.Token, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByUserIDAndTokenType", ctx, userID, tokenType)
+	ret0, _ := ret[0].(*model.Token)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByUserIDAndTokenType indicates an expected call of GetByUserIDAndTokenType.
+func (mr *MockTokenRepositoryerMockRecorder) GetByUserIDAndTokenType(ctx, userID, tokenType interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUserIDAndTokenType", reflect.TypeOf((*MockTokenRepositoryer)(nil).GetByUserIDAndTokenType), ctx, userID, tokenType)
 }
 
 // InsertToken mocks base method.

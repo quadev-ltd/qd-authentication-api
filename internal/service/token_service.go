@@ -8,6 +8,7 @@ import (
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 
 	"qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
@@ -24,7 +25,7 @@ type TokenServicer interface {
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error)
 	VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error)
-	VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error)
+	VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error)
 	RemoveUsedToken(ctx context.Context, token *model.Token) error
 }
 
@@ -237,6 +238,44 @@ func (service *TokenService) VerifyTokenValidity(ctx context.Context, tokenValue
 	return token, nil
 }
 
+// VerifyEmailVerificationTokenValidity verifies a email verification or password reset token validity
+func (service *TokenService) VerifyEmailVerificationTokenValidity(
+	ctx context.Context,
+	userID,
+	tokenValue string,
+	tokenType commonToken.TokenType,
+) (*model.Token, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	userIDObject, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		logger.Error(err, "Error converting user id to object id")
+		return nil, &Error{Message: "Invalid user id"}
+	}
+	token, err := service.tokenRepository.GetByUserIDAndTokenType(
+		ctx,
+		userIDObject,
+		tokenType,
+	)
+	if err != nil {
+		logger.Error(err, "Error getting token by user id and type")
+		return nil, &Error{Message: "Invalid token"}
+	}
+	resultError := bcrypt.CompareHashAndPassword([]byte(token.TokenHash), []byte(tokenValue))
+	if resultError != nil {
+		logger.Error(err, "Invalid verification token")
+		return nil, &Error{Message: "Invalid token"}
+	}
+	current := service.timeProvider.Now()
+	timeDifference := current.Sub(token.ExpiresAt)
+	if timeDifference >= 0 {
+		return nil, &Error{Message: "Token expired"}
+	}
+	return token, nil
+}
+
 // VerifyResetPasswordToken verifies a password reset token validity
 func (service *TokenService) VerifyResetPasswordToken(ctx context.Context, tokenValue string) (*model.Token, error) {
 	token, err := service.VerifyTokenValidity(ctx, tokenValue, commonToken.ResetPasswordTokenType)
@@ -247,8 +286,17 @@ func (service *TokenService) VerifyResetPasswordToken(ctx context.Context, token
 }
 
 // VerifyEmailVerificationToken verifies an email verification token validity
-func (service *TokenService) VerifyEmailVerificationToken(ctx context.Context, tokenValue string) (*model.Token, error) {
-	token, err := service.VerifyTokenValidity(ctx, tokenValue, commonToken.EmailVerificationTokenType)
+func (service *TokenService) VerifyEmailVerificationToken(
+	ctx context.Context,
+	userID,
+	tokenValue string,
+) (*model.Token, error) {
+	token, err := service.VerifyEmailVerificationTokenValidity(
+		ctx,
+		userID,
+		tokenValue,
+		commonToken.EmailVerificationTokenType,
+	)
 	if err != nil {
 		return nil, err
 	}

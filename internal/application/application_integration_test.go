@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tryvium-travels/memongo"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -76,6 +78,7 @@ func waitForServerUp(test *testing.T, application Applicationer, tlsEnabled bool
 // MockEmailServiceServer is a mock implementation of the EmailServiceServer
 type MockEmailServiceServer struct {
 	pb_email.UnimplementedEmailServiceServer
+	LastCapturedToken string
 }
 
 // SendEmail mocks the SendEmail method
@@ -83,10 +86,17 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 	if req.To == wrongEmail {
 		return &pb_email.SendEmailResponse{Success: false, Message: "Email not sent"}, fmt.Errorf("Email not sent")
 	}
+	pattern := `/user/.*/email/(.*)`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringSubmatch(req.Body)
+
+	if len(matches) > 1 {
+		m.LastCapturedToken = matches[1]
+	}
 	return &pb_email.SendEmailResponse{Success: true, Message: "Mocked email sent"}, nil
 }
 
-func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabled bool) (*grpc.Server, net.Listener) {
+func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabled bool) (*grpc.Server, net.Listener, *MockEmailServiceServer) {
 	const certFilePath = "certs/qd.email.api.crt"
 	const keyFilePath = "certs/qd.email.api.key"
 
@@ -95,7 +105,8 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabl
 		t.Fatalf("failed to listen: %v", err)
 	}
 	mockServer := grpc.NewServer()
-	pb_email.RegisterEmailServiceServer(mockServer, &MockEmailServiceServer{})
+	mockEmailService := &MockEmailServiceServer{}
+	pb_email.RegisterEmailServiceServer(mockServer, mockEmailService)
 
 	go func() {
 		if err := mockServer.Serve(listener); err != nil {
@@ -103,7 +114,7 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabl
 		}
 	}()
 
-	return mockServer, listener
+	return mockServer, listener, mockEmailService
 }
 
 type EnvironmentParams struct {
@@ -156,13 +167,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 	// Defer the reset of the working directory
 	defer os.Chdir(*originalWD)
 	// Set mock email server
-	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf(
+	mockEmailServer, _, mockEmailService := startMockEmailServiceServer(t, fmt.Sprintf(
 		"%s:%s",
 		mockCentralConfig.EmailService.Host,
 		mockCentralConfig.EmailService.Port),
 		mockCentralConfig.TLSEnabled,
 	)
 	defer mockEmailServer.Stop()
+
 	// Logs configurations
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	os.Setenv(commonConfig.AppEnvironmentKey, "test")
@@ -334,6 +346,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
+				UserId:            primitive.NewObjectID().Hex(),
 			})
 
 		assert.Error(t, err)
@@ -566,9 +579,12 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verifyEmailResponse, err := grpcClient.VerifyEmail(ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
-			VerificationToken: foundToken.TokenHash,
-		})
+		verifyEmailResponse, err := grpcClient.VerifyEmail(
+			ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
+				VerificationToken: mockEmailService.LastCapturedToken,
+				UserId:            foundToken.UserID.Hex(),
+			},
+		)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, verifyEmailResponse)
@@ -796,7 +812,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 		_, err = grpcClient.VerifyEmail(
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
-				VerificationToken: foundToken.TokenHash,
+				VerificationToken: mockEmailService.LastCapturedToken,
+				UserId:            foundUser.ID.Hex(),
 			},
 		)
 		if err != nil {

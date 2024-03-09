@@ -27,7 +27,7 @@ import (
 
 type GRPCMockParams struct {
 	Controller                *gomock.Controller
-	MockAuthenticationService *mock.MockAuthenticationServicer
+	MockAuthenticationService *mock.MockUserServicer
 	MockTokenService          *mock.MockTokenServicer
 	MockPasswordService       *mock.MockPasswordServicer
 	MockLogger                *loggerMock.MockLoggerer
@@ -38,21 +38,21 @@ type GRPCMockParams struct {
 func initialiseTest(test *testing.T) *GRPCMockParams {
 	controller := gomock.NewController(test)
 
-	authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+	userServiceMock := mock.NewMockUserServicer(controller)
 	tokenServiceMock := mock.NewMockTokenServicer(controller)
 	passwordServiceMock := mock.NewMockPasswordServicer(controller)
 	loggerMock := loggerMock.NewMockLoggerer(controller)
 	ctx := context.WithValue(context.Background(), log.LoggerKey, loggerMock)
 
 	server := AuthenticationServiceServer{
-		authenticationService: authenticationServiceMock,
-		tokenService:          tokenServiceMock,
-		passwordService:       passwordServiceMock,
+		userService:     userServiceMock,
+		tokenService:    tokenServiceMock,
+		passwordService: passwordServiceMock,
 	}
 
 	return &GRPCMockParams{
 		controller,
-		authenticationServiceMock,
+		userServiceMock,
 		tokenServiceMock,
 		passwordServiceMock,
 		loggerMock,
@@ -214,7 +214,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mockVerifyEmailError := errors.New("some verification error")
 
 		mocks.MockAuthenticationService.EXPECT().
-			VerifyEmail(gomock.Any(), gomock.Any()).
+			VerifyEmail(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
 			Return(mockVerifyEmailError)
 		mocks.MockLogger.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
@@ -231,7 +231,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mockVerifyEmailError := &service.Error{Message: "some error"}
 
 		mocks.MockAuthenticationService.EXPECT().
-			VerifyEmail(gomock.Any(), gomock.Any()).
+			VerifyEmail(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
 			Return(mockVerifyEmailError)
 		mocks.MockLogger.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
@@ -251,7 +251,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		mocks.MockAuthenticationService.EXPECT().
-			VerifyEmail(gomock.Any(), gomock.Any()).
+			VerifyEmail(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
 			Return(nil)
 		mocks.MockLogger.EXPECT().Info("Email verified successfully")
 

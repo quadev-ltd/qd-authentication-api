@@ -19,9 +19,9 @@ import (
 
 // AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
-	authenticationService servicePkg.UserServicer
-	tokenService          servicePkg.TokenServicer
-	passwordService       servicePkg.PasswordServicer
+	userService     servicePkg.UserServicer
+	tokenService    servicePkg.TokenServicer
+	passwordService servicePkg.PasswordServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
@@ -32,9 +32,9 @@ func NewAuthenticationServiceServer(
 	passwordService servicePkg.PasswordServicer,
 ) *AuthenticationServiceServer {
 	return &AuthenticationServiceServer{
-		authenticationService: authenticationService,
-		tokenService:          tokenService,
-		passwordService:       passwordService,
+		userService:     authenticationService,
+		tokenService:    tokenService,
+		passwordService: passwordService,
 	}
 }
 
@@ -78,7 +78,7 @@ func (service AuthenticationServiceServer) Register(
 		return nil, status.Errorf(codes.InvalidArgument, "Date of birth was not provided")
 	}
 
-	registerError := service.authenticationService.Register(
+	registerError := service.userService.Register(
 		ctx,
 		request.Email,
 		request.Password,
@@ -125,7 +125,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	verifyEmailError := service.authenticationService.VerifyEmail(ctx, request.VerificationToken)
+	verifyEmailError := service.userService.VerifyEmail(ctx, request.UserId, request.VerificationToken)
 	if verifyEmailError == nil {
 		logger.Info("Email verified successfully")
 		return &pb_authentication.BaseResponse{
@@ -168,7 +168,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
 
-	err = service.authenticationService.ResendEmailVerification(ctx, claims.Email)
+	err = service.userService.ResendEmailVerification(ctx, claims.Email)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -192,7 +192,7 @@ func (service AuthenticationServiceServer) Authenticate(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	authTokens, err := service.authenticationService.Authenticate(ctx, request.Email, request.Password)
+	authTokens, err := service.userService.Authenticate(ctx, request.Email, request.Password)
 	if err != nil {
 		err = handleAuthenticationError(err, logger)
 		return nil, err
@@ -239,7 +239,7 @@ func (service AuthenticationServiceServer) RefreshToken(
 		return nil,
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	authTokens, err := service.authenticationService.RefreshToken(ctx, request.Token)
+	authTokens, err := service.userService.RefreshToken(ctx, request.Token)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}

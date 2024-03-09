@@ -127,18 +127,18 @@ func (mr *MockTokenServicerMockRecorder) RemoveUsedToken(ctx, token interface{})
 }
 
 // VerifyEmailVerificationToken mocks base method.
-func (m *MockTokenServicer) VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error) {
+func (m *MockTokenServicer) VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyEmailVerificationToken", ctx, token)
+	ret := m.ctrl.Call(m, "VerifyEmailVerificationToken", ctx, userID, token)
 	ret0, _ := ret[0].(*model.Token)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // VerifyEmailVerificationToken indicates an expected call of VerifyEmailVerificationToken.
-func (mr *MockTokenServicerMockRecorder) VerifyEmailVerificationToken(ctx, token interface{}) *gomock.Call {
+func (mr *MockTokenServicerMockRecorder) VerifyEmailVerificationToken(ctx, userID, token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmailVerificationToken", reflect.TypeOf((*MockTokenServicer)(nil).VerifyEmailVerificationToken), ctx, token)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmailVerificationToken", reflect.TypeOf((*MockTokenServicer)(nil).VerifyEmailVerificationToken), ctx, userID, token)
 }
 
 // VerifyJWTToken mocks base method.

@@ -19,7 +19,7 @@ import (
 type UserServicer interface {
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error
 	ResendEmailVerification(ctx context.Context, email string) error
-	VerifyEmail(ctx context.Context, verificationToken string) error
+	VerifyEmail(ctx context.Context, userID, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
 }
@@ -159,12 +159,12 @@ func (service *UserService) ResendEmailVerification(
 }
 
 // VerifyEmail verifies a user's email
-func (service *UserService) VerifyEmail(ctx context.Context, verificationToken string) error {
+func (service *UserService) VerifyEmail(ctx context.Context, userID, verificationToken string) error {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err
 	}
-	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, verificationToken)
+	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, userID, verificationToken)
 	if err != nil {
 		return err
 	}
