@@ -10,6 +10,7 @@ import (
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 )
 
+// TokenClaims is the claims for a JWT token
 type TokenClaims struct {
 	Email  string
 	Type   commonToken.TokenType

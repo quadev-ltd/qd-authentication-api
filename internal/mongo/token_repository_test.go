@@ -57,11 +57,11 @@ func TestMongoTokenRepository(test *testing.T) {
 		assert.NoError(test, err)
 
 		issueAt := time.Now()
-		expires_at := time.Now().Add(33 * time.Hour)
+		expiresAt := time.Now().Add(33 * time.Hour)
 		token.Type = commonToken.AccessTokenType
 		token.Revoked = true
 		token.IssuedAt = issueAt
-		token.ExpiresAt = expires_at
+		token.ExpiresAt = expiresAt
 
 		err = repo.Update(context.Background(), token)
 		assert.NoError(test, err)
@@ -72,7 +72,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		assert.Equal(test, commonToken.AccessTokenType, foundToken.Type)
 		assert.True(test, foundToken.Revoked)
 		assert.Equal(test, issueAt, token.IssuedAt)
-		assert.Equal(test, expires_at, token.ExpiresAt)
+		assert.Equal(test, expiresAt, token.ExpiresAt)
 	})
 	test.Run("Update_User_Not_Found", func(test *testing.T) {
 		mongoServer, client, error := mock.SetupMockMongoServerAndClient(test)
