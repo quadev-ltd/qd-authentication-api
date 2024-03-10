@@ -168,6 +168,7 @@ func TestPasswordService(test *testing.T) {
 
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
 			gomock.Any(),
+			testToken.UserID.Hex(),
 			resetPasswordTokenValue,
 		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
@@ -175,6 +176,7 @@ func TestPasswordService(test *testing.T) {
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
+			testUser.ID.Hex(),
 			resetPasswordTokenValue,
 			testPassword,
 		)
@@ -195,6 +197,7 @@ func TestPasswordService(test *testing.T) {
 
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
 			gomock.Any(),
+			testToken.UserID.Hex(),
 			resetPasswordTokenValue,
 		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
@@ -203,6 +206,7 @@ func TestPasswordService(test *testing.T) {
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
+			testUser.ID.Hex(),
 			resetPasswordTokenValue,
 			testPassword,
 		)
@@ -223,11 +227,16 @@ func TestPasswordService(test *testing.T) {
 		testToken.UserID = testUser.ID
 		testPassword := "simplePasswwrod123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), resetPasswordTokenValue).Return(testToken, nil)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
+			testUser.ID.Hex(),
 			resetPasswordTokenValue,
 			testPassword,
 		)
@@ -248,12 +257,17 @@ func TestPasswordService(test *testing.T) {
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), resetPasswordTokenValue).Return(testToken, nil)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(nil, errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user assigned to the token")
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
+			testUser.ID.Hex(),
 			resetPasswordTokenValue,
 			testPassword,
 		)
@@ -274,10 +288,15 @@ func TestPasswordService(test *testing.T) {
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), resetPasswordTokenValue).Return(nil, errExample)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+		).Return(nil, errExample)
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
+			testUser.ID.Hex(),
 			resetPasswordTokenValue,
 			testPassword,
 		)

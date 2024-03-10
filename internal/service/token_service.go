@@ -24,7 +24,7 @@ type TokenServicer interface {
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error)
-	VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error)
+	VerifyResetPasswordToken(ctx context.Context, userID, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error)
 	RemoveUsedToken(ctx context.Context, token *model.Token) error
 }
@@ -217,29 +217,7 @@ func (service *TokenService) VerifyJWTToken(
 }
 
 // VerifyTokenValidity verifies a email verification or password reset token validity
-func (service *TokenService) VerifyTokenValidity(ctx context.Context, tokenValue string, tokenType commonToken.TokenType) (*model.Token, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-	token, err := service.tokenRepository.GetByToken(ctx, tokenValue)
-	if err != nil {
-		logger.Error(err, "Error getting token by its value")
-		return nil, &Error{Message: "Invalid token"}
-	}
-	if token.Type != tokenType {
-		return nil, &Error{Message: "Invalid token type"}
-	}
-	current := service.timeProvider.Now()
-	timeDifference := current.Sub(token.ExpiresAt)
-	if timeDifference >= 0 {
-		return nil, &Error{Message: "Token expired"}
-	}
-	return token, nil
-}
-
-// VerifyEmailVerificationTokenValidity verifies a email verification or password reset token validity
-func (service *TokenService) VerifyEmailVerificationTokenValidity(
+func (service *TokenService) VerifyTokenValidity(
 	ctx context.Context,
 	userID,
 	tokenValue string,
@@ -277,8 +255,12 @@ func (service *TokenService) VerifyEmailVerificationTokenValidity(
 }
 
 // VerifyResetPasswordToken verifies a password reset token validity
-func (service *TokenService) VerifyResetPasswordToken(ctx context.Context, tokenValue string) (*model.Token, error) {
-	token, err := service.VerifyTokenValidity(ctx, tokenValue, commonToken.ResetPasswordTokenType)
+func (service *TokenService) VerifyResetPasswordToken(
+	ctx context.Context,
+	userID,
+	tokenValue string,
+) (*model.Token, error) {
+	token, err := service.VerifyTokenValidity(ctx, userID, tokenValue, commonToken.ResetPasswordTokenType)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +273,7 @@ func (service *TokenService) VerifyEmailVerificationToken(
 	userID,
 	tokenValue string,
 ) (*model.Token, error) {
-	token, err := service.VerifyEmailVerificationTokenValidity(
+	token, err := service.VerifyTokenValidity(
 		ctx,
 		userID,
 		tokenValue,

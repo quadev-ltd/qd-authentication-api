@@ -14,7 +14,7 @@ import (
 // PasswordServicer is the interface for the authentication service
 type PasswordServicer interface {
 	ForgotPassword(ctx context.Context, email string) error
-	ResetPassword(ctx context.Context, token, password string) error
+	ResetPassword(ctx context.Context, userID, token, password string) error
 }
 
 // PasswordService is the implementation of the authentication service
@@ -70,12 +70,12 @@ func (service *PasswordService) ForgotPassword(ctx context.Context, email string
 }
 
 // ResetPassword resets the user password
-func (service *PasswordService) ResetPassword(ctx context.Context, tokenValue, password string) error {
+func (service *PasswordService) ResetPassword(ctx context.Context, userID, tokenValue, password string) error {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err
 	}
-	token, err := service.tokenService.VerifyResetPasswordToken(ctx, tokenValue)
+	token, err := service.tokenService.VerifyResetPasswordToken(ctx, userID, tokenValue)
 	if err != nil {
 		return fmt.Errorf("Unable to verify reset password token: %v", err)
 	}

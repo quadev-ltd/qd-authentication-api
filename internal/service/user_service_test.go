@@ -30,18 +30,18 @@ const (
 )
 
 var (
-	testDateOfBirth             = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
-	userID                      = primitive.NewObjectID()
-	errExample                  = errors.New("test-error")
-	refreshTokenValue           = "refresh-token"
-	resetPasswordTokenValue     = "reset-password-token"
-	emailVerificationTokenValue = "MjAyNDAzMDlfClvE5pSXfIepywonOEgHvOEbWFj0_wSrg4feaV9SYw=="
-	emailVerificationTokenHash  = "$2a$10$lIVkFYORGPHIr5DgPwM3yO2uOkumFJ.RWF3IDHqp0xnqqlGjQ1cb6"
-	testTokenValue              = "test-token-hash"
-	testTokenHashValue          = "test-token-hash"
-	testTokenSalt               = "test-token-salt"
-	newRefreshTokenValue        = "test_token_example"
-	accessTokenClaims           = &jwtPkg.TokenClaims{
+	testDateOfBirth         = time.Date(1990, 1, 1, 0, 0, 0, 0, time.UTC)
+	userID                  = primitive.NewObjectID()
+	errExample              = errors.New("test-error")
+	refreshTokenValue       = "refresh-token"
+	resetPasswordTokenValue = "reset-password-token"
+	verificationTokenValue  = "MjAyNDAzMDlfClvE5pSXfIepywonOEgHvOEbWFj0_wSrg4feaV9SYw=="
+	verificationTokenHash   = "$2a$10$lIVkFYORGPHIr5DgPwM3yO2uOkumFJ.RWF3IDHqp0xnqqlGjQ1cb6"
+	testTokenValue          = "test-token-hash"
+	testTokenHashValue      = "test-token-hash"
+	testTokenSalt           = "test-token-salt"
+	newRefreshTokenValue    = "test_token_example"
+	accessTokenClaims       = &jwtPkg.TokenClaims{
 		Email:  testEmail,
 		Type:   commonToken.AccessTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),

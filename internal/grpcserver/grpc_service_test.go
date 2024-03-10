@@ -617,15 +617,18 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 		testTokenValue := "test@email.com"
+		userID := primitive.NewObjectID().Hex()
 
 		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
 			gomock.Any(),
+			userID,
 			testTokenValue,
 		).Return(&model.Token{TokenHash: testTokenValue}, nil)
 		mocks.MockLogger.EXPECT().Info("Verify reset password token successful")
 
 		response, returnedError := mocks.AuthenticationServer.VerifyResetPasswordToken(mocks.Ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: testTokenValue,
+			UserId: userID,
+			Token:  testTokenValue,
 		})
 
 		assert.Nil(test, returnedError)
@@ -638,14 +641,18 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer mocks.Controller.Finish()
 		testTokenValue := "test@email.com"
 		exampleError := errors.New("test-error")
+		userID := primitive.NewObjectID().Hex()
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(),
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			userID,
 			testTokenValue,
 		).Return(nil, exampleError)
 		mocks.MockLogger.EXPECT().Error(exampleError, "Verify reset password token failed")
 
 		response, returnedError := mocks.AuthenticationServer.VerifyResetPasswordToken(mocks.Ctx, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: testTokenValue,
+			UserId: userID,
+			Token:  testTokenValue,
 		})
 
 		assert.Error(test, returnedError)
@@ -657,9 +664,11 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 		testTokenValue := "test@email.com"
+		userID := primitive.NewObjectID().Hex()
 
 		response, returnedError := mocks.AuthenticationServer.VerifyResetPasswordToken(context.Background(), &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: testTokenValue,
+			UserId: userID,
+			Token:  testTokenValue,
 		})
 
 		assert.Error(test, returnedError)
@@ -673,15 +682,17 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer mocks.Controller.Finish()
 		testTokenValue := "token-value"
 		testPassword := "test-password"
-
+		userID := primitive.NewObjectID().Hex()
 		mocks.MockPasswordService.EXPECT().ResetPassword(
 			gomock.Any(),
+			userID,
 			testTokenValue,
 			testPassword,
 		).Return(nil)
 		mocks.MockLogger.EXPECT().Info("Reset password successful")
 
 		response, returnedError := mocks.AuthenticationServer.ResetPassword(mocks.Ctx, &pb_authentication.ResetPasswordRequest{
+			UserId:      userID,
 			Token:       testTokenValue,
 			NewPassword: testPassword,
 		})
@@ -697,15 +708,17 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		testTokenValue := "token-value"
 		testPassword := "test-password"
 		exampleError := errors.New("test-error")
-
+		userID := primitive.NewObjectID().Hex()
 		mocks.MockPasswordService.EXPECT().ResetPassword(
 			gomock.Any(),
+			userID,
 			testTokenValue,
 			testPassword,
 		).Return(exampleError)
 		mocks.MockLogger.EXPECT().Error(exampleError, "Reset password failed")
 
 		response, returnedError := mocks.AuthenticationServer.ResetPassword(mocks.Ctx, &pb_authentication.ResetPasswordRequest{
+			UserId:      userID,
 			Token:       testTokenValue,
 			NewPassword: testPassword,
 		})

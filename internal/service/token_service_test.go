@@ -215,14 +215,22 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(verificationTokenHash, "")
 		testToken.Type = commonToken.ResetPasswordTokenType
+		testUserID := primitive.NewObjectID()
 
-		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
+		mocks.MockTokenRepo.EXPECT().GetByUserIDAndTokenType(
+			gomock.Any(),
+			testUserID,
+			testToken.Type,
+		).Return(testToken, nil)
 
 		// Act
-		token, err := mocks.TokenService.VerifyResetPasswordToken(mocks.Ctx, testTokenValue)
+		token, err := mocks.TokenService.VerifyResetPasswordToken(
+			mocks.Ctx,
+			testUserID.Hex(),
+			verificationTokenValue,
+		)
 
 		// Assert
 		assert.NoError(test, err)
@@ -233,38 +241,28 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(verificationTokenHash, "")
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.ExpiresAt = util.MockedTime.Add(-1 * time.Second)
+		testUserID := primitive.NewObjectID()
 
-		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
+		mocks.MockTokenRepo.EXPECT().GetByUserIDAndTokenType(
+			gomock.Any(),
+			testUserID,
+			testToken.Type,
+		).Return(testToken, nil)
 
 		// Act
-		token, err := mocks.TokenService.VerifyResetPasswordToken(mocks.Ctx, testTokenValue)
+		token, err := mocks.TokenService.VerifyResetPasswordToken(
+			mocks.Ctx,
+			testUserID.Hex(),
+			verificationTokenValue,
+		)
 
 		// Assert
 		assert.Nil(test, token)
 		assert.Error(test, err)
 		assert.Equal(test, "Token expired", err.Error())
-	})
-
-	test.Run("VerifyResetPasswordToken_TokenType_Error", func(test *testing.T) {
-		mocks := createTokenService(test)
-		defer mocks.Controller.Finish()
-
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
-
-		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(testToken, nil)
-
-		// Act
-		token, err := mocks.TokenService.VerifyResetPasswordToken(mocks.Ctx, testTokenValue)
-
-		// Assert
-		assert.Nil(test, token)
-		assert.Error(test, err)
-		assert.Equal(test, "Invalid token type", err.Error())
 	})
 
 	test.Run("VerifyResetPasswordToken_MissingToken_Error", func(test *testing.T) {
@@ -273,11 +271,20 @@ func TestTokenService(test *testing.T) {
 
 		testTokenValue := "test-token"
 		exampleError := errors.New("test-error")
+		testUserID := primitive.NewObjectID()
 
-		mocks.MockTokenRepo.EXPECT().GetByToken(gomock.Any(), testTokenValue).Return(nil, exampleError)
-		mocks.MockLogger.EXPECT().Error(exampleError, "Error getting token by its value")
+		mocks.MockTokenRepo.EXPECT().GetByUserIDAndTokenType(
+			gomock.Any(),
+			testUserID,
+			commonToken.ResetPasswordTokenType,
+		).Return(nil, exampleError)
+		mocks.MockLogger.EXPECT().Error(exampleError, "Error getting token by user id and type")
 		// Act
-		token, err := mocks.TokenService.VerifyResetPasswordToken(mocks.Ctx, testTokenValue)
+		token, err := mocks.TokenService.VerifyResetPasswordToken(
+			mocks.Ctx,
+			testUserID.Hex(),
+			testTokenValue,
+		)
 
 		// Assert
 		assert.Nil(test, token)
@@ -361,7 +368,7 @@ func TestTokenService(test *testing.T) {
 
 		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
 		testToken.ExpiresAt = util.MockedTime.Add(1 * time.Second)
-		testToken.TokenHash = emailVerificationTokenHash
+		testToken.TokenHash = verificationTokenHash
 
 		mocks.MockTokenRepo.EXPECT().GetByUserIDAndTokenType(
 			gomock.Any(),
@@ -369,7 +376,7 @@ func TestTokenService(test *testing.T) {
 			testToken.Type,
 		).Return(testToken, nil)
 
-		resultToken, err := mocks.TokenService.VerifyEmailVerificationToken(mocks.Ctx, testToken.UserID.Hex(), emailVerificationTokenValue)
+		resultToken, err := mocks.TokenService.VerifyEmailVerificationToken(mocks.Ctx, testToken.UserID.Hex(), verificationTokenValue)
 
 		// Assert
 		assert.NotNil(test, resultToken)
@@ -384,7 +391,7 @@ func TestTokenService(test *testing.T) {
 
 		expiredToken := model.NewToken(testTokenHashValue, testTokenSalt)
 		expiredToken.ExpiresAt = util.MockedTime.Add(-1 * time.Second)
-		expiredToken.TokenHash = emailVerificationTokenHash
+		expiredToken.TokenHash = verificationTokenHash
 
 		mocks.MockTokenRepo.EXPECT().GetByUserIDAndTokenType(
 			gomock.Any(),
@@ -392,7 +399,7 @@ func TestTokenService(test *testing.T) {
 			expiredToken.Type,
 		).Return(expiredToken, nil)
 
-		token, err := mocks.TokenService.VerifyEmailVerificationToken(mocks.Ctx, expiredToken.UserID.Hex(), emailVerificationTokenValue)
+		token, err := mocks.TokenService.VerifyEmailVerificationToken(mocks.Ctx, expiredToken.UserID.Hex(), verificationTokenValue)
 
 		// Assert
 		assert.NotNil(test, err)
@@ -443,28 +450,6 @@ func TestTokenService(test *testing.T) {
 		assert.Error(test, err)
 		assert.IsType(test, &Error{}, err)
 		assert.Contains(test, err.Error(), "Invalid token")
-	})
-
-	test.Run("VerifyResetPasswordToken_Type_Error", func(test *testing.T) {
-		mocks := createTokenService(test)
-		defer mocks.Controller.Finish()
-
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
-		testToken.Type = commonToken.EmailVerificationTokenType
-
-		mocks.MockTokenRepo.EXPECT().GetByToken(
-			gomock.Any(),
-			testTokenHashValue,
-		).Return(testToken, nil)
-
-		token, err := mocks.TokenService.VerifyResetPasswordToken(mocks.Ctx, testTokenHashValue)
-
-		// Assert
-		assert.NotNil(test, err)
-		assert.Nil(test, token)
-		assert.Error(test, err)
-		assert.IsType(test, &Error{}, err)
-		assert.Contains(test, err.Error(), "Invalid token type")
 	})
 
 	// GenerateJWTToken

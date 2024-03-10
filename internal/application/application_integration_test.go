@@ -95,7 +95,7 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 		m.LastCapturedEmailVerificationToken = matches[1]
 	}
 
-	pattern = `/user/.*/passowrd/(.*)`
+	pattern = `/user/.*/password/(.*)`
 	re = regexp.MustCompile(pattern)
 	matches = re.FindStringSubmatch(req.Body)
 
@@ -185,7 +185,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 	defer mockEmailServer.Stop()
 
 	// Logs configurations
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	os.Setenv(commonConfig.AppEnvironmentKey, "test")
 
 	email := "test@test.com"
@@ -797,6 +797,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    registerRequest.Email,
+			Password: registerRequest.Password,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
 		if err != nil {
@@ -845,18 +852,20 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		forgotPassword, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: foundToken.TokenHash,
+		verifyPasswordResetTokenResponse, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
+			UserId: foundToken.UserID.Hex(),
+			Token:  mockEmailService.LastCapturedPasswordResetToken,
 		})
 
 		assert.NoError(t, err)
-		assert.NotNil(t, forgotPassword)
-		assert.True(t, forgotPassword.IsValid)
-		assert.Equal(t, "Verify reset password token successful", forgotPassword.Message)
+		assert.NotNil(t, verifyPasswordResetTokenResponse)
+		assert.True(t, verifyPasswordResetTokenResponse.IsValid)
+		assert.Equal(t, "Verify reset password token successful", verifyPasswordResetTokenResponse.Message)
 
 		newPassword := "NewPassword@000!"
 		resetPasswordResponse, err := grpcClient.ResetPassword(ctxWithCorrelationID, &pb_authentication.ResetPasswordRequest{
-			Token:       foundToken.TokenHash,
+			UserId:      foundToken.UserID.Hex(),
+			Token:       mockEmailService.LastCapturedPasswordResetToken,
 			NewPassword: newPassword,
 		})
 
@@ -865,7 +874,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.True(t, resetPasswordResponse.Success)
 		assert.Equal(t, "Reset password successful", resetPasswordResponse.Message)
 
-		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+		authenticateResponse, err = grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: newPassword,
 		})

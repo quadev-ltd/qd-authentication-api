@@ -301,7 +301,7 @@ func (service AuthenticationServiceServer) VerifyResetPasswordToken(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.Token)
+	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.UserId, request.Token)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -325,7 +325,12 @@ func (service AuthenticationServiceServer) ResetPassword(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	resetPasswordError := service.passwordService.ResetPassword(ctx, request.Token, request.NewPassword)
+	resetPasswordError := service.passwordService.ResetPassword(
+		ctx,
+		request.UserId,
+		request.Token,
+		request.NewPassword,
+	)
 	if resetPasswordError != nil {
 		if serviceErr, ok := resetPasswordError.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
