@@ -11,7 +11,6 @@ import (
 // Token is the model for the refresh token
 type Token struct {
 	TokenHash string                `bson:"token_hash"`
-	Salt      string                `bson:"salt"`
 	IssuedAt  time.Time             `bson:"issued_at"`
 	ExpiresAt time.Time             `bson:"expires_at"`
 	Revoked   bool                  `bson:"revoked"`

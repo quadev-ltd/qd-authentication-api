@@ -67,7 +67,7 @@ func (service *TokenService) generateVerificationToken(
 		logger.Error(err, "Error generating verification token")
 		return nil, &Error{Message: "Error generating verification token"}
 	}
-	tokenHash, salt, err := util.GenerateHash(verificationToken, false)
+	tokenHash, _, err := util.GenerateHash(verificationToken, false)
 	if err != nil {
 		logger.Error(err, "Error hashing verification token")
 		return nil, &Error{Message: "Error hashing verification token"}
@@ -76,7 +76,6 @@ func (service *TokenService) generateVerificationToken(
 	emailVerificationToken := &model.Token{
 		UserID:    userID,
 		TokenHash: string(tokenHash),
-		Salt:      *salt,
 		ExpiresAt: verificationTokentExpiryDate,
 		Type:      tokenType,
 		IssuedAt:  service.timeProvider.Now(),

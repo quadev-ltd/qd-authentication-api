@@ -215,7 +215,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(verificationTokenHash, "")
+		testToken := model.NewToken(verificationTokenHash)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testUserID := primitive.NewObjectID()
 
@@ -241,7 +241,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(verificationTokenHash, "")
+		testToken := model.NewToken(verificationTokenHash)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.ExpiresAt = util.MockedTime.Add(-1 * time.Second)
 		testUserID := primitive.NewObjectID()
@@ -366,7 +366,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.ExpiresAt = util.MockedTime.Add(1 * time.Second)
 		testToken.TokenHash = verificationTokenHash
 
@@ -389,7 +389,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		expiredToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		expiredToken := model.NewToken(testTokenHashValue)
 		expiredToken.ExpiresAt = util.MockedTime.Add(-1 * time.Second)
 		expiredToken.TokenHash = verificationTokenHash
 
@@ -413,7 +413,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 
 		mocks.MockLogger.EXPECT().Error(gomock.Any(), "Error converting user id to object id")
@@ -432,7 +432,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 
 		mocks.MockTokenRepo.EXPECT().GetByUserIDAndTokenType(

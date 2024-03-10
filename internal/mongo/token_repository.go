@@ -71,7 +71,6 @@ func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model
 	collection := tokenRepository.getCollection()
 	filter := bson.M{
 		"token_hash": token.TokenHash,
-		"salt":       token.Salt,
 		"user_id":    token.UserID,
 	}
 	update := bson.M{
@@ -98,7 +97,7 @@ func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model
 // Remove removes a token from the mongo database
 func (tokenRepository *TokenRepository) Remove(ctx context.Context, token *model.Token) error {
 	collection := tokenRepository.getCollection()
-	filter := bson.M{"user_id": token.UserID, "token_hash": token.TokenHash, "salt": token.Salt, "type": token.Type}
+	filter := bson.M{"user_id": token.UserID, "token_hash": token.TokenHash, "type": token.Type}
 
 	result, err := collection.DeleteOne(ctx, filter)
 	if err != nil {

@@ -161,7 +161,7 @@ func TestPasswordService(test *testing.T) {
 
 		testUser := model.NewUser()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
@@ -190,7 +190,7 @@ func TestPasswordService(test *testing.T) {
 
 		testUser := model.NewUser()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
@@ -222,7 +222,7 @@ func TestPasswordService(test *testing.T) {
 
 		testUser := model.NewUser()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "simplePasswwrod123"
@@ -252,7 +252,7 @@ func TestPasswordService(test *testing.T) {
 
 		testUser := model.NewUser()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
@@ -283,7 +283,7 @@ func TestPasswordService(test *testing.T) {
 
 		testUser := model.NewUser()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"

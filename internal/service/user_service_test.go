@@ -274,7 +274,7 @@ func TestAuthenticationService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 
 		mocks.MockTokenService.EXPECT().VerifyEmailVerificationToken(gomock.Any(), testToken.UserID.Hex(), testTokenHashValue).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
@@ -312,7 +312,7 @@ func TestAuthenticationService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 
 		mocks.MockTokenService.EXPECT().VerifyEmailVerificationToken(gomock.Any(), testToken.UserID.Hex(), testTokenValue).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(nil, errExample)
@@ -330,7 +330,7 @@ func TestAuthenticationService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testUser := model.NewUser()
 		testUser.AccountStatus = model.AccountStatusVerified
 
@@ -349,7 +349,7 @@ func TestAuthenticationService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testUser := model.NewUser()
 
 		mocks.MockTokenService.EXPECT().VerifyEmailVerificationToken(gomock.Any(), testToken.UserID.Hex(), testTokenValue).Return(testToken, nil)
@@ -369,7 +369,7 @@ func TestAuthenticationService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		testToken := model.NewToken(testTokenHashValue, testTokenSalt)
+		testToken := model.NewToken(testTokenHashValue)
 		testUser := model.NewUser()
 
 		mocks.MockTokenService.EXPECT().VerifyEmailVerificationToken(gomock.Any(), testToken.UserID.Hex(), testTokenValue).Return(testToken, nil)
