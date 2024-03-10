@@ -66,6 +66,7 @@ func TestPasswordService(test *testing.T) {
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
+			testUser.ID.Hex(),
 			gomock.Any(),
 		).Return(nil)
 
@@ -90,6 +91,7 @@ func TestPasswordService(test *testing.T) {
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
+			testUser.ID.Hex(),
 			gomock.Any(),
 		).Return(errExample)
 

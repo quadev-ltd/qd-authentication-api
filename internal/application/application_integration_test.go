@@ -78,7 +78,8 @@ func waitForServerUp(test *testing.T, application Applicationer, tlsEnabled bool
 // MockEmailServiceServer is a mock implementation of the EmailServiceServer
 type MockEmailServiceServer struct {
 	pb_email.UnimplementedEmailServiceServer
-	LastCapturedToken string
+	LastCapturedEmailVerificationToken string
+	LastCapturedPasswordResetToken     string
 }
 
 // SendEmail mocks the SendEmail method
@@ -91,7 +92,15 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 	matches := re.FindStringSubmatch(req.Body)
 
 	if len(matches) > 1 {
-		m.LastCapturedToken = matches[1]
+		m.LastCapturedEmailVerificationToken = matches[1]
+	}
+
+	pattern = `/user/.*/passowrd/(.*)`
+	re = regexp.MustCompile(pattern)
+	matches = re.FindStringSubmatch(req.Body)
+
+	if len(matches) > 1 {
+		m.LastCapturedPasswordResetToken = matches[1]
 	}
 	return &pb_email.SendEmailResponse{Success: true, Message: "Mocked email sent"}, nil
 }
@@ -584,7 +593,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		verifyEmailResponse, err := grpcClient.VerifyEmail(
 			ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
-				VerificationToken: mockEmailService.LastCapturedToken,
+				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
 				UserId:            foundToken.UserID.Hex(),
 			},
 		)
@@ -815,7 +824,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		_, err = grpcClient.VerifyEmail(
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
-				VerificationToken: mockEmailService.LastCapturedToken,
+				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
 				UserId:            foundUser.ID.Hex(),
 			},
 		)

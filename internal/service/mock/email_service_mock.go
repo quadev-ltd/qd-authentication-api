@@ -35,17 +35,17 @@ func (m *MockEmailServicer) EXPECT() *MockEmailServicerMockRecorder {
 }
 
 // SendPasswordResetMail mocks base method.
-func (m *MockEmailServicer) SendPasswordResetMail(ctx context.Context, dest, userName, resetToken string) error {
+func (m *MockEmailServicer) SendPasswordResetMail(ctx context.Context, dest, userName, userID, resetToken string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendPasswordResetMail", ctx, dest, userName, resetToken)
+	ret := m.ctrl.Call(m, "SendPasswordResetMail", ctx, dest, userName, userID, resetToken)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SendPasswordResetMail indicates an expected call of SendPasswordResetMail.
-func (mr *MockEmailServicerMockRecorder) SendPasswordResetMail(ctx, dest, userName, resetToken interface{}) *gomock.Call {
+func (mr *MockEmailServicerMockRecorder) SendPasswordResetMail(ctx, dest, userName, userID, resetToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendPasswordResetMail", reflect.TypeOf((*MockEmailServicer)(nil).SendPasswordResetMail), ctx, dest, userName, resetToken)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendPasswordResetMail", reflect.TypeOf((*MockEmailServicer)(nil).SendPasswordResetMail), ctx, dest, userName, userID, resetToken)
 }
 
 // SendVerificationMail mocks base method.

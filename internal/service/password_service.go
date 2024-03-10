@@ -57,7 +57,13 @@ func (service *PasswordService) ForgotPassword(ctx context.Context, email string
 	if err != nil {
 		return fmt.Errorf("Could not generate reset password token: %v", err)
 	}
-	if err := service.emailService.SendPasswordResetMail(ctx, user.Email, user.FirstName, *resetToken); err != nil {
+	if err := service.emailService.SendPasswordResetMail(
+		ctx,
+		user.Email,
+		user.FirstName,
+		user.ID.Hex(),
+		*resetToken,
+	); err != nil {
 		return fmt.Errorf("Error sending password reset email: %v", err)
 	}
 	return nil
