@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -140,7 +141,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	return nil, status.Errorf(codes.Internal, "Internal server error")
 }
 
-var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 5)
+var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 7)
 
 // ResendEmailVerification resends the email verification
 func (service AuthenticationServiceServer) ResendEmailVerification(
@@ -167,8 +168,18 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 		logger.Error(err, "Failed to verify JWT token")
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
-
-	err = service.userService.ResendEmailVerification(ctx, claims.Email)
+	fmt.Println("\n\n\n\n\n\n\n\n\n Testing claim user id:::", claims.UserID)
+	userID, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		logger.Error(err, "Failed to convert user ID to object ID")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid token")
+	}
+	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, userID)
+	if err != nil {
+		logger.Error(err, "Failed to generate email verification token")
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	err = service.userService.ResendEmailVerification(ctx, claims.Email, *emailVerificationToken)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())

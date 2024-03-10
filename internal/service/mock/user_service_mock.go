@@ -81,17 +81,17 @@ func (mr *MockUserServicerMockRecorder) Register(ctx, email, password, firstName
 }
 
 // ResendEmailVerification mocks base method.
-func (m *MockUserServicer) ResendEmailVerification(ctx context.Context, email string) error {
+func (m *MockUserServicer) ResendEmailVerification(ctx context.Context, email, emailVerificationToken string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResendEmailVerification", ctx, email)
+	ret := m.ctrl.Call(m, "ResendEmailVerification", ctx, email, emailVerificationToken)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ResendEmailVerification indicates an expected call of ResendEmailVerification.
-func (mr *MockUserServicerMockRecorder) ResendEmailVerification(ctx, email interface{}) *gomock.Call {
+func (mr *MockUserServicerMockRecorder) ResendEmailVerification(ctx, email, emailVerificationToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResendEmailVerification", reflect.TypeOf((*MockUserServicer)(nil).ResendEmailVerification), ctx, email)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResendEmailVerification", reflect.TypeOf((*MockUserServicer)(nil).ResendEmailVerification), ctx, email, emailVerificationToken)
 }
 
 // VerifyEmail mocks base method.

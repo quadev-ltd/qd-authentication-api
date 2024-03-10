@@ -18,7 +18,7 @@ import (
 // UserServicer is the interface for the authentication service
 type UserServicer interface {
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error
-	ResendEmailVerification(ctx context.Context, email string) error
+	ResendEmailVerification(ctx context.Context, email, emailVerificationToken string) error
 	VerifyEmail(ctx context.Context, userID, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
@@ -122,7 +122,8 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 // ResendEmailVerification resends a verification email
 func (service *UserService) ResendEmailVerification(
 	ctx context.Context,
-	email string,
+	email,
+	emailVerificationToken string,
 ) error {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
@@ -140,17 +141,12 @@ func (service *UserService) ResendEmailVerification(
 		return &Error{Message: "Email already verified"}
 	}
 
-	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, user.ID)
-	if err != nil {
-		return err
-	}
-
 	if err := service.emailService.SendVerificationMail(
 		ctx,
 		user.Email,
 		user.FirstName,
 		user.ID.Hex(),
-		*emailVerificationToken,
+		emailVerificationToken,
 	); err != nil {
 		return fmt.Errorf("Error sending verification email: %v", err)
 	}

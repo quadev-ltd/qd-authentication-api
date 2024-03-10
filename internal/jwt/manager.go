@@ -96,9 +96,14 @@ func (authenticator *Manager) GetClaimsFromToken(token *jwt.Token) (*TokenClaims
 	if err != nil {
 		return nil, fmt.Errorf("Error getting expiry claim from token: %v", err)
 	}
+	userID, err := authenticator.tokenInspector.GetUserIDFromToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting expiry claim from token: %v", err)
+	}
 	return &TokenClaims{
 		Email:  *email,
 		Type:   *tokenType,
 		Expiry: *expiry,
+		UserID: *userID,
 	}, nil
 }

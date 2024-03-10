@@ -498,9 +498,12 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(ctxWithCorrelationID, &pb_authentication.ResendEmailVerificationRequest{
-			AuthToken: authenticateResponse.AuthToken,
-		})
+		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
+			ctxWithCorrelationID,
+			&pb_authentication.ResendEmailVerificationRequest{
+				AuthToken: authenticateResponse.AuthToken,
+			},
+		)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, resendEamilVerificationResponse)
