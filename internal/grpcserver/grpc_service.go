@@ -168,7 +168,6 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 		logger.Error(err, "Failed to verify JWT token")
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
-	fmt.Println("\n\n\n\n\n\n\n\n\n Testing claim user id:::", claims.UserID)
 	userID, err := primitive.ObjectIDFromHex(claims.UserID)
 	if err != nil {
 		logger.Error(err, "Failed to convert user ID to object ID")
