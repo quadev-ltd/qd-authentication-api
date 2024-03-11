@@ -51,7 +51,6 @@ func NewTokenService(
 	}
 }
 
-// TODO: pass an object DTO instead of all the parameters and check input validation
 // TODO: Inject GenerateVerificationToken or use JWT tokens
 func (service *TokenService) generateVerificationToken(
 	ctx context.Context,
