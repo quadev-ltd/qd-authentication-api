@@ -10,7 +10,7 @@ import (
 
 // Token is the model for the refresh token
 type Token struct {
-	Token     string                `bson:"token"`
+	TokenHash string                `bson:"token_hash"`
 	IssuedAt  time.Time             `bson:"issued_at"`
 	ExpiresAt time.Time             `bson:"expires_at"`
 	Revoked   bool                  `bson:"revoked"`

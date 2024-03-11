@@ -1,12 +1,13 @@
 package service
 
 import (
-	repositoryMock "qd-authentication-api/internal/repository/mock"
-	"qd-authentication-api/internal/service/mock"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
+
+	repositoryMock "qd-authentication-api/internal/repository/mock"
+	"qd-authentication-api/internal/service/mock"
 )
 
 func TestService(test *testing.T) {
@@ -15,7 +16,7 @@ func TestService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		authenticationServiceMock := mock.NewMockAuthenticationServicer(controller)
+		authenticationServiceMock := mock.NewMockUserServicer(controller)
 		repositoryMock := repositoryMock.NewMockRepositoryer(controller)
 
 		service := &Service{

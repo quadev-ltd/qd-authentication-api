@@ -6,12 +6,13 @@ package mock
 
 import (
 	context "context"
-	jwt "qd-authentication-api/internal/jwt"
-	model "qd-authentication-api/internal/model"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
 	primitive "go.mongodb.org/mongo-driver/bson/primitive"
+
+	jwt "qd-authentication-api/internal/jwt"
+	model "qd-authentication-api/internal/model"
 )
 
 // MockTokenServicer is a mock of TokenServicer interface.
@@ -113,7 +114,7 @@ func (mr *MockTokenServicerMockRecorder) GetPublicKey(ctx interface{}) *gomock.C
 }
 
 // RemoveUsedToken mocks base method.
-func (m *MockTokenServicer) RemoveUsedToken(ctx context.Context, token string) error {
+func (m *MockTokenServicer) RemoveUsedToken(ctx context.Context, token *model.Token) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveUsedToken", ctx, token)
 	ret0, _ := ret[0].(error)
@@ -127,18 +128,18 @@ func (mr *MockTokenServicerMockRecorder) RemoveUsedToken(ctx, token interface{})
 }
 
 // VerifyEmailVerificationToken mocks base method.
-func (m *MockTokenServicer) VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error) {
+func (m *MockTokenServicer) VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyEmailVerificationToken", ctx, token)
+	ret := m.ctrl.Call(m, "VerifyEmailVerificationToken", ctx, userID, token)
 	ret0, _ := ret[0].(*model.Token)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // VerifyEmailVerificationToken indicates an expected call of VerifyEmailVerificationToken.
-func (mr *MockTokenServicerMockRecorder) VerifyEmailVerificationToken(ctx, token interface{}) *gomock.Call {
+func (mr *MockTokenServicerMockRecorder) VerifyEmailVerificationToken(ctx, userID, token interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmailVerificationToken", reflect.TypeOf((*MockTokenServicer)(nil).VerifyEmailVerificationToken), ctx, token)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyEmailVerificationToken", reflect.TypeOf((*MockTokenServicer)(nil).VerifyEmailVerificationToken), ctx, userID, token)
 }
 
 // VerifyJWTToken mocks base method.
@@ -157,16 +158,16 @@ func (mr *MockTokenServicerMockRecorder) VerifyJWTToken(ctx, refreshTokenString 
 }
 
 // VerifyResetPasswordToken mocks base method.
-func (m *MockTokenServicer) VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error) {
+func (m *MockTokenServicer) VerifyResetPasswordToken(ctx context.Context, token, userID string) (*model.Token, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifyResetPasswordToken", ctx, token)
+	ret := m.ctrl.Call(m, "VerifyResetPasswordToken", ctx, token, userID)
 	ret0, _ := ret[0].(*model.Token)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // VerifyResetPasswordToken indicates an expected call of VerifyResetPasswordToken.
-func (mr *MockTokenServicerMockRecorder) VerifyResetPasswordToken(ctx, token interface{}) *gomock.Call {
+func (mr *MockTokenServicerMockRecorder) VerifyResetPasswordToken(ctx, token, userID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyResetPasswordToken", reflect.TypeOf((*MockTokenServicer)(nil).VerifyResetPasswordToken), ctx, token)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyResetPasswordToken", reflect.TypeOf((*MockTokenServicer)(nil).VerifyResetPasswordToken), ctx, token, userID)
 }

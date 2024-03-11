@@ -49,15 +49,15 @@ func (mr *MockPasswordServicerMockRecorder) ForgotPassword(ctx, email interface{
 }
 
 // ResetPassword mocks base method.
-func (m *MockPasswordServicer) ResetPassword(ctx context.Context, token, password string) error {
+func (m *MockPasswordServicer) ResetPassword(ctx context.Context, userID, token, password string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResetPassword", ctx, token, password)
+	ret := m.ctrl.Call(m, "ResetPassword", ctx, userID, token, password)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ResetPassword indicates an expected call of ResetPassword.
-func (mr *MockPasswordServicerMockRecorder) ResetPassword(ctx, token, password interface{}) *gomock.Call {
+func (mr *MockPasswordServicerMockRecorder) ResetPassword(ctx, userID, token, password interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetPassword", reflect.TypeOf((*MockPasswordServicer)(nil).ResetPassword), ctx, token, password)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetPassword", reflect.TypeOf((*MockPasswordServicer)(nil).ResetPassword), ctx, userID, token, password)
 }

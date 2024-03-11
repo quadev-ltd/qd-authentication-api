@@ -8,6 +8,7 @@ import (
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 
 	"qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
@@ -23,9 +24,9 @@ type TokenServicer interface {
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error)
-	VerifyResetPasswordToken(ctx context.Context, token string) (*model.Token, error)
-	VerifyEmailVerificationToken(ctx context.Context, token string) (*model.Token, error)
-	RemoveUsedToken(ctx context.Context, token string) error
+	VerifyResetPasswordToken(ctx context.Context, userID, token string) (*model.Token, error)
+	VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error)
+	RemoveUsedToken(ctx context.Context, token *model.Token) error
 }
 
 // TokenService is the implementation of the authentication service
@@ -50,7 +51,6 @@ func NewTokenService(
 	}
 }
 
-// TODO: pass an object DTO instead of all the parameters and check input validation
 // TODO: Inject GenerateVerificationToken or use JWT tokens
 func (service *TokenService) generateVerificationToken(
 	ctx context.Context,
@@ -66,10 +66,15 @@ func (service *TokenService) generateVerificationToken(
 		logger.Error(err, "Error generating verification token")
 		return nil, &Error{Message: "Error generating verification token"}
 	}
+	tokenHash, _, err := util.GenerateHash(verificationToken, false)
+	if err != nil {
+		logger.Error(err, "Error hashing verification token")
+		return nil, &Error{Message: "Error hashing verification token"}
+	}
 	verificationTokentExpiryDate := service.timeProvider.Now().Add(VerificationTokenExpiry)
 	emailVerificationToken := &model.Token{
 		UserID:    userID,
-		Token:     verificationToken,
+		TokenHash: string(tokenHash),
 		ExpiresAt: verificationTokentExpiryDate,
 		Type:      tokenType,
 		IssuedAt:  service.timeProvider.Now(),
@@ -93,7 +98,7 @@ func (service *TokenService) GeneratePasswordResetToken(ctx context.Context, use
 }
 
 // RemoveUsedToken removes a token from the database
-func (service *TokenService) RemoveUsedToken(ctx context.Context, token string) error {
+func (service *TokenService) RemoveUsedToken(ctx context.Context, token *model.Token) error {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err
@@ -210,18 +215,34 @@ func (service *TokenService) VerifyJWTToken(
 }
 
 // VerifyTokenValidity verifies a email verification or password reset token validity
-func (service *TokenService) VerifyTokenValidity(ctx context.Context, tokenValue string, tokenType commonToken.TokenType) (*model.Token, error) {
+func (service *TokenService) VerifyTokenValidity(
+	ctx context.Context,
+	userID,
+	tokenValue string,
+	tokenType commonToken.TokenType,
+) (*model.Token, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	token, err := service.tokenRepository.GetByToken(ctx, tokenValue)
+	userIDObject, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		logger.Error(err, "Error getting token by its value")
+		logger.Error(err, "Error converting user id to object id")
+		return nil, &Error{Message: "Invalid user id"}
+	}
+	token, err := service.tokenRepository.GetByUserIDAndTokenType(
+		ctx,
+		userIDObject,
+		tokenType,
+	)
+	if err != nil {
+		logger.Error(err, "Error getting token by user id and type")
 		return nil, &Error{Message: "Invalid token"}
 	}
-	if token.Type != tokenType {
-		return nil, &Error{Message: "Invalid token type"}
+	resultError := bcrypt.CompareHashAndPassword([]byte(token.TokenHash), []byte(tokenValue))
+	if resultError != nil {
+		logger.Error(err, "Invalid verification token")
+		return nil, &Error{Message: "Invalid token"}
 	}
 	current := service.timeProvider.Now()
 	timeDifference := current.Sub(token.ExpiresAt)
@@ -232,8 +253,12 @@ func (service *TokenService) VerifyTokenValidity(ctx context.Context, tokenValue
 }
 
 // VerifyResetPasswordToken verifies a password reset token validity
-func (service *TokenService) VerifyResetPasswordToken(ctx context.Context, tokenValue string) (*model.Token, error) {
-	token, err := service.VerifyTokenValidity(ctx, tokenValue, commonToken.ResetPasswordTokenType)
+func (service *TokenService) VerifyResetPasswordToken(
+	ctx context.Context,
+	userID,
+	tokenValue string,
+) (*model.Token, error) {
+	token, err := service.VerifyTokenValidity(ctx, userID, tokenValue, commonToken.ResetPasswordTokenType)
 	if err != nil {
 		return nil, err
 	}
@@ -241,8 +266,17 @@ func (service *TokenService) VerifyResetPasswordToken(ctx context.Context, token
 }
 
 // VerifyEmailVerificationToken verifies an email verification token validity
-func (service *TokenService) VerifyEmailVerificationToken(ctx context.Context, tokenValue string) (*model.Token, error) {
-	token, err := service.VerifyTokenValidity(ctx, tokenValue, commonToken.EmailVerificationTokenType)
+func (service *TokenService) VerifyEmailVerificationToken(
+	ctx context.Context,
+	userID,
+	tokenValue string,
+) (*model.Token, error) {
+	token, err := service.VerifyTokenValidity(
+		ctx,
+		userID,
+		tokenValue,
+		commonToken.EmailVerificationTokenType,
+	)
 	if err != nil {
 		return nil, err
 	}

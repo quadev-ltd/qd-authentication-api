@@ -61,11 +61,12 @@ func TestPasswordService(test *testing.T) {
 		testUser.AccountStatus = model.AccountStatusVerified
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenValue, nil)
+		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenHashValue, nil)
 		mocks.MockEmailService.EXPECT().SendPasswordResetMail(
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
+			testUser.ID.Hex(),
 			gomock.Any(),
 		).Return(nil)
 
@@ -85,11 +86,12 @@ func TestPasswordService(test *testing.T) {
 		testUser.AccountStatus = model.AccountStatusVerified
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenValue, nil)
+		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenHashValue, nil)
 		mocks.MockEmailService.EXPECT().SendPasswordResetMail(
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
+			testUser.ID.Hex(),
 			gomock.Any(),
 		).Return(errExample)
 
@@ -158,19 +160,24 @@ func TestPasswordService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenValue)
+
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testToken.UserID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(nil)
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
-			testToken.Token,
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
 			testPassword,
 		)
 		assert.NoError(test, err)
@@ -182,20 +189,25 @@ func TestPasswordService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenValue)
+
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testToken.UserID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error updating user")
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
-			testToken.Token,
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
 			testPassword,
 		)
 
@@ -209,18 +221,23 @@ func TestPasswordService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenValue)
+
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "simplePasswwrod123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
-			testToken.Token,
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
 			testPassword,
 		)
 
@@ -234,19 +251,24 @@ func TestPasswordService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenValue)
+
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(testToken, nil)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(nil, errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user assigned to the token")
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
-			testToken.Token,
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
 			testPassword,
 		)
 
@@ -260,17 +282,22 @@ func TestPasswordService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		testTokenValue := "test-token"
-		testToken := model.NewToken(testTokenValue)
+
+		testToken := model.NewToken(testTokenHashValue)
 		testToken.Type = commonToken.ResetPasswordTokenType
 		testToken.UserID = testUser.ID
 		testPassword := "NewPassword@123"
 
-		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(gomock.Any(), testToken.Token).Return(nil, errExample)
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+		).Return(nil, errExample)
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
-			testToken.Token,
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
 			testPassword,
 		)
 

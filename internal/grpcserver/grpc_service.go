@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,9 +20,9 @@ import (
 
 // AuthenticationServiceServer is the implementation of the authentication service
 type AuthenticationServiceServer struct {
-	authenticationService servicePkg.UserServicer
-	tokenService          servicePkg.TokenServicer
-	passwordService       servicePkg.PasswordServicer
+	userService     servicePkg.UserServicer
+	tokenService    servicePkg.TokenServicer
+	passwordService servicePkg.PasswordServicer
 	pb_authentication.UnimplementedAuthenticationServiceServer
 }
 
@@ -32,9 +33,9 @@ func NewAuthenticationServiceServer(
 	passwordService servicePkg.PasswordServicer,
 ) *AuthenticationServiceServer {
 	return &AuthenticationServiceServer{
-		authenticationService: authenticationService,
-		tokenService:          tokenService,
-		passwordService:       passwordService,
+		userService:     authenticationService,
+		tokenService:    tokenService,
+		passwordService: passwordService,
 	}
 }
 
@@ -78,7 +79,7 @@ func (service AuthenticationServiceServer) Register(
 		return nil, status.Errorf(codes.InvalidArgument, "Date of birth was not provided")
 	}
 
-	registerError := service.authenticationService.Register(
+	registerError := service.userService.Register(
 		ctx,
 		request.Email,
 		request.Password,
@@ -125,7 +126,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	verifyEmailError := service.authenticationService.VerifyEmail(ctx, request.VerificationToken)
+	verifyEmailError := service.userService.VerifyEmail(ctx, request.UserId, request.VerificationToken)
 	if verifyEmailError == nil {
 		logger.Info("Email verified successfully")
 		return &pb_authentication.BaseResponse{
@@ -140,7 +141,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 	return nil, status.Errorf(codes.Internal, "Internal server error")
 }
 
-var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 5)
+var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 7)
 
 // ResendEmailVerification resends the email verification
 func (service AuthenticationServiceServer) ResendEmailVerification(
@@ -167,8 +168,17 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 		logger.Error(err, "Failed to verify JWT token")
 		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
 	}
-
-	err = service.authenticationService.ResendEmailVerification(ctx, claims.Email)
+	userID, err := primitive.ObjectIDFromHex(claims.UserID)
+	if err != nil {
+		logger.Error(err, "Failed to convert user ID to object ID")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid token")
+	}
+	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, userID)
+	if err != nil {
+		logger.Error(err, "Failed to generate email verification token")
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	err = service.userService.ResendEmailVerification(ctx, claims.Email, *emailVerificationToken)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -192,7 +202,7 @@ func (service AuthenticationServiceServer) Authenticate(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	authTokens, err := service.authenticationService.Authenticate(ctx, request.Email, request.Password)
+	authTokens, err := service.userService.Authenticate(ctx, request.Email, request.Password)
 	if err != nil {
 		err = handleAuthenticationError(err, logger)
 		return nil, err
@@ -239,7 +249,7 @@ func (service AuthenticationServiceServer) RefreshToken(
 		return nil,
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	authTokens, err := service.authenticationService.RefreshToken(ctx, request.Token)
+	authTokens, err := service.userService.RefreshToken(ctx, request.Token)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
@@ -291,7 +301,7 @@ func (service AuthenticationServiceServer) VerifyResetPasswordToken(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.Token)
+	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.UserId, request.Token)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -315,7 +325,12 @@ func (service AuthenticationServiceServer) ResetPassword(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	resetPasswordError := service.passwordService.ResetPassword(ctx, request.Token, request.NewPassword)
+	resetPasswordError := service.passwordService.ResetPassword(
+		ctx,
+		request.UserId,
+		request.Token,
+		request.NewPassword,
+	)
 	if resetPasswordError != nil {
 		if serviceErr, ok := resetPasswordError.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())

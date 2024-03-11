@@ -38,12 +38,16 @@ func GenerateVerificationToken() (string, error) {
 }
 
 // GenerateHash generates a hash of the given password
-func GenerateHash(password string) ([]byte, *string, error) {
-	// Generate salt
-	saltLength := 32
-	salt, error := GenerateSalt(saltLength)
-	if error != nil {
-		return nil, nil, error
+func GenerateHash(password string, useSalt bool) ([]byte, *string, error) {
+	var salt = ""
+	var err error
+	if useSalt {
+		// Generate salt
+		saltLength := 32
+		salt, err = GenerateSalt(saltLength)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Hash password

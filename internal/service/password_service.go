@@ -14,7 +14,7 @@ import (
 // PasswordServicer is the interface for the authentication service
 type PasswordServicer interface {
 	ForgotPassword(ctx context.Context, email string) error
-	ResetPassword(ctx context.Context, token, password string) error
+	ResetPassword(ctx context.Context, userID, token, password string) error
 }
 
 // PasswordService is the implementation of the authentication service
@@ -57,19 +57,25 @@ func (service *PasswordService) ForgotPassword(ctx context.Context, email string
 	if err != nil {
 		return fmt.Errorf("Could not generate reset password token: %v", err)
 	}
-	if err := service.emailService.SendPasswordResetMail(ctx, user.Email, user.FirstName, *resetToken); err != nil {
+	if err := service.emailService.SendPasswordResetMail(
+		ctx,
+		user.Email,
+		user.FirstName,
+		user.ID.Hex(),
+		*resetToken,
+	); err != nil {
 		return fmt.Errorf("Error sending password reset email: %v", err)
 	}
 	return nil
 }
 
 // ResetPassword resets the user password
-func (service *PasswordService) ResetPassword(ctx context.Context, tokenValue, password string) error {
+func (service *PasswordService) ResetPassword(ctx context.Context, userID, tokenValue, password string) error {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err
 	}
-	token, err := service.tokenService.VerifyResetPasswordToken(ctx, tokenValue)
+	token, err := service.tokenService.VerifyResetPasswordToken(ctx, userID, tokenValue)
 	if err != nil {
 		return fmt.Errorf("Unable to verify reset password token: %v", err)
 	}
@@ -83,7 +89,7 @@ func (service *PasswordService) ResetPassword(ctx context.Context, tokenValue, p
 			Message: "Password does not meet complexity requirements",
 		}
 	}
-	hashedPassword, salt, err := util.GenerateHash(password)
+	hashedPassword, salt, err := util.GenerateHash(password, true)
 	if err != nil {
 		logger.Error(err, "Error generating password hash")
 		return &Error{Message: "Error generating password hash"}

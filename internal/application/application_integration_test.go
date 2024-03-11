@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tryvium-travels/memongo"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
@@ -76,6 +78,8 @@ func waitForServerUp(test *testing.T, application Applicationer, tlsEnabled bool
 // MockEmailServiceServer is a mock implementation of the EmailServiceServer
 type MockEmailServiceServer struct {
 	pb_email.UnimplementedEmailServiceServer
+	LastCapturedEmailVerificationToken string
+	LastCapturedPasswordResetToken     string
 }
 
 // SendEmail mocks the SendEmail method
@@ -83,10 +87,25 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 	if req.To == wrongEmail {
 		return &pb_email.SendEmailResponse{Success: false, Message: "Email not sent"}, fmt.Errorf("Email not sent")
 	}
+	pattern := `/user/.*/email/(.*)`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringSubmatch(req.Body)
+
+	if len(matches) > 1 {
+		m.LastCapturedEmailVerificationToken = matches[1]
+	}
+
+	pattern = `/user/.*/password/(.*)`
+	re = regexp.MustCompile(pattern)
+	matches = re.FindStringSubmatch(req.Body)
+
+	if len(matches) > 1 {
+		m.LastCapturedPasswordResetToken = matches[1]
+	}
 	return &pb_email.SendEmailResponse{Success: true, Message: "Mocked email sent"}, nil
 }
 
-func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabled bool) (*grpc.Server, net.Listener) {
+func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabled bool) (*grpc.Server, net.Listener, *MockEmailServiceServer) {
 	const certFilePath = "certs/qd.email.api.crt"
 	const keyFilePath = "certs/qd.email.api.key"
 
@@ -95,7 +114,8 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabl
 		t.Fatalf("failed to listen: %v", err)
 	}
 	mockServer := grpc.NewServer()
-	pb_email.RegisterEmailServiceServer(mockServer, &MockEmailServiceServer{})
+	mockEmailService := &MockEmailServiceServer{}
+	pb_email.RegisterEmailServiceServer(mockServer, mockEmailService)
 
 	go func() {
 		if err := mockServer.Serve(listener); err != nil {
@@ -103,7 +123,7 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabl
 		}
 	}()
 
-	return mockServer, listener
+	return mockServer, listener, mockEmailService
 }
 
 type EnvironmentParams struct {
@@ -156,15 +176,16 @@ func TestRegisterUserJourneys(t *testing.T) {
 	// Defer the reset of the working directory
 	defer os.Chdir(*originalWD)
 	// Set mock email server
-	mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf(
+	mockEmailServer, _, mockEmailService := startMockEmailServiceServer(t, fmt.Sprintf(
 		"%s:%s",
 		mockCentralConfig.EmailService.Host,
 		mockCentralConfig.EmailService.Port),
 		mockCentralConfig.TLSEnabled,
 	)
 	defer mockEmailServer.Stop()
+
 	// Logs configurations
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	os.Setenv(commonConfig.AppEnvironmentKey, "test")
 
 	email := "test@test.com"
@@ -334,6 +355,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
+				UserId:            primitive.NewObjectID().Hex(),
 			})
 
 		assert.Error(t, err)
@@ -485,9 +507,12 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(ctxWithCorrelationID, &pb_authentication.ResendEmailVerificationRequest{
-			AuthToken: authenticateResponse.AuthToken,
-		})
+		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
+			ctxWithCorrelationID,
+			&pb_authentication.ResendEmailVerificationRequest{
+				AuthToken: authenticateResponse.AuthToken,
+			},
+		)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, resendEamilVerificationResponse)
@@ -566,9 +591,12 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		verifyEmailResponse, err := grpcClient.VerifyEmail(ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
-			VerificationToken: foundToken.Token,
-		})
+		verifyEmailResponse, err := grpcClient.VerifyEmail(
+			ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
+				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
+				UserId:            foundToken.UserID.Hex(),
+			},
+		)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, verifyEmailResponse)
@@ -769,6 +797,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    registerRequest.Email,
+			Password: registerRequest.Password,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
 		if err != nil {
@@ -796,7 +831,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 		_, err = grpcClient.VerifyEmail(
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
-				VerificationToken: foundToken.Token,
+				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
+				UserId:            foundUser.ID.Hex(),
 			},
 		)
 		if err != nil {
@@ -816,18 +852,20 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		forgotPassword, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
-			Token: foundToken.Token,
+		verifyPasswordResetTokenResponse, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
+			UserId: foundToken.UserID.Hex(),
+			Token:  mockEmailService.LastCapturedPasswordResetToken,
 		})
 
 		assert.NoError(t, err)
-		assert.NotNil(t, forgotPassword)
-		assert.True(t, forgotPassword.IsValid)
-		assert.Equal(t, "Verify reset password token successful", forgotPassword.Message)
+		assert.NotNil(t, verifyPasswordResetTokenResponse)
+		assert.True(t, verifyPasswordResetTokenResponse.IsValid)
+		assert.Equal(t, "Verify reset password token successful", verifyPasswordResetTokenResponse.Message)
 
 		newPassword := "NewPassword@000!"
 		resetPasswordResponse, err := grpcClient.ResetPassword(ctxWithCorrelationID, &pb_authentication.ResetPasswordRequest{
-			Token:       foundToken.Token,
+			UserId:      foundToken.UserID.Hex(),
+			Token:       mockEmailService.LastCapturedPasswordResetToken,
 			NewPassword: newPassword,
 		})
 
@@ -836,7 +874,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.True(t, resetPasswordResponse.Success)
 		assert.Equal(t, "Reset password successful", resetPasswordResponse.Message)
 
-		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+		authenticateResponse, err = grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: newPassword,
 		})
