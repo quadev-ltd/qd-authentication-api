@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 	"time"
 
@@ -661,7 +662,8 @@ func TestAuthenticationService(test *testing.T) {
 		).Return(tokenResponse, nil)
 
 		// Test RefreshToken
-		resultTokens, resultError := mocks.AuthenticationService.RefreshToken(mocks.Ctx, refreshTokenValue)
+		resultTokens, resultError := mocks.AuthenticationService.
+			RefreshToken(mocks.Ctx, refreshTokenValue)
 
 		// Assert
 		assert.NoError(test, resultError)
@@ -670,5 +672,53 @@ func TestAuthenticationService(test *testing.T) {
 		assert.Equal(test, refreshTokenClaims.UserID, resultTokens.UserID)
 		assert.Equal(test, tokenResponse.AuthToken, resultTokens.AuthToken)
 		assert.Equal(test, tokenResponse.RefreshToken, resultTokens.RefreshToken)
+	})
+
+	test.Run("GetUserProfile_Success", func(test *testing.T) {
+		// Arrange
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+		user := model.NewUser()
+
+		mocks.MockUserRepo.EXPECT().GetByUserID(
+			gomock.Any(),
+			user.ID,
+		).Return(user, nil)
+
+		// Test RefreshToken
+		profileResult, resultError := mocks.AuthenticationService.GetUserProfile(
+			mocks.Ctx,
+			user.ID.Hex(),
+		)
+
+		// Assert
+		assert.NoError(test, resultError)
+		assert.NotNil(test, profileResult)
+		assert.True(test, reflect.DeepEqual(profileResult, user))
+	})
+
+	test.Run("GetUserProfile_GetUser_Error", func(test *testing.T) {
+		// Arrange
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+		user := model.NewUser()
+		mockedError := errors.New("test-error")
+
+		mocks.MockUserRepo.EXPECT().GetByUserID(
+			gomock.Any(),
+			user.ID,
+		).Return(nil, mockedError)
+		mocks.MockLogger.EXPECT().Error(mockedError, "Error getting user by ID")
+
+		// Test RefreshToken
+		profileResult, resultError := mocks.AuthenticationService.GetUserProfile(
+			mocks.Ctx,
+			user.ID.Hex(),
+		)
+
+		// Assert
+		assert.Error(test, resultError)
+		assert.Nil(test, profileResult)
+		assert.EqualError(test, resultError, "Error getting user by ID")
 	})
 }

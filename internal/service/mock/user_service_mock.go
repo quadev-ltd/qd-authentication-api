@@ -51,6 +51,21 @@ func (mr *MockUserServicerMockRecorder) Authenticate(ctx, email, password interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockUserServicer)(nil).Authenticate), ctx, email, password)
 }
 
+// GetUserProfile mocks base method.
+func (m *MockUserServicer) GetUserProfile(ctx context.Context, userID string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserProfile", ctx, userID)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserProfile indicates an expected call of GetUserProfile.
+func (mr *MockUserServicerMockRecorder) GetUserProfile(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserProfile", reflect.TypeOf((*MockUserServicer)(nil).GetUserProfile), ctx, userID)
+}
+
 // RefreshToken mocks base method.
 func (m *MockUserServicer) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
 	m.ctrl.T.Helper()

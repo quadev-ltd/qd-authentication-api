@@ -22,6 +22,7 @@ type UserServicer interface {
 	VerifyEmail(ctx context.Context, userID, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
+	GetUserProfile(ctx context.Context, userID string) (*model.User, error)
 }
 
 // UserService is the implementation of the authentication service
@@ -225,4 +226,23 @@ func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString
 	}
 
 	return service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID)
+}
+
+// GetUserProfile gets a user's profile
+func (service *UserService) GetUserProfile(ctx context.Context, userID string) (*model.User, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	userIDObj, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		logger.Error(err, "Could not convert user ID to ObjectID")
+		return nil, &Error{Message: "Invalid user ID"}
+	}
+	user, err := service.userRepository.GetByUserID(ctx, userIDObj)
+	if err != nil {
+		logger.Error(err, "Error getting user by ID")
+		return nil, fmt.Errorf("Error getting user by ID")
+	}
+	return user, nil
 }

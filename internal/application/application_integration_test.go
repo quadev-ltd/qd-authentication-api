@@ -25,8 +25,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"qd-authentication-api/internal/config"
+	"qd-authentication-api/internal/dto"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/mongo/mock"
+	"qd-authentication-api/internal/util"
 	"qd-authentication-api/pb/gen/go/pb_authentication"
 	"qd-authentication-api/pb/gen/go/pb_email"
 )
@@ -411,6 +413,75 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NotNil(t, authenticateResponse.AuthToken)
 		assert.NotNil(t, authenticateResponse.RefreshToken)
 		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
+	})
+
+	t.Run("Authenticate_GetUserProfile_Success", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Get registered user
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		collection := client.Database("qd_authentication").Collection("user")
+		var foundUser model.User
+		err = collection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    foundUser.Email,
+			Password: password,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		profileResponse, err := grpcClient.GetUserProfile(
+			ctxWithCorrelationID,
+			&pb_authentication.GetUserProfileRequest{
+				AuthToken: authenticateResponse.AuthToken,
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.NoError(t, err)
+		assert.NotNil(t, authenticateResponse)
+		assert.Equal(t, foundUser.Email, profileResponse.User.Email)
+		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserId)
+		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), profileResponse.User.AccountStatus)
+		assert.Equal(t, foundUser.FirstName, profileResponse.User.FirstName)
+		assert.Equal(t, foundUser.LastName, profileResponse.User.LastName)
+		assert.Equal(t, util.ConvertToTimestamp(foundUser.DateOfBirth).Nanos, profileResponse.User.DateOfBirth.Nanos)
+		assert.Equal(t, util.ConvertToTimestamp(foundUser.DateOfBirth).Seconds, profileResponse.User.DateOfBirth.Seconds)
+		assert.Equal(t, util.ConvertToTimestamp(foundUser.RegistrationDate).Nanos, profileResponse.User.RegistrationDate.Nanos)
+		assert.Equal(t, util.ConvertToTimestamp(foundUser.RegistrationDate).Seconds, profileResponse.User.RegistrationDate.Seconds)
 	})
 
 	t.Run("Authenticate_Error", func(t *testing.T) {

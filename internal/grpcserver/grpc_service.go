@@ -12,9 +12,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"qd-authentication-api/internal/dto"
 	"qd-authentication-api/internal/model"
 	servicePkg "qd-authentication-api/internal/service"
-	"qd-authentication-api/internal/util"
 	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
@@ -42,7 +42,7 @@ func NewAuthenticationServiceServer(
 var _ pb_authentication.AuthenticationServiceServer = &AuthenticationServiceServer{}
 
 // GetPublicKey returns the public key
-func (service AuthenticationServiceServer) GetPublicKey(
+func (service *AuthenticationServiceServer) GetPublicKey(
 	ctx context.Context,
 	request *pb_authentication.GetPublicKeyRequest,
 ) (*pb_authentication.GetPublicKeyResponse, error) {
@@ -62,7 +62,7 @@ func (service AuthenticationServiceServer) GetPublicKey(
 }
 
 // Register registers a new user
-func (service AuthenticationServiceServer) Register(
+func (service *AuthenticationServiceServer) Register(
 	ctx context.Context,
 	request *pb_authentication.RegisterRequest,
 ) (*pb_authentication.BaseResponse, error) {
@@ -118,7 +118,7 @@ func (service AuthenticationServiceServer) Register(
 }
 
 // VerifyEmail verifies the email
-func (service AuthenticationServiceServer) VerifyEmail(
+func (service *AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
 ) (*pb_authentication.BaseResponse, error) {
@@ -144,7 +144,7 @@ func (service AuthenticationServiceServer) VerifyEmail(
 var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 7)
 
 // ResendEmailVerification resends the email verification
-func (service AuthenticationServiceServer) ResendEmailVerification(
+func (service *AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
 	request *pb_authentication.ResendEmailVerificationRequest,
 ) (*pb_authentication.BaseResponse, error) {
@@ -194,7 +194,7 @@ func (service AuthenticationServiceServer) ResendEmailVerification(
 }
 
 // Authenticate authenticates a user
-func (service AuthenticationServiceServer) Authenticate(
+func (service *AuthenticationServiceServer) Authenticate(
 	ctx context.Context,
 	request *pb_authentication.AuthenticateRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
@@ -207,7 +207,7 @@ func (service AuthenticationServiceServer) Authenticate(
 		err = handleAuthenticationError(err, logger)
 		return nil, err
 	}
-	authenticateResponse := *convertAuthTokensToResponse(authTokens)
+	authenticateResponse := *dto.ConvertAuthTokensToResponse(authTokens)
 	logger.Info("Authentication successful")
 	return &authenticateResponse, nil
 }
@@ -223,20 +223,10 @@ func handleAuthenticationError(err error, logger commonLogger.Loggerer) error {
 	}
 }
 
-func convertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authentication.AuthenticateResponse {
-	return &pb_authentication.AuthenticateResponse{
-		AuthToken:          authTokens.AuthToken,
-		AuthTokenExpiry:    util.ConvertToTimestamp(authTokens.AuthTokenExpiry),
-		RefreshToken:       authTokens.RefreshToken,
-		RefreshTokenExpiry: util.ConvertToTimestamp(authTokens.RefreshTokenExpiry),
-		UserEmail:          authTokens.UserEmail,
-	}
-}
-
 var refreshTokenLimiter = rate.NewLimiter(rate.Limit(1), 5)
 
 // RefreshToken authenticates a user
-func (service AuthenticationServiceServer) RefreshToken(
+func (service *AuthenticationServiceServer) RefreshToken(
 	ctx context.Context,
 	request *pb_authentication.RefreshTokenRequest,
 ) (*pb_authentication.AuthenticateResponse, error) {
@@ -253,7 +243,7 @@ func (service AuthenticationServiceServer) RefreshToken(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	refreshTokenResponse := *convertAuthTokensToResponse(authTokens)
+	refreshTokenResponse := *dto.ConvertAuthTokensToResponse(authTokens)
 	logger.Info("Refresh authentication token successful")
 	return &refreshTokenResponse, nil
 }
@@ -261,7 +251,7 @@ func (service AuthenticationServiceServer) RefreshToken(
 var forgotPasswordLimiter = rate.NewLimiter(rate.Limit(1), 5)
 
 // ForgotPassword sends a forgot password email
-func (service AuthenticationServiceServer) ForgotPassword(
+func (service *AuthenticationServiceServer) ForgotPassword(
 	ctx context.Context,
 	request *pb_authentication.ForgotPasswordRequest,
 ) (*pb_authentication.BaseResponse, error) {
@@ -293,7 +283,7 @@ func (service AuthenticationServiceServer) ForgotPassword(
 }
 
 // VerifyResetPasswordToken verifies the reset password token
-func (service AuthenticationServiceServer) VerifyResetPasswordToken(
+func (service *AuthenticationServiceServer) VerifyResetPasswordToken(
 	ctx context.Context,
 	request *pb_authentication.VerifyResetPasswordTokenRequest,
 ) (*pb_authentication.VerifyResetPasswordTokenResponse, error) {
@@ -317,7 +307,7 @@ func (service AuthenticationServiceServer) VerifyResetPasswordToken(
 }
 
 // ResetPassword resets the password
-func (service AuthenticationServiceServer) ResetPassword(
+func (service *AuthenticationServiceServer) ResetPassword(
 	ctx context.Context,
 	request *pb_authentication.ResetPasswordRequest,
 ) (*pb_authentication.BaseResponse, error) {
@@ -343,4 +333,35 @@ func (service AuthenticationServiceServer) ResetPassword(
 		Success: true,
 		Message: "Reset password successful",
 	}, nil
+}
+
+// GetUserProfile
+func (service *AuthenticationServiceServer) GetUserProfile(
+	ctx context.Context,
+	request *pb_authentication.GetUserProfileRequest,
+) (*pb_authentication.GetUserProfileResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	claims, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.Unauthenticated, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
+	}
+	user, err := service.userService.GetUserProfile(ctx, claims.UserID)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	userDTO := dto.ConvertUserToUserDTO(user)
+	userProfileResponse := &pb_authentication.GetUserProfileResponse{
+		User: userDTO,
+	}
+	logger.Info("Get user profile successful")
+	return userProfileResponse, nil
 }
