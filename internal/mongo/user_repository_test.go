@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -215,6 +216,60 @@ func TestMongoUserRepository(test *testing.T) {
 
 		// Test UpdatePassword
 		err = repo.UpdatePassword(context.Background(), user)
+		assert.Error(test, err)
+		assert.Equal(test, "No account was found", err.Error())
+	})
+
+	// UpdateProfileDetails
+	test.Run("UpdateProfileDetails_Success", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+		repo := NewUserRepository(client)
+		user := model.NewUser()
+
+		insertedID, err := repo.InsertUser(context.Background(), user)
+		assert.NoError(test, err)
+
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
+
+		newBirthDay := time.Now()
+		newFirstName := "new-first-name"
+		newLastName := "new-last-name"
+		user.DateOfBirth = newBirthDay
+		user.FirstName = newFirstName
+		user.LastName = newLastName
+
+		err = repo.UpdateProfileDetails(context.Background(), user)
+		assert.NoError(test, err)
+
+		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
+		assert.NoError(test, err)
+		assert.NotNil(test, foundUser)
+		assert.Equal(test, user.DateOfBirth.Unix(), newBirthDay.Unix())
+		assert.Equal(test, user.FirstName, newFirstName)
+		assert.Equal(test, user.LastName, newLastName)
+	})
+
+	test.Run("UpdateProfileDetails_User_Not_Found", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		repo := NewUserRepository(client)
+
+		user := model.NewUser()
+
+		// Test UpdatePassword
+		err = repo.UpdateProfileDetails(context.Background(), user)
 		assert.Error(test, err)
 		assert.Equal(test, "No account was found", err.Error())
 	})

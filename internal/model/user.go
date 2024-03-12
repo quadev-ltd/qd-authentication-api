@@ -15,15 +15,15 @@ type AccountStatus int
 // User is the model for the user
 type User struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty"`
-	Email            string             `validate:"required,email"`
-	PasswordHash     string             `validate:"required"`
-	PasswordSalt     string             `validate:"required"`
-	FirstName        string             `validate:"required,min=2,max=30"`
-	LastName         string             `validate:"required,min=2,max=30"`
-	DateOfBirth      time.Time          `validate:"required,not_future"`
-	RegistrationDate time.Time          `validate:"required"`
-	LastLoginDate    time.Time          `validate:"omitempty"`
-	AccountStatus    AccountStatus      `validate:"required"`
+	Email            string             `bson:"email" validate:"required,email"`
+	PasswordHash     string             `bson:"password_hash" validate:"required"`
+	PasswordSalt     string             `bson:"password_salt" validate:"required"`
+	FirstName        string             `bson:"first_name" validate:"required,min=2,max=30"`
+	LastName         string             `bson:"last_name" validate:"required,min=2,max=30"`
+	DateOfBirth      time.Time          `bson:"date_of_birth" validate:"required,not_future"`
+	RegistrationDate time.Time          `bson:"registration_date" validate:"required"`
+	LastLoginDate    time.Time          `bson:"last_login_date" validate:"omitempty"`
+	AccountStatus    AccountStatus      `bson:"account_status" validate:"required"`
 }
 
 // AccountStatus constants

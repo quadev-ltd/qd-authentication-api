@@ -82,7 +82,7 @@ func (userRepository *UserRepository) UpdateStatus(ctx context.Context, user *mo
 	filter := bson.M{"email": user.Email}
 	update := bson.M{
 		"$set": bson.M{
-			"accountstatus": user.AccountStatus,
+			"account_status": user.AccountStatus,
 		},
 	}
 
@@ -102,8 +102,20 @@ func (userRepository *UserRepository) UpdateStatus(ctx context.Context, user *mo
 func (userRepository *UserRepository) UpdatePassword(ctx context.Context, user *model.User) error {
 	update := bson.M{
 		"$set": bson.M{
-			"passwordHash": user.PasswordHash,
-			"passwordSalt": user.PasswordSalt,
+			"password_hash": user.PasswordHash,
+			"password_salt": user.PasswordSalt,
+		},
+	}
+	return userRepository.Update(ctx, user, update)
+}
+
+// UpdateProfileDetails updates a user in the mongo database
+func (userRepository *UserRepository) UpdateProfileDetails(ctx context.Context, user *model.User) error {
+	update := bson.M{
+		"$set": bson.M{
+			"first_name":    user.FirstName,
+			"last_name":     user.LastName,
+			"date_of_birth": user.DateOfBirth,
 		},
 	}
 	return userRepository.Update(ctx, user, update)

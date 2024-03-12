@@ -846,7 +846,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = Email account test@test.com not verified yet")
 	})
 
-	t.Run("ComppleteResetPassword_Success", func(t *testing.T) {
+	t.Run("CompleteResetPassword_Success", func(t *testing.T) {
 		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		envParams := setUpTestEnvironment(t)
 		defer envParams.Application.Close()

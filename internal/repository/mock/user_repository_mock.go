@@ -110,6 +110,20 @@ func (mr *MockUserRepositoryerMockRecorder) UpdatePassword(ctx, user interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePassword", reflect.TypeOf((*MockUserRepositoryer)(nil).UpdatePassword), ctx, user)
 }
 
+// UpdateProfileDetails mocks base method.
+func (m *MockUserRepositoryer) UpdateProfileDetails(ctx context.Context, user *model.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateProfileDetails", ctx, user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateProfileDetails indicates an expected call of UpdateProfileDetails.
+func (mr *MockUserRepositoryerMockRecorder) UpdateProfileDetails(ctx, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProfileDetails", reflect.TypeOf((*MockUserRepositoryer)(nil).UpdateProfileDetails), ctx, user)
+}
+
 // UpdateStatus mocks base method.
 func (m *MockUserRepositoryer) UpdateStatus(ctx context.Context, user *model.User) error {
 	m.ctrl.T.Helper()
