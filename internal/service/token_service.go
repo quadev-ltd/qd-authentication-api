@@ -69,7 +69,7 @@ func (service *TokenService) generateVerificationToken(
 	tokenHash, _, err := util.GenerateHash(verificationToken, false)
 	if err != nil {
 		logger.Error(err, "Error hashing verification token")
-		return nil, &Error{Message: "Error hashing verification token"}
+		return nil, fmt.Errorf("Error hashing verification token")
 	}
 	verificationTokentExpiryDate := service.timeProvider.Now().Add(VerificationTokenExpiry)
 	emailVerificationToken := &model.Token{

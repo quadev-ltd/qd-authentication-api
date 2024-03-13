@@ -18,7 +18,8 @@ import (
 
 // UserServicer is the interface for the authentication service
 type UserServicer interface {
-	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error
+	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) (*model.User, error)
+	SendEmailVerification(ctx context.Context, user *model.User, emailVerificationToken string) error
 	ResendEmailVerification(ctx context.Context, email, emailVerificationToken string) error
 	VerifyEmail(ctx context.Context, userID, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
@@ -52,28 +53,35 @@ func NewUserService(
 // TODO pass an object DTO instead of all the parameters and check input validation
 
 // Register registers a new user
-func (service *UserService) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
+func (service *UserService) Register(
+	ctx context.Context,
+	email,
+	password,
+	firstName,
+	lastName string,
+	dateOfBirth *time.Time,
+) (*model.User, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	userExists, err := service.userRepository.ExistsByEmail(ctx, email)
 	if err != nil {
 		logger.Error(err, fmt.Sprintf("Error checking user existence by email: %v", email))
-		return fmt.Errorf("Error checking user existence by email: %v", email)
+		return nil, fmt.Errorf("Error checking user existence by email: %v", email)
 	}
 	if userExists {
-		return &model.EmailInUseError{Email: email}
+		return nil, &model.EmailInUseError{Email: email}
 	}
 	if !model.IsPasswordComplex(password) {
-		return &NoComplexPasswordError{
+		return nil, &NoComplexPasswordError{
 			Message: "Password does not meet complexity requirements",
 		}
 	}
 	hashedPassword, salt, err := util.GenerateHash(password, true)
 	if err != nil {
 		logger.Error(err, "Error generating password hash")
-		return fmt.Errorf("Error generating password hash")
+		return nil, fmt.Errorf("Error generating password hash")
 	}
 
 	user := &model.User{
@@ -89,36 +97,39 @@ func (service *UserService) Register(ctx context.Context, email, password, first
 
 	// Validate the user object
 	if err := model.ValidateUser(user); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Create the user in the repository
 	insertedID, err := service.userRepository.InsertUser(ctx, user)
 	if err != nil {
 		logger.Error(err, "Error inserting user in DB")
-		return fmt.Errorf("Error storing user")
+		return nil, fmt.Errorf("Error storing user")
 	}
 
 	// Create the verification token
 	userID, ok := insertedID.(primitive.ObjectID)
 	if !ok {
-		return fmt.Errorf("InsertedID is not of type primitive.ObjectID")
+		return nil, fmt.Errorf("InsertedID is not of type primitive.ObjectID")
 	}
-	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, userID)
-	if err != nil {
-		return err
-	}
+	user.ID = userID
+	return user, nil
+}
 
-	if err = service.emailService.SendVerificationMail(
+func (service *UserService) SendEmailVerification(
+	ctx context.Context,
+	user *model.User,
+	emailVerificationToken string,
+) error {
+	if err := service.emailService.SendVerificationMail(
 		ctx,
 		user.Email,
 		user.FirstName,
-		userID.Hex(),
-		*emailVerificationToken,
+		user.ID.Hex(),
+		emailVerificationToken,
 	); err != nil {
 		return &SendEmailError{Message: "Error sending verification email"}
 	}
-
 	return nil
 }
 

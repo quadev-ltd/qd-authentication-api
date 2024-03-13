@@ -79,7 +79,7 @@ func (service *AuthenticationServiceServer) Register(
 		return nil, status.Errorf(codes.InvalidArgument, "Date of birth was not provided")
 	}
 
-	registerError := service.userService.Register(
+	createdUser, registerError := service.userService.Register(
 		ctx,
 		request.Email,
 		request.Password,
@@ -91,7 +91,6 @@ func (service *AuthenticationServiceServer) Register(
 		_, isValidationError := registerError.(validator.ValidationErrors)
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
 		_, isNoComplexPasswordError := registerError.(*servicePkg.NoComplexPasswordError)
-		_, isEmailError := registerError.(*servicePkg.SendEmailError)
 		if isValidationError || isNoComplexPasswordError {
 			err := status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
 			return nil, err
@@ -100,16 +99,23 @@ func (service *AuthenticationServiceServer) Register(
 			err := status.Errorf(codes.InvalidArgument, "Registration failed: email already in use")
 			return nil, err
 		}
-		if isEmailError {
-			logger.Info("Registration successful")
-			return &pb_authentication.BaseResponse{
-				Success: true,
-				Message: "Registration successful. However, verification email failed to send",
-			}, nil
-		}
 		err := status.Errorf(codes.Internal, "Registration failed: internal server error")
 		return nil, err
 	}
+	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, createdUser.ID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Error generating email verification token")
+	}
+	err = service.userService.SendEmailVerification(ctx, createdUser, *emailVerificationToken)
+
+	if err != nil {
+		logger.Info("Registration successful")
+		return &pb_authentication.BaseResponse{
+			Success: true,
+			Message: "Registration successful. However, verification email failed to send",
+		}, nil
+	}
+
 	logger.Info("Registration successful")
 	return &pb_authentication.BaseResponse{
 		Success: true,

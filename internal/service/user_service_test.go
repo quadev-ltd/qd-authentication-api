@@ -99,16 +99,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
 		mocks.MockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(userID, nil)
-		mocks.MockTokenService.EXPECT().GenerateEmailVerificationToken(gomock.Any(), userID).Return(&testTokenValue, nil)
-		mocks.MockEmailService.EXPECT().SendVerificationMail(
-			gomock.Any(),
-			testEmail,
-			testFirstName,
-			userID.Hex(),
-			testTokenValue,
-		).Return(nil)
-
-		err := mocks.UserService.Register(
+		createdUser, err := mocks.UserService.Register(
 			mocks.Ctx,
 			testEmail,
 			testPassword,
@@ -117,6 +108,12 @@ func TestAuthenticationService(test *testing.T) {
 			&testDateOfBirth,
 		)
 		assert.NoError(test, err)
+		assert.Equal(test, testEmail, createdUser.Email)
+		assert.Equal(test, testFirstName, createdUser.FirstName)
+		assert.Equal(test, testLastName, createdUser.LastName)
+		assert.Equal(test, userID, createdUser.ID)
+		assert.Equal(test, testDateOfBirth.Unix(), createdUser.DateOfBirth.Unix())
+
 	})
 	test.Run("Register_Email_Uniqueness", func(test *testing.T) {
 		// Arrange
@@ -125,7 +122,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(true, nil)
 
-		err := mocks.UserService.Register(
+		createdUser, err := mocks.UserService.Register(
 			mocks.Ctx,
 			testEmail,
 			testPassword,
@@ -134,6 +131,7 @@ func TestAuthenticationService(test *testing.T) {
 			&testDateOfBirth,
 		)
 
+		assert.Nil(test, createdUser)
 		assert.Error(test, err)
 		assert.Equal(test, (&model.EmailInUseError{Email: testEmail}).Error(), err.Error())
 	})
@@ -145,7 +143,7 @@ func TestAuthenticationService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), invalidEmail).Return(false, errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, fmt.Sprintf("Error checking user existence by email: %v", invalidEmail))
 
-		err := mocks.UserService.Register(
+		createdUser, err := mocks.UserService.Register(
 			mocks.Ctx,
 			invalidEmail,
 			testPassword,
@@ -154,6 +152,7 @@ func TestAuthenticationService(test *testing.T) {
 			&testDateOfBirth,
 		)
 
+		assert.Nil(test, createdUser)
 		assert.Error(test, err)
 		assert.Equal(test, fmt.Sprintf("Error checking user existence by email: %v", invalidEmail), err.Error())
 	})
@@ -164,7 +163,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), invalidEmail).Return(false, nil)
 
-		err := mocks.UserService.Register(
+		createdUser, err := mocks.UserService.Register(
 			mocks.Ctx,
 			invalidEmail,
 			testPassword,
@@ -173,6 +172,7 @@ func TestAuthenticationService(test *testing.T) {
 			&testDateOfBirth,
 		)
 
+		assert.Nil(test, createdUser)
 		assert.Error(test, err)
 		var validationErrs validator.ValidationErrors
 		assert.ErrorAs(test, err, &validationErrs)
@@ -186,7 +186,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
 
-		err := mocks.UserService.Register(
+		createdUser, err := mocks.UserService.Register(
 			mocks.Ctx,
 			testEmail,
 			testPassword,
@@ -195,6 +195,7 @@ func TestAuthenticationService(test *testing.T) {
 			&invalidDateOfBirth,
 		)
 
+		assert.Nil(test, createdUser)
 		assert.Error(test, err)
 		var validationErrs validator.ValidationErrors
 		assert.ErrorAs(test, err, &validationErrs)
@@ -207,7 +208,7 @@ func TestAuthenticationService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
 
-		error := mocks.UserService.Register(
+		createdUser, err := mocks.UserService.Register(
 			mocks.Ctx,
 			testEmail,
 			"testPassword",
@@ -215,9 +216,10 @@ func TestAuthenticationService(test *testing.T) {
 			testLastName,
 			&testDateOfBirth,
 		)
-		assert.Error(test, error)
-		assert.IsType(test, &NoComplexPasswordError{}, error)
-		assert.Equal(test, "Password does not meet complexity requirements", error.Error())
+		assert.Nil(test, createdUser)
+		assert.Error(test, err)
+		assert.IsType(test, &NoComplexPasswordError{}, err)
+		assert.Equal(test, "Password does not meet complexity requirements", err.Error())
 	})
 
 	test.Run("Register_Fail_Parsing_Inserted_ID_error", func(test *testing.T) {
@@ -228,7 +230,7 @@ func TestAuthenticationService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
 		mocks.MockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return("", nil)
 
-		err := mocks.UserService.Register(
+		createdUser, err := mocks.UserService.Register(
 			mocks.Ctx,
 			testEmail,
 			testPassword,
@@ -236,37 +238,9 @@ func TestAuthenticationService(test *testing.T) {
 			testLastName,
 			&testDateOfBirth,
 		)
+		assert.Nil(test, createdUser)
 		assert.Error(test, err)
 		assert.Equal(test, "InsertedID is not of type primitive.ObjectID", err.Error())
-	})
-
-	test.Run("Register_Send_email_error", func(test *testing.T) {
-		// Arrange
-		mocks := createUserService(test)
-		defer mocks.Controller.Finish()
-
-		mocks.MockUserRepo.EXPECT().ExistsByEmail(gomock.Any(), testEmail).Return(false, nil)
-		mocks.MockUserRepo.EXPECT().InsertUser(gomock.Any(), gomock.Any()).Return(userID, nil)
-		mocks.MockTokenService.EXPECT().GenerateEmailVerificationToken(gomock.Any(), userID).Return(&testTokenValue, nil)
-		mocks.MockEmailService.EXPECT().SendVerificationMail(
-			gomock.Any(),
-			testEmail,
-			testFirstName,
-			userID.Hex(),
-			testTokenValue,
-		).Return(errExample)
-
-		error := mocks.UserService.Register(
-			mocks.Ctx,
-			testEmail,
-			testPassword,
-			testFirstName,
-			testLastName,
-			&testDateOfBirth,
-		)
-		assert.Error(test, error)
-		assert.IsType(test, &SendEmailError{}, error)
-		assert.Equal(test, "Error sending verification email", error.Error())
 	})
 
 	// 	// Verify

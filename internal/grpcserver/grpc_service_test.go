@@ -88,6 +88,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		Type:   commonToken.AccessTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
+	// Register
 	test.Run("Registration_Error_Validation", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
@@ -100,7 +101,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		mocks.MockUserService.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(mockValidationError)
+			Return(nil, mockValidationError)
 
 		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
 
@@ -116,7 +117,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		mocks.MockUserService.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(mockValidationError)
+			Return(nil, mockValidationError)
 
 		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
 
@@ -132,7 +133,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		mocks.MockUserService.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(mockEmailInUseError)
+			Return(nil, mockEmailInUseError)
 
 		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
 
@@ -165,15 +166,64 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, response)
 	})
 
+	test.Run("Registration_TokenGeneration_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		user := model.NewUser()
+
+		mockServiceError := &service.Error{Message: "some error"}
+
+		mocks.MockUserService.EXPECT().
+			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(user, nil)
+		mocks.MockTokenService.EXPECT().GenerateEmailVerificationToken(
+			gomock.Any(),
+			user.ID,
+		).Return(
+			nil,
+			mockServiceError,
+		)
+
+		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
+
+		assert.Error(
+			test,
+			returnedError,
+		)
+		assert.Equal(
+			test,
+			"rpc error: code = Internal desc = Error generating email verification token",
+			returnedError.Error(),
+		)
+		assert.Nil(test, response)
+	})
+
 	test.Run("Registration_Error_Email_Not_Sent", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 
+		user := model.NewUser()
+		testToken := "test-token"
 		mockServiceError := &service.SendEmailError{Message: "some error"}
 
 		mocks.MockUserService.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(mockServiceError)
+			Return(user, nil)
+		mocks.MockTokenService.EXPECT().GenerateEmailVerificationToken(
+			gomock.Any(),
+			user.ID,
+		).Return(
+			&testToken,
+			nil,
+		)
+		mocks.MockUserService.EXPECT().SendEmailVerification(
+			gomock.All(),
+			gomock.Eq(user),
+			testToken,
+		).Return(
+			mockServiceError,
+		)
 		mocks.MockLogger.EXPECT().Info("Registration successful")
 
 		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
@@ -193,10 +243,30 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Success: true,
 			Message: "Registration successful",
 		}
+		testToken := "test-token"
+		user := model.NewUser()
+		user.Email = registerRequest.GetEmail()
+		user.FirstName = registerRequest.GetFirstName()
+		user.LastName = registerRequest.GetLastName()
+		user.DateOfBirth = registerRequest.GetDateOfBirth().AsTime()
 
 		mocks.MockUserService.EXPECT().
 			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil)
+			Return(user, nil)
+		mocks.MockTokenService.EXPECT().GenerateEmailVerificationToken(
+			gomock.Any(),
+			user.ID,
+		).Return(
+			&testToken,
+			nil,
+		)
+		mocks.MockUserService.EXPECT().SendEmailVerification(
+			gomock.All(),
+			gomock.Eq(user),
+			testToken,
+		).Return(
+			nil,
+		)
 		mocks.MockLogger.EXPECT().Info("Registration successful")
 
 		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)

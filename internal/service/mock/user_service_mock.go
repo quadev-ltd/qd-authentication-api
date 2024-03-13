@@ -83,11 +83,12 @@ func (mr *MockUserServicerMockRecorder) RefreshToken(ctx, refreshTokenString int
 }
 
 // Register mocks base method.
-func (m *MockUserServicer) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) error {
+func (m *MockUserServicer) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) (*model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Register", ctx, email, password, firstName, lastName, dateOfBirth)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // Register indicates an expected call of Register.
@@ -108,6 +109,20 @@ func (m *MockUserServicer) ResendEmailVerification(ctx context.Context, email, e
 func (mr *MockUserServicerMockRecorder) ResendEmailVerification(ctx, email, emailVerificationToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResendEmailVerification", reflect.TypeOf((*MockUserServicer)(nil).ResendEmailVerification), ctx, email, emailVerificationToken)
+}
+
+// SendEmailVerification mocks base method.
+func (m *MockUserServicer) SendEmailVerification(ctx context.Context, user *model.User, emailVerificationToken string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendEmailVerification", ctx, user, emailVerificationToken)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendEmailVerification indicates an expected call of SendEmailVerification.
+func (mr *MockUserServicerMockRecorder) SendEmailVerification(ctx, user, emailVerificationToken interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendEmailVerification", reflect.TypeOf((*MockUserServicer)(nil).SendEmailVerification), ctx, user, emailVerificationToken)
 }
 
 // UpdateProfileDetails mocks base method.
