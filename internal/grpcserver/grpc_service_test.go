@@ -63,7 +63,6 @@ func initialiseTest(test *testing.T) *GRPCMockParams {
 }
 
 func TestAuthenticationServiceServer(test *testing.T) {
-
 	// Create a sample registerRequest for testing.
 	registerRequest := &pb_authentication.RegisterRequest{
 		Email:       "test@example.com",
@@ -76,6 +75,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	// Create a sample request for testing.
 	verifyEmailRequest := &pb_authentication.VerifyEmailRequest{
 		VerificationToken: "some_verification_token",
+		UserId:            primitive.NewObjectID().Hex(),
 	}
 
 	authenticateRequest := &pb_authentication.AuthenticateRequest{
@@ -279,31 +279,49 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(test, response.Success, successfulResponse.Success)
 	})
 
-	test.Run("Email verification internal server error", func(test *testing.T) {
+	test.Run("EmailVerification_InternalServer_Error", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 
 		mockVerifyEmailError := errors.New("some verification error")
+		testTokenObj := model.NewToken("test-hash")
+		userObjID, err := primitive.ObjectIDFromHex(verifyEmailRequest.UserId)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testTokenObj.UserID = userObjID
 
+		mocks.MockTokenService.EXPECT().
+			VerifyEmailVerificationToken(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
+			Return(testTokenObj, nil)
 		mocks.MockUserService.EXPECT().
-			VerifyEmail(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
+			VerifyEmail(gomock.Any(), gomock.Eq(testTokenObj)).
 			Return(mockVerifyEmailError)
 		mocks.MockLogger.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
 		response, returnedError := mocks.AuthenticationServer.VerifyEmail(mocks.Ctx, verifyEmailRequest)
 
-		assert.Equal(test, status.Error(codes.Internal, "Internal server error"), returnedError)
+		assert.Equal(test, status.Error(codes.Internal, "Email verification failed"), returnedError)
 		assert.Nil(test, response)
 	})
 
-	test.Run("Email verification service error", func(test *testing.T) {
+	test.Run("EmailVerification_Service_Error", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 
-		mockVerifyEmailError := &service.Error{Message: "some error"}
+		mockVerifyEmailError := &service.Error{Message: "test-service-error"}
+		testTokenObj := model.NewToken("test-hash")
+		userObjID, err := primitive.ObjectIDFromHex(verifyEmailRequest.UserId)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testTokenObj.UserID = userObjID
 
+		mocks.MockTokenService.EXPECT().
+			VerifyEmailVerificationToken(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
+			Return(testTokenObj, nil)
 		mocks.MockUserService.EXPECT().
-			VerifyEmail(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
+			VerifyEmail(gomock.Any(), gomock.Eq(testTokenObj)).
 			Return(mockVerifyEmailError)
 		mocks.MockLogger.EXPECT().Error(mockVerifyEmailError, "Email verification failed")
 
@@ -313,7 +331,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, response)
 	})
 
-	test.Run("Verify Email success", func(test *testing.T) {
+	test.Run("VerifyEmail_Success", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 
@@ -321,9 +339,21 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Success: true,
 			Message: "Email verified successfully",
 		}
+		testTokenObj := model.NewToken("test-hash")
+		userObjID, err := primitive.ObjectIDFromHex(verifyEmailRequest.UserId)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testTokenObj.UserID = userObjID
 
+		mocks.MockTokenService.EXPECT().
+			VerifyEmailVerificationToken(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
+			Return(testTokenObj, nil)
 		mocks.MockUserService.EXPECT().
-			VerifyEmail(gomock.Any(), verifyEmailRequest.UserId, verifyEmailRequest.VerificationToken).
+			VerifyEmail(gomock.Any(), gomock.Eq(testTokenObj)).
+			Return(nil)
+		mocks.MockTokenService.EXPECT().
+			RemoveUsedToken(gomock.Any(), gomock.Eq(testTokenObj)).
 			Return(nil)
 		mocks.MockLogger.EXPECT().Info("Email verified successfully")
 
@@ -353,7 +383,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, response)
 	})
 
-	test.Run("Authenticate internal server error", func(test *testing.T) {
+	test.Run("Authenticate_InternalServer_Error", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
 
@@ -371,9 +401,51 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, response)
 	})
 
-	test.Run("Authenticate success", func(test *testing.T) {
+	test.Run("Authenticate_GenerateTokenService_Error", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
+
+		user := model.NewUser()
+		tokenError := &service.Error{Message: "some error"}
+
+		mocks.MockUserService.EXPECT().
+			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
+			Return(user, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex()).
+			Return(nil, tokenError)
+
+		response, returnedError := mocks.AuthenticationServer.Authenticate(mocks.Ctx, authenticateRequest)
+
+		assert.EqualError(test, returnedError, "rpc error: code = InvalidArgument desc = some error")
+		assert.Nil(test, response)
+	})
+
+	test.Run("Authenticate_GenerateToken_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		user := model.NewUser()
+		tokenError := errors.New("some error")
+
+		mocks.MockUserService.EXPECT().
+			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
+			Return(user, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex()).
+			Return(nil, tokenError)
+
+		response, returnedError := mocks.AuthenticationServer.Authenticate(mocks.Ctx, authenticateRequest)
+
+		assert.EqualError(test, returnedError, "rpc error: code = Internal desc = Error generating authentication tokens")
+		assert.Nil(test, response)
+	})
+
+	test.Run("Authenticate_Success", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		user := model.NewUser()
 
 		authenticateResponse := &model.AuthTokensResponse{
 			AuthToken:          "some_auth_token",
@@ -392,7 +464,10 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		mocks.MockUserService.EXPECT().
-			Authenticate(gomock.Any(), gomock.Any(), gomock.Any()).
+			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
+			Return(user, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex()).
 			Return(authenticateResponse, nil)
 		mocks.MockLogger.EXPECT().Info("Authentication successful")
 
@@ -570,6 +645,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(test, "Email verification sent successfully", response.Message)
 	})
 
+	// RefreshToken
 	test.Run("RefreshToken_Success", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
@@ -581,9 +657,18 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			RefreshTokenExpiry: time.Now(),
 			UserEmail:          "test@user.com",
 		}
-		mocks.MockUserService.EXPECT().RefreshToken(gomock.Any(),
-			testTokenValue,
-		).Return(resultTokens, nil)
+		refreshClaims := &jwtPkg.TokenClaims{
+			Email:  exampleClaims.Email,
+			Type:   commonToken.RefreshTokenType,
+			Expiry: exampleClaims.Expiry,
+			UserID: exampleClaims.UserID,
+		}
+		mocks.MockTokenService.EXPECT().
+			VerifyJWTToken(gomock.Any(), testTokenValue).
+			Return(refreshClaims, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID).
+			Return(resultTokens, nil)
 		mocks.MockLogger.EXPECT().Info("Refresh authentication token successful")
 
 		response, returnedError := mocks.AuthenticationServer.RefreshToken(mocks.Ctx, &pb_authentication.RefreshTokenRequest{
@@ -595,14 +680,86 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(test, resultTokens.RefreshToken, response.RefreshToken)
 	})
 
-	test.Run("RefreshToken_Error", func(test *testing.T) {
+	test.Run("RefreshToken_Generation_Error", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
+		mockedError := errors.New("test-error")
 		testTokenValue := "test-token"
-		exampleError := errors.New("test-error")
-		mocks.MockUserService.EXPECT().RefreshToken(gomock.Any(),
-			testTokenValue,
-		).Return(nil, exampleError)
+		refreshClaims := &jwtPkg.TokenClaims{
+			Email:  exampleClaims.Email,
+			Type:   commonToken.RefreshTokenType,
+			Expiry: exampleClaims.Expiry,
+			UserID: exampleClaims.UserID,
+		}
+		mocks.MockTokenService.EXPECT().
+			VerifyJWTToken(gomock.Any(), testTokenValue).
+			Return(refreshClaims, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID).
+			Return(nil, mockedError)
+
+		response, returnedError := mocks.AuthenticationServer.RefreshToken(mocks.Ctx, &pb_authentication.RefreshTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Error generating new tokens", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("RefreshToken_GenerationService_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		mockedError := &service.Error{Message: "test-error"}
+		testTokenValue := "test-token"
+		refreshClaims := &jwtPkg.TokenClaims{
+			Email:  exampleClaims.Email,
+			Type:   commonToken.RefreshTokenType,
+			Expiry: exampleClaims.Expiry,
+			UserID: exampleClaims.UserID,
+		}
+		mocks.MockTokenService.EXPECT().
+			VerifyJWTToken(gomock.Any(), testTokenValue).
+			Return(refreshClaims, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID).
+			Return(nil, mockedError)
+
+		response, returnedError := mocks.AuthenticationServer.RefreshToken(mocks.Ctx, &pb_authentication.RefreshTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = InvalidArgument desc = test-error", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("RefreshToken_Verify_ServiceError", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		mockedError := &service.Error{Message: "test-error"}
+		testTokenValue := "test-token"
+		mocks.MockTokenService.EXPECT().
+			VerifyJWTToken(gomock.Any(), testTokenValue).
+			Return(nil, mockedError)
+
+		response, returnedError := mocks.AuthenticationServer.RefreshToken(mocks.Ctx, &pb_authentication.RefreshTokenRequest{
+			Token: testTokenValue,
+		})
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = InvalidArgument desc = test-error", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("RefreshToken_Verify_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		mockedError := errors.New("test-error")
+		testTokenValue := "test-token"
+		mocks.MockTokenService.EXPECT().
+			VerifyJWTToken(gomock.Any(), testTokenValue).
+			Return(nil, mockedError)
 
 		response, returnedError := mocks.AuthenticationServer.RefreshToken(mocks.Ctx, &pb_authentication.RefreshTokenRequest{
 			Token: testTokenValue,

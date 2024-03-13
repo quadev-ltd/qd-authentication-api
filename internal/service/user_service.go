@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/quadev-ltd/qd-common/pkg/log"
-	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
@@ -21,9 +20,8 @@ type UserServicer interface {
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) (*model.User, error)
 	SendEmailVerification(ctx context.Context, user *model.User, emailVerificationToken string) error
 	ResendEmailVerification(ctx context.Context, email, emailVerificationToken string) error
-	VerifyEmail(ctx context.Context, userID, verificationToken string) error
-	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
-	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
+	VerifyEmail(ctx context.Context, token *model.Token) error
+	Authenticate(ctx context.Context, email, password string) (*model.User, error)
 	GetUserProfile(ctx context.Context, userID string) (*model.User, error)
 	UpdateProfileDetails(ctx context.Context, userID string, profileDetails *pb_authentication.UpdateUserProfileRequest) (*model.User, error)
 }
@@ -31,7 +29,6 @@ type UserServicer interface {
 // UserService is the implementation of the authentication service
 type UserService struct {
 	emailService   EmailServicer
-	tokenService   TokenServicer
 	userRepository repository.UserRepositoryer
 }
 
@@ -40,12 +37,10 @@ var _ UserServicer = &UserService{}
 // NewUserService creates a new authentication service
 func NewUserService(
 	emailService EmailServicer,
-	tokenService TokenServicer,
 	userRepository repository.UserRepositoryer,
 ) UserServicer {
 	return &UserService{
 		emailService,
-		tokenService,
 		userRepository,
 	}
 }
@@ -116,6 +111,7 @@ func (service *UserService) Register(
 	return user, nil
 }
 
+// SendEmailVerification Sends user verification email
 func (service *UserService) SendEmailVerification(
 	ctx context.Context,
 	user *model.User,
@@ -169,16 +165,11 @@ func (service *UserService) ResendEmailVerification(
 }
 
 // VerifyEmail verifies a user's email
-func (service *UserService) VerifyEmail(ctx context.Context, userID, verificationToken string) error {
+func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token) error {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err
 	}
-	token, err := service.tokenService.VerifyEmailVerificationToken(ctx, userID, verificationToken)
-	if err != nil {
-		return err
-	}
-
 	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
 	if err != nil {
 		logger.Error(err, "Error getting user by ID")
@@ -194,16 +185,11 @@ func (service *UserService) VerifyEmail(ctx context.Context, userID, verificatio
 		logger.Error(err, "Error updating user status")
 		return fmt.Errorf("Error updating user status")
 	}
-
-	err = service.tokenService.RemoveUsedToken(ctx, token)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
 // Authenticate authenticates a user and provides a token
-func (service *UserService) Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error) {
+func (service *UserService) Authenticate(ctx context.Context, email, password string) (*model.User, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -225,20 +211,7 @@ func (service *UserService) Authenticate(ctx context.Context, email, password st
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
-	return service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
-}
-
-// RefreshToken refreshes an authentication token using a refresh token
-func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
-	claims, err := service.tokenService.VerifyJWTToken(ctx, refreshTokenString)
-	if err != nil {
-		return nil, err
-	}
-	if claims.Type != commonToken.RefreshTokenType {
-		return nil, &Error{Message: "Invalid token type"}
-	}
-
-	return service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID)
+	return user, nil
 }
 
 // GetUserProfile gets a user's profile

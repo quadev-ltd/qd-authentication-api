@@ -49,13 +49,13 @@ func (serviceFactory *Factory) CreateServiceManager(
 	if err != nil {
 		return nil, err
 	}
-	timeProvider := &util.RealTimeProvider{}
-	tokenService := NewTokenService(repository.GetTokenRepository(), jwtManager, *timeProvider)
+
 	userService := NewUserService(
 		emailService,
-		tokenService,
 		repository.GetUserRepository(),
 	)
+	timeProvider := &util.RealTimeProvider{}
+	tokenService := NewTokenService(repository.GetTokenRepository(), jwtManager, *timeProvider)
 	passwordService := NewPasswordService(
 		emailService,
 		tokenService,

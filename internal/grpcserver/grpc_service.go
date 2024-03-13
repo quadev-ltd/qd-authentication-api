@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
@@ -132,19 +133,30 @@ func (service *AuthenticationServiceServer) VerifyEmail(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	verifyEmailError := service.userService.VerifyEmail(ctx, request.UserId, request.VerificationToken)
-	if verifyEmailError == nil {
-		logger.Info("Email verified successfully")
-		return &pb_authentication.BaseResponse{
-			Success: true,
-			Message: "Email verified successfully",
-		}, nil
+	token, err := service.tokenService.
+		VerifyEmailVerificationToken(ctx, request.UserId, request.VerificationToken)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Email verification token creation failed")
 	}
-	logger.Error(verifyEmailError, "Email verification failed")
-	if serviceErr, ok := verifyEmailError.(*servicePkg.Error); ok {
-		return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+	verifyEmailError := service.userService.VerifyEmail(ctx, token)
+	if verifyEmailError != nil {
+		logger.Error(verifyEmailError, "Email verification failed")
+		if serviceErr, ok := verifyEmailError.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Email verification failed")
 	}
-	return nil, status.Errorf(codes.Internal, "Internal server error")
+
+	service.tokenService.RemoveUsedToken(ctx, token)
+
+	logger.Info("Email verified successfully")
+	return &pb_authentication.BaseResponse{
+		Success: true,
+		Message: "Email verified successfully",
+	}, nil
 }
 
 var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 7)
@@ -208,12 +220,19 @@ func (service *AuthenticationServiceServer) Authenticate(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	authTokens, err := service.userService.Authenticate(ctx, request.Email, request.Password)
+	user, err := service.userService.Authenticate(ctx, request.Email, request.Password)
 	if err != nil {
 		err = handleAuthenticationError(err, logger)
 		return nil, err
 	}
-	authenticateResponse := *dto.ConvertAuthTokensToResponse(authTokens)
+	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Error generating authentication tokens")
+	}
+	authenticateResponse := *dto.ConvertAuthTokensToResponse(jwtTokens)
 	logger.Info("Authentication successful")
 	return &authenticateResponse, nil
 }
@@ -245,9 +264,22 @@ func (service *AuthenticationServiceServer) RefreshToken(
 		return nil,
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	authTokens, err := service.userService.RefreshToken(ctx, request.Token)
+	claims, err := service.tokenService.VerifyJWTToken(ctx, request.Token)
 	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
 		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	if claims.Type != commonToken.RefreshTokenType {
+		return nil, status.Errorf(codes.InvalidArgument, "Not a refresh token")
+	}
+	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Error generating new tokens")
 	}
 	refreshTokenResponse := *dto.ConvertAuthTokensToResponse(authTokens)
 	logger.Info("Refresh authentication token successful")

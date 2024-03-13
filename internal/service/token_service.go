@@ -105,7 +105,7 @@ func (service *TokenService) RemoveUsedToken(ctx context.Context, token *model.T
 	}
 	err = service.tokenRepository.Remove(ctx, token)
 	if err != nil {
-		logger.Error(err, "Error removing token")
+		logger.Error(err, "Error removing old token")
 		return &Error{Message: "Could not remove old token"}
 	}
 	return nil
