@@ -111,11 +111,12 @@ func (mr *MockUserRepositoryerMockRecorder) UpdatePassword(ctx, user interface{}
 }
 
 // UpdateProfileDetails mocks base method.
-func (m *MockUserRepositoryer) UpdateProfileDetails(ctx context.Context, user *model.User) error {
+func (m *MockUserRepositoryer) UpdateProfileDetails(ctx context.Context, user *model.User) (*model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateProfileDetails", ctx, user)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // UpdateProfileDetails indicates an expected call of UpdateProfileDetails.

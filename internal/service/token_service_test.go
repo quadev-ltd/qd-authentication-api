@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
-	"reflect"
 	"testing"
 	"time"
 
@@ -53,22 +51,6 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 		controller,
 		ctx,
 	}
-}
-
-type tokenClaimsMatcher struct {
-	expected *jwtPkg.TokenClaims
-}
-
-func (m tokenClaimsMatcher) Matches(x interface{}) bool {
-	actual, ok := x.(*jwtPkg.TokenClaims)
-	if !ok {
-		return false
-	}
-	return reflect.DeepEqual(m.expected, actual)
-}
-
-func (m tokenClaimsMatcher) String() string {
-	return fmt.Sprintf("is equal to %v", m.expected)
 }
 
 func TestTokenService(test *testing.T) {
@@ -362,7 +344,7 @@ func TestTokenService(test *testing.T) {
 	})
 
 	// VerifyEmailVerificationToken
-	test.Run("VerifyEmailVerificationToken_Expired_Success", func(test *testing.T) {
+	test.Run("VerifyEmailVerificationToken_Expired_Error", func(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
@@ -458,7 +440,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
+			gomock.Eq(exampleAccessTokenClaims),
 		).Return(
 			&testTokenHashValue,
 			nil,
@@ -479,7 +461,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
+			gomock.Eq(exampleAccessTokenClaims),
 		).Return(
 			nil,
 			errExample,
@@ -510,13 +492,13 @@ func TestTokenService(test *testing.T) {
 		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
+			gomock.Eq(exampleAccessTokenClaims),
 		).Return(
 			&testTokenHashValue,
 			nil,
 		)
 		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
+			gomock.Eq(exampleRefreshTokenClaims),
 		).Return(
 			&newRefreshTokenValue,
 			nil,
@@ -546,13 +528,13 @@ func TestTokenService(test *testing.T) {
 		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
+			gomock.Eq(exampleAccessTokenClaims),
 		).Return(
 			&testTokenHashValue,
 			nil,
 		)
 		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleRefreshTokenClaims},
+			gomock.Eq(exampleRefreshTokenClaims),
 		).Return(
 			nil,
 			errExample,
@@ -583,7 +565,7 @@ func TestTokenService(test *testing.T) {
 		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			&tokenClaimsMatcher{expected: exampleAccessTokenClaims},
+			gomock.Eq(exampleAccessTokenClaims),
 		).Return(
 			nil,
 			errExample,

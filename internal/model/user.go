@@ -51,6 +51,25 @@ func ValidateUser(user *User) error {
 	return nil
 }
 
+// ValidatePartialUser validates the user properties
+func ValidatePartialUser(user *User, fields ...string) error {
+	validate := validator.New()
+	// Registering a custom validation for date of birth
+	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
+		asTime, ok := fl.Field().Interface().(time.Time)
+		if !ok {
+			return false // it's not even a time.Time
+		}
+		// it's valid if the time is not after Now
+		return !asTime.After(time.Now())
+	})
+	error := validate.StructPartial(user, fields...)
+	if error != nil {
+		return error
+	}
+	return nil
+}
+
 // IsPasswordComplex checks if the password meets complexity requirements
 func IsPasswordComplex(password string) bool {
 	var (

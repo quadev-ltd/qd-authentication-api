@@ -335,7 +335,7 @@ func (service *AuthenticationServiceServer) ResetPassword(
 	}, nil
 }
 
-// GetUserProfile
+// GetUserProfile returns a user's profile details
 func (service *AuthenticationServiceServer) GetUserProfile(
 	ctx context.Context,
 	request *pb_authentication.GetUserProfileRequest,
@@ -364,4 +364,37 @@ func (service *AuthenticationServiceServer) GetUserProfile(
 	}
 	logger.Info("Get user profile successful")
 	return userProfileResponse, nil
+}
+
+// UpdateUserProfile updates a user's profile details
+func (service *AuthenticationServiceServer) UpdateUserProfile(
+	ctx context.Context,
+	request *pb_authentication.UpdateUserProfileRequest,
+) (*pb_authentication.UpdateUserProfileResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	claims, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.Unauthenticated, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
+	}
+	updatedUser, err := service.userService.UpdateProfileDetails(ctx, claims.UserID, request)
+	if err != nil {
+		_, isValidationError := err.(validator.ValidationErrors)
+		if isValidationError {
+			return nil, status.Errorf(codes.InvalidArgument, fmt.Sprint("Update user profile failed: ", err.Error()))
+		}
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	logger.Info("Update user profile successful")
+	return &pb_authentication.UpdateUserProfileResponse{
+		User: dto.ConvertUserToUserDTO(updatedUser),
+	}, nil
 }

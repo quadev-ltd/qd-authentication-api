@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/util"
 	"qd-authentication-api/pb/gen/go/pb_authentication"
@@ -29,4 +31,12 @@ func ConvertUserToUserDTO(user *model.User) *pb_authentication.User {
 		RegistrationDate: util.ConvertToTimestamp(user.RegistrationDate),
 		DateOfBirth:      util.ConvertToTimestamp(user.DateOfBirth),
 	}
+}
+
+// ProfileDetails is a DTO for user profile details
+type ProfileDetails struct {
+	ID          string
+	FirstName   string
+	LastName    string
+	DateOfBirth *time.Time
 }

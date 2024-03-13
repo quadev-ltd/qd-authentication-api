@@ -937,4 +937,98 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, getUserProfileResponse)
 		assert.EqualError(test, err, "rpc error: code = Unauthenticated desc = Invalid JWT token")
 	})
+
+	test.Run("UpdateUserProfile_Success", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		testTokenValue := "token-value"
+		user := model.NewUser()
+		userObjID, err := primitive.ObjectIDFromHex(exampleClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		user.ID = userObjID
+		newFirstName := "John"
+		newLastName := "Doe"
+		newDOB := timestamppb.Now()
+		user.FirstName = newFirstName
+		user.LastName = newLastName
+		user.DateOfBirth = newDOB.AsTime()
+		updateRequest := &pb_authentication.UpdateUserProfileRequest{
+			AuthToken:   testTokenValue,
+			FirstName:   newFirstName,
+			LastName:    newLastName,
+			DateOfBirth: newDOB,
+		}
+
+		mocks.MockTokenService.EXPECT().VerifyJWTToken(
+			gomock.Any(),
+			testTokenValue,
+		).Return(
+			exampleClaims,
+			nil,
+		)
+		mocks.MockUserService.EXPECT().UpdateProfileDetails(
+			gomock.Any(),
+			exampleClaims.UserID,
+			gomock.Eq(updateRequest),
+		).Return(
+			user,
+			nil,
+		)
+		mocks.MockLogger.EXPECT().Info("Update user profile successful")
+
+		updateUserProfileResponse, err := mocks.AuthenticationServer.UpdateUserProfile(
+			mocks.Ctx,
+			updateRequest,
+		)
+
+		assert.NoError(test, err)
+		assert.Equal(test, user.ID.Hex(), updateUserProfileResponse.User.UserId)
+		assert.Equal(test, user.Email, updateUserProfileResponse.User.Email)
+		assert.Equal(test, newFirstName, updateUserProfileResponse.User.FirstName)
+		assert.Equal(test, newLastName, updateUserProfileResponse.User.LastName)
+		assert.Equal(test, newDOB, updateUserProfileResponse.User.DateOfBirth)
+	})
+
+	test.Run("UpdateUserProfile_Update_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		mockedError := errors.New("test-error")
+		testTokenValue := "token-value"
+		newFirstName := "John"
+		newLastName := "Doe"
+		newDOB := timestamppb.Now()
+		updateRequest := &pb_authentication.UpdateUserProfileRequest{
+			AuthToken:   testTokenValue,
+			FirstName:   newFirstName,
+			LastName:    newLastName,
+			DateOfBirth: newDOB,
+		}
+
+		mocks.MockTokenService.EXPECT().VerifyJWTToken(
+			gomock.Any(),
+			testTokenValue,
+		).Return(
+			exampleClaims,
+			nil,
+		)
+		mocks.MockUserService.EXPECT().UpdateProfileDetails(
+			gomock.Any(),
+			exampleClaims.UserID,
+			gomock.Eq(updateRequest),
+		).Return(
+			nil,
+			mockedError,
+		)
+
+		updateUserProfileResponse, err := mocks.AuthenticationServer.UpdateUserProfile(
+			mocks.Ctx,
+			updateRequest,
+		)
+
+		assert.Error(test, err)
+		assert.Nil(test, updateUserProfileResponse)
+		assert.EqualError(test, err, "rpc error: code = Internal desc = Internal server error")
+	})
 }

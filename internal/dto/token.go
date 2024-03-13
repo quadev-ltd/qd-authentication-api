@@ -6,6 +6,7 @@ import (
 	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
+// ConvertAuthTokensToResponse converts auth tokens to a response
 func ConvertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authentication.AuthenticateResponse {
 	return &pb_authentication.AuthenticateResponse{
 		AuthToken:          authTokens.AuthToken,

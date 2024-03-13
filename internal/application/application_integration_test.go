@@ -415,7 +415,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
 	})
 
-	t.Run("Authenticate_GetUserProfile_Success", func(t *testing.T) {
+	t.Run("Authenticate_UpdateAndGetUserProfile_Success", func(t *testing.T) {
 		envParams := setUpTestEnvironment(t)
 		defer envParams.Application.Close()
 		defer envParams.MockMongoServer.Stop()
@@ -482,6 +482,51 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, util.ConvertToTimestamp(foundUser.DateOfBirth).Seconds, profileResponse.User.DateOfBirth.Seconds)
 		assert.Equal(t, util.ConvertToTimestamp(foundUser.RegistrationDate).Nanos, profileResponse.User.RegistrationDate.Nanos)
 		assert.Equal(t, util.ConvertToTimestamp(foundUser.RegistrationDate).Seconds, profileResponse.User.RegistrationDate.Seconds)
+
+		newFirstName := "John"
+		newLastName := "Doe"
+		newDOB := timestamppb.Now()
+		updateProfileResponse, err := grpcClient.UpdateUserProfile(
+			ctxWithCorrelationID,
+			&pb_authentication.UpdateUserProfileRequest{
+				AuthToken:   authenticateResponse.AuthToken,
+				FirstName:   newFirstName,
+				LastName:    newLastName,
+				DateOfBirth: newDOB,
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.NoError(t, err)
+		assert.NotNil(t, authenticateResponse)
+		assert.Equal(t, foundUser.Email, updateProfileResponse.User.Email)
+		assert.Equal(t, foundUser.ID.Hex(), updateProfileResponse.User.UserId)
+		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), updateProfileResponse.User.AccountStatus)
+		assert.Equal(t, newFirstName, updateProfileResponse.User.FirstName)
+		assert.Equal(t, newLastName, updateProfileResponse.User.LastName)
+		// assert.Equal(t, newDOB.Nanos, updateProfileResponse.User.DateOfBirth.Nanos)
+		assert.Equal(t, newDOB.Seconds, updateProfileResponse.User.DateOfBirth.Seconds)
+
+		profileResponse, err = grpcClient.GetUserProfile(
+			ctxWithCorrelationID,
+			&pb_authentication.GetUserProfileRequest{
+				AuthToken: authenticateResponse.AuthToken,
+			},
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.NoError(t, err)
+		assert.NotNil(t, authenticateResponse)
+		assert.Equal(t, foundUser.Email, profileResponse.User.Email)
+		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserId)
+		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), profileResponse.User.AccountStatus)
+		assert.Equal(t, newFirstName, profileResponse.User.FirstName)
+		assert.Equal(t, newLastName, profileResponse.User.LastName)
+		// assert.Equal(t, newDOB.Nanos, profileResponse.User.DateOfBirth.Nanos)
+		assert.Equal(t, newDOB.Seconds, profileResponse.User.DateOfBirth.Seconds)
 	})
 
 	t.Run("Authenticate_Error", func(t *testing.T) {

@@ -143,6 +143,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.True(test, ok)
 		assert.NotNil(test, id)
 
+		user.ID = id
 		user.AccountStatus = model.AccountStatusUnverified
 
 		err = repo.UpdateStatus(context.Background(), user)
@@ -192,6 +193,7 @@ func TestMongoUserRepository(test *testing.T) {
 		newSalt := "new-salt"
 		user.PasswordHash = newHash
 		user.PasswordSalt = newSalt
+		user.ID = id
 
 		err = repo.UpdatePassword(context.Background(), user)
 		assert.NoError(test, err)
@@ -244,16 +246,18 @@ func TestMongoUserRepository(test *testing.T) {
 		user.DateOfBirth = newBirthDay
 		user.FirstName = newFirstName
 		user.LastName = newLastName
+		user.ID = id
 
-		err = repo.UpdateProfileDetails(context.Background(), user)
+		updatedUser, err := repo.UpdateProfileDetails(context.Background(), user)
+
 		assert.NoError(test, err)
 
 		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundUser)
-		assert.Equal(test, user.DateOfBirth.Unix(), newBirthDay.Unix())
-		assert.Equal(test, user.FirstName, newFirstName)
-		assert.Equal(test, user.LastName, newLastName)
+		assert.Equal(test, updatedUser.DateOfBirth.Unix(), newBirthDay.Unix())
+		assert.Equal(test, updatedUser.FirstName, newFirstName)
+		assert.Equal(test, updatedUser.LastName, newLastName)
 	})
 
 	test.Run("UpdateProfileDetails_User_Not_Found", func(test *testing.T) {
@@ -269,8 +273,10 @@ func TestMongoUserRepository(test *testing.T) {
 		user := model.NewUser()
 
 		// Test UpdatePassword
-		err = repo.UpdateProfileDetails(context.Background(), user)
+		updatedUser, err := repo.UpdateProfileDetails(context.Background(), user)
+
 		assert.Error(test, err)
+		assert.Nil(test, updatedUser)
 		assert.Equal(test, "No account was found", err.Error())
 	})
 }

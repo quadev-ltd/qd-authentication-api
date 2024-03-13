@@ -7,6 +7,7 @@ package mock
 import (
 	context "context"
 	model "qd-authentication-api/internal/model"
+	pb_authentication "qd-authentication-api/pb/gen/go/pb_authentication"
 	reflect "reflect"
 	time "time"
 
@@ -107,6 +108,21 @@ func (m *MockUserServicer) ResendEmailVerification(ctx context.Context, email, e
 func (mr *MockUserServicerMockRecorder) ResendEmailVerification(ctx, email, emailVerificationToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResendEmailVerification", reflect.TypeOf((*MockUserServicer)(nil).ResendEmailVerification), ctx, email, emailVerificationToken)
+}
+
+// UpdateProfileDetails mocks base method.
+func (m *MockUserServicer) UpdateProfileDetails(ctx context.Context, userID string, profileDetails *pb_authentication.UpdateUserProfileRequest) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateProfileDetails", ctx, userID, profileDetails)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateProfileDetails indicates an expected call of UpdateProfileDetails.
+func (mr *MockUserServicerMockRecorder) UpdateProfileDetails(ctx, userID, profileDetails interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProfileDetails", reflect.TypeOf((*MockUserServicer)(nil).UpdateProfileDetails), ctx, userID, profileDetails)
 }
 
 // VerifyEmail mocks base method.

@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
@@ -78,24 +79,13 @@ func (userRepository *UserRepository) GetByUserID(ctx context.Context, userID pr
 
 // UpdateStatus updates a user in the mongo database
 func (userRepository *UserRepository) UpdateStatus(ctx context.Context, user *model.User) error {
-	collection := userRepository.getCollection()
-	filter := bson.M{"email": user.Email}
 	update := bson.M{
 		"$set": bson.M{
 			"account_status": user.AccountStatus,
 		},
 	}
 
-	updateResult, resultError := collection.UpdateOne(ctx, filter, update)
-	if resultError != nil {
-		return fmt.Errorf("Error updating user status: %v", resultError)
-	}
-	if updateResult.MatchedCount == 0 {
-		return &repository.Error{
-			Message: "No account was found",
-		}
-	}
-	return nil
+	return userRepository.Update(ctx, user, update)
 }
 
 // UpdatePassword updates a user in the mongo database
@@ -110,7 +100,10 @@ func (userRepository *UserRepository) UpdatePassword(ctx context.Context, user *
 }
 
 // UpdateProfileDetails updates a user in the mongo database
-func (userRepository *UserRepository) UpdateProfileDetails(ctx context.Context, user *model.User) error {
+func (userRepository *UserRepository) UpdateProfileDetails(
+	ctx context.Context,
+	user *model.User,
+) (*model.User, error) {
 	update := bson.M{
 		"$set": bson.M{
 			"first_name":    user.FirstName,
@@ -118,13 +111,33 @@ func (userRepository *UserRepository) UpdateProfileDetails(ctx context.Context, 
 			"date_of_birth": user.DateOfBirth,
 		},
 	}
-	return userRepository.Update(ctx, user, update)
+	collection := userRepository.getCollection()
+	filter := bson.M{"_id": user.ID}
+
+	after := options.After
+	opts := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+	}
+
+	var updatedUser model.User
+	err := collection.FindOneAndUpdate(ctx, filter, update, &opts).
+		Decode(&updatedUser)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, &repository.Error{
+				Message: "No account was found",
+			}
+		}
+		return nil, fmt.Errorf("error updating user: %v", err)
+	}
+
+	return &updatedUser, nil
 }
 
 // Update updates a user in the mongo database
 func (userRepository *UserRepository) Update(ctx context.Context, user *model.User, dataUpdate primitive.M) error {
 	collection := userRepository.getCollection()
-	filter := bson.M{"email": user.Email}
+	filter := bson.M{"_id": user.ID}
 
 	updateResult, resultError := collection.UpdateOne(ctx, filter, dataUpdate)
 	if resultError != nil {
