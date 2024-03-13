@@ -16,17 +16,17 @@ type Servicer interface {
 
 // Service is the implementation of the service
 type Service struct {
-	authenticationService UserServicer
-	tokenService          TokenServicer
-	passwordService       PasswordServicer
-	repository            repository.Storer
+	userService     UserServicer
+	tokenService    TokenServicer
+	passwordService PasswordServicer
+	repository      repository.Storer
 }
 
 var _ Servicer = &Service{}
 
 // GetAuthenticationService Returns the authentication service
 func (service *Service) GetAuthenticationService() UserServicer {
-	return service.authenticationService
+	return service.userService
 }
 
 // GetTokenService Returns the token service

@@ -16,12 +16,12 @@ func TestService(test *testing.T) {
 		controller := gomock.NewController(test)
 		defer controller.Finish()
 
-		authenticationServiceMock := mock.NewMockUserServicer(controller)
+		userServiceMock := mock.NewMockUserServicer(controller)
 		repositoryMock := repositoryMock.NewMockRepositoryer(controller)
 
 		service := &Service{
-			authenticationService: authenticationServiceMock,
-			repository:            repositoryMock,
+			userService: userServiceMock,
+			repository:  repositoryMock,
 		}
 
 		repositoryMock.EXPECT().Close().Return(nil)
@@ -33,8 +33,8 @@ func TestService(test *testing.T) {
 
 	test.Run("Close_Client_Nil_Error", func(test *testing.T) {
 		service := &Service{
-			authenticationService: nil,
-			repository:            nil,
+			userService: nil,
+			repository:  nil,
 		}
 
 		err := service.Close()

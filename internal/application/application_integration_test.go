@@ -743,7 +743,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, refreshTokenResponse)
-		assert.Equal(t, "rpc error: code = Internal desc = Invalid or expired refresh token", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid or expired refresh token", err.Error())
 	})
 
 	t.Run("Refresh_Token_Success", func(t *testing.T) {
@@ -831,7 +831,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, refreshTokenResponse)
-		assert.EqualError(t, err, "rpc error: code = Internal desc = Invalid token type")
+		assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = Not a refresh token")
 	})
 
 	t.Run("Refresh_Token_Not_Listed_Error", func(t *testing.T) {
@@ -855,7 +855,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, refreshTokenResponse)
-		assert.Equal(t, "rpc error: code = Internal desc = Invalid or expired refresh token", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid or expired refresh token", err.Error())
 	})
 
 	t.Run("Forgot_Password_NotVerified_Error", func(t *testing.T) {

@@ -69,7 +69,7 @@ func (service *TokenService) generateVerificationToken(
 	tokenHash, _, err := util.GenerateHash(verificationToken, false)
 	if err != nil {
 		logger.Error(err, "Error hashing verification token")
-		return nil, &Error{Message: "Error hashing verification token"}
+		return nil, fmt.Errorf("Error hashing verification token")
 	}
 	verificationTokentExpiryDate := service.timeProvider.Now().Add(VerificationTokenExpiry)
 	emailVerificationToken := &model.Token{
@@ -105,7 +105,7 @@ func (service *TokenService) RemoveUsedToken(ctx context.Context, token *model.T
 	}
 	err = service.tokenRepository.Remove(ctx, token)
 	if err != nil {
-		logger.Error(err, "Error removing token")
+		logger.Error(err, "Error removing old token")
 		return &Error{Message: "Could not remove old token"}
 	}
 	return nil
