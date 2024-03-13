@@ -13,6 +13,7 @@ import (
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
 	"qd-authentication-api/internal/util"
+	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
 // UserServicer is the interface for the authentication service
@@ -22,6 +23,8 @@ type UserServicer interface {
 	VerifyEmail(ctx context.Context, userID, verificationToken string) error
 	Authenticate(ctx context.Context, email, password string) (*model.AuthTokensResponse, error)
 	RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error)
+	GetUserProfile(ctx context.Context, userID string) (*model.User, error)
+	UpdateProfileDetails(ctx context.Context, userID string, profileDetails *pb_authentication.UpdateUserProfileRequest) (*model.User, error)
 }
 
 // UserService is the implementation of the authentication service
@@ -225,4 +228,58 @@ func (service *UserService) RefreshToken(ctx context.Context, refreshTokenString
 	}
 
 	return service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID)
+}
+
+// GetUserProfile gets a user's profile
+func (service *UserService) GetUserProfile(ctx context.Context, userID string) (*model.User, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	userIDObj, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		logger.Error(err, "Could not convert user ID to ObjectID")
+		return nil, &Error{Message: "Invalid user ID"}
+	}
+	user, err := service.userRepository.GetByUserID(ctx, userIDObj)
+	if err != nil {
+		logger.Error(err, "Error getting user by ID")
+		return nil, fmt.Errorf("Error getting user by ID")
+	}
+	return user, nil
+}
+
+// UpdateProfileDetails updates a user's profile details
+func (service *UserService) UpdateProfileDetails(
+	ctx context.Context,
+	userID string,
+	profileDetails *pb_authentication.UpdateUserProfileRequest,
+) (*model.User, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		logger.Error(err, "Could not convert user ID to ObjectID")
+		return nil, &Error{Message: "Invalid user ID"}
+	}
+	updatedUser := &model.User{
+		ID:          ID,
+		FirstName:   profileDetails.FirstName,
+		LastName:    profileDetails.LastName,
+		DateOfBirth: profileDetails.DateOfBirth.AsTime(),
+	}
+	err = model.ValidatePartialUser(updatedUser, "FirstName", "LastName", "DateOfBirth")
+	if err != nil {
+		return nil, err
+
+	}
+
+	updatedUser, err = service.userRepository.UpdateProfileDetails(ctx, updatedUser)
+	if err != nil {
+		logger.Error(err, "Error getting user by ID")
+		return nil, fmt.Errorf("Error getting user by ID")
+	}
+	return updatedUser, nil
 }

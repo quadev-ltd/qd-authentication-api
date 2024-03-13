@@ -16,4 +16,5 @@ type UserRepositoryer interface {
 	GetByUserID(ctx context.Context, userID primitive.ObjectID) (*model.User, error)
 	UpdateStatus(ctx context.Context, user *model.User) error
 	UpdatePassword(ctx context.Context, user *model.User) error
+	UpdateProfileDetails(ctx context.Context, user *model.User) (*model.User, error)
 }

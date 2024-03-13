@@ -92,13 +92,13 @@ func (service *PasswordService) ResetPassword(ctx context.Context, userID, token
 	hashedPassword, salt, err := util.GenerateHash(password, true)
 	if err != nil {
 		logger.Error(err, "Error generating password hash")
-		return &Error{Message: "Error generating password hash"}
+		return fmt.Errorf("Error generating password hash")
 	}
 	user.PasswordHash = string(hashedPassword)
 	user.PasswordSalt = *salt
 	if err := service.userRepository.UpdatePassword(ctx, user); err != nil {
 		logger.Error(err, "Error updating user")
-		return &Error{Message: "Error updating user"}
+		return fmt.Errorf("Error updating user")
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -142,6 +143,7 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.True(test, ok)
 		assert.NotNil(test, id)
 
+		user.ID = id
 		user.AccountStatus = model.AccountStatusUnverified
 
 		err = repo.UpdateStatus(context.Background(), user)
@@ -191,6 +193,7 @@ func TestMongoUserRepository(test *testing.T) {
 		newSalt := "new-salt"
 		user.PasswordHash = newHash
 		user.PasswordSalt = newSalt
+		user.ID = id
 
 		err = repo.UpdatePassword(context.Background(), user)
 		assert.NoError(test, err)
@@ -216,6 +219,64 @@ func TestMongoUserRepository(test *testing.T) {
 		// Test UpdatePassword
 		err = repo.UpdatePassword(context.Background(), user)
 		assert.Error(test, err)
+		assert.Equal(test, "No account was found", err.Error())
+	})
+
+	// UpdateProfileDetails
+	test.Run("UpdateProfileDetails_Success", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+		repo := NewUserRepository(client)
+		user := model.NewUser()
+
+		insertedID, err := repo.InsertUser(context.Background(), user)
+		assert.NoError(test, err)
+
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
+
+		newBirthDay := time.Now()
+		newFirstName := "new-first-name"
+		newLastName := "new-last-name"
+		user.DateOfBirth = newBirthDay
+		user.FirstName = newFirstName
+		user.LastName = newLastName
+		user.ID = id
+
+		updatedUser, err := repo.UpdateProfileDetails(context.Background(), user)
+
+		assert.NoError(test, err)
+
+		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
+		assert.NoError(test, err)
+		assert.NotNil(test, foundUser)
+		assert.Equal(test, updatedUser.DateOfBirth.Unix(), newBirthDay.Unix())
+		assert.Equal(test, updatedUser.FirstName, newFirstName)
+		assert.Equal(test, updatedUser.LastName, newLastName)
+	})
+
+	test.Run("UpdateProfileDetails_User_Not_Found", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		repo := NewUserRepository(client)
+
+		user := model.NewUser()
+
+		// Test UpdatePassword
+		updatedUser, err := repo.UpdateProfileDetails(context.Background(), user)
+
+		assert.Error(test, err)
+		assert.Nil(test, updatedUser)
 		assert.Equal(test, "No account was found", err.Error())
 	})
 }

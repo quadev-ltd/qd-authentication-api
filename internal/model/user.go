@@ -15,15 +15,15 @@ type AccountStatus int
 // User is the model for the user
 type User struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty"`
-	Email            string             `validate:"required,email"`
-	PasswordHash     string             `validate:"required"`
-	PasswordSalt     string             `validate:"required"`
-	FirstName        string             `validate:"required,min=2,max=30"`
-	LastName         string             `validate:"required,min=2,max=30"`
-	DateOfBirth      time.Time          `validate:"required,not_future"`
-	RegistrationDate time.Time          `validate:"required"`
-	LastLoginDate    time.Time          `validate:"omitempty"`
-	AccountStatus    AccountStatus      `validate:"required"`
+	Email            string             `bson:"email" validate:"required,email"`
+	PasswordHash     string             `bson:"password_hash" validate:"required"`
+	PasswordSalt     string             `bson:"password_salt" validate:"required"`
+	FirstName        string             `bson:"first_name" validate:"required,min=2,max=30"`
+	LastName         string             `bson:"last_name" validate:"required,min=2,max=30"`
+	DateOfBirth      time.Time          `bson:"date_of_birth" validate:"required,not_future"`
+	RegistrationDate time.Time          `bson:"registration_date" validate:"required"`
+	LastLoginDate    time.Time          `bson:"last_login_date" validate:"omitempty"`
+	AccountStatus    AccountStatus      `bson:"account_status" validate:"required"`
 }
 
 // AccountStatus constants
@@ -45,6 +45,25 @@ func ValidateUser(user *User) error {
 		return !asTime.After(time.Now())
 	})
 	error := validate.Struct(user)
+	if error != nil {
+		return error
+	}
+	return nil
+}
+
+// ValidatePartialUser validates the user properties
+func ValidatePartialUser(user *User, fields ...string) error {
+	validate := validator.New()
+	// Registering a custom validation for date of birth
+	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
+		asTime, ok := fl.Field().Interface().(time.Time)
+		if !ok {
+			return false // it's not even a time.Time
+		}
+		// it's valid if the time is not after Now
+		return !asTime.After(time.Now())
+	})
+	error := validate.StructPartial(user, fields...)
 	if error != nil {
 		return error
 	}
