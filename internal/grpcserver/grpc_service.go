@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -170,6 +171,7 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
+
 	if !resendEmailVerificationLimiter.Allow() {
 		logger.Warn("Rate limit exceeded")
 		return &pb_authentication.BaseResponse{
@@ -178,13 +180,9 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	claims, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	claims, err := commonJWT.GetClaimsFromContext(ctx)
 	if err != nil {
-		if serviceErr, ok := err.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
-		}
-		logger.Error(err, "Failed to verify JWT token")
-		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
+		return nil, status.Errorf(codes.Internal, "Could not obtain token claims from context")
 	}
 	userID, err := primitive.ObjectIDFromHex(claims.UserID)
 	if err != nil {
@@ -264,12 +262,9 @@ func (service *AuthenticationServiceServer) RefreshToken(
 		return nil,
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	claims, err := service.tokenService.VerifyJWTToken(ctx, request.Token)
+	claims, err := commonJWT.GetClaimsFromContext(ctx)
 	if err != nil {
-		if serviceErr, ok := err.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
-		}
-		return nil, status.Errorf(codes.Internal, err.Error())
+		return nil, status.Errorf(codes.Internal, "Could not obtain token claims from context")
 	}
 	if claims.Type != commonToken.RefreshTokenType {
 		return nil, status.Errorf(codes.InvalidArgument, "Not a refresh token")
@@ -382,12 +377,9 @@ func (service *AuthenticationServiceServer) GetUserProfile(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	claims, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	claims, err := commonJWT.GetClaimsFromContext(ctx)
 	if err != nil {
-		if serviceErr, ok := err.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.Unauthenticated, serviceErr.Error())
-		}
-		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
+		return nil, status.Errorf(codes.Internal, "Could not obtain token claims from context")
 	}
 	user, err := service.userService.GetUserProfile(ctx, claims.UserID)
 	if err != nil {
@@ -413,12 +405,9 @@ func (service *AuthenticationServiceServer) UpdateUserProfile(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	claims, err := service.tokenService.VerifyJWTToken(ctx, request.AuthToken)
+	claims, err := commonJWT.GetClaimsFromContext(ctx)
 	if err != nil {
-		if serviceErr, ok := err.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.Unauthenticated, serviceErr.Error())
-		}
-		return nil, status.Errorf(codes.Unauthenticated, "Invalid JWT token")
+		return nil, status.Errorf(codes.Internal, "Could not obtain token claims from context")
 	}
 	updatedUser, err := service.userService.UpdateProfileDetails(ctx, claims.UserID, request)
 	if err != nil {

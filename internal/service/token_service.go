@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
@@ -19,11 +20,11 @@ import (
 // TokenServicer is the interface for the authentication service
 type TokenServicer interface {
 	GetPublicKey(ctx context.Context) (string, error)
-	GenerateJWTToken(ctx context.Context, claims *jwt.TokenClaims) (*string, error)
+	GenerateJWTToken(ctx context.Context, claims *commonJWT.TokenClaims) (*string, error)
 	GenerateJWTTokens(ctx context.Context, userEmail, userID string) (*model.AuthTokensResponse, error)
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
-	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*jwt.TokenClaims, error)
+	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*commonJWT.TokenClaims, error)
 	VerifyResetPasswordToken(ctx context.Context, userID, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error)
 	RemoveUsedToken(ctx context.Context, token *model.Token) error
@@ -128,7 +129,7 @@ func (service *TokenService) GetPublicKey(ctx context.Context) (string, error) {
 // GenerateJWTToken creates a jwt token
 func (service *TokenService) GenerateJWTToken(
 	ctx context.Context,
-	claims *jwt.TokenClaims,
+	claims *commonJWT.TokenClaims,
 ) (*string, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
@@ -152,7 +153,7 @@ func (service *TokenService) GenerateJWTTokens(
 ) (*model.AuthTokensResponse, error) {
 	// Access token creation
 	authenticationTokenExpiration := service.timeProvider.Now().Add(AuthenticationTokenDuration)
-	accessTokenClaims := &jwt.TokenClaims{
+	accessTokenClaims := &commonJWT.TokenClaims{
 		Email:  userEmail,
 		UserID: userID,
 		Type:   commonToken.AccessTokenType,
@@ -165,7 +166,7 @@ func (service *TokenService) GenerateJWTTokens(
 
 	// Refresh token creation
 	refreshTokenExpiration := service.timeProvider.Now().Add(RefreshTokenDuration)
-	refreshTokenClaims := &jwt.TokenClaims{
+	refreshTokenClaims := &commonJWT.TokenClaims{
 		Email:  userEmail,
 		UserID: userID,
 		Type:   commonToken.RefreshTokenType,
@@ -190,7 +191,7 @@ func (service *TokenService) GenerateJWTTokens(
 func (service *TokenService) VerifyJWTToken(
 	ctx context.Context,
 	tokenValue string,
-) (*jwt.TokenClaims, error) {
+) (*commonJWT.TokenClaims, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -198,9 +199,9 @@ func (service *TokenService) VerifyJWTToken(
 	// Verify the refresh token
 	token, err := service.jwtManager.VerifyToken(tokenValue)
 	if err != nil {
-		logger.Error(err, "Error verifying refresh token")
+		logger.Error(err, "Error verifying token")
 		return nil, &Error{
-			Message: "Invalid or expired refresh token",
+			Message: "Invalid or expired token",
 		}
 	}
 

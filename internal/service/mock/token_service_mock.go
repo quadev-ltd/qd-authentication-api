@@ -6,11 +6,11 @@ package mock
 
 import (
 	context "context"
-	jwt "qd-authentication-api/internal/jwt"
 	model "qd-authentication-api/internal/model"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	jwt "github.com/quadev-ltd/qd-common/pkg/jwt"
 	primitive "go.mongodb.org/mongo-driver/bson/primitive"
 )
 

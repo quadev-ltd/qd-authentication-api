@@ -1,6 +1,7 @@
 package grpcserver
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/quadev-ltd/qd-common/pkg/grpcserver"
@@ -54,8 +55,36 @@ func (grpcServerFactory *Factory) Create(
 		passwordService,
 	)
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(log.CreateLoggerInterceptor(logFactory)),
+		grpc.UnaryInterceptor(
+			chainUnaryInterceptors(
+				log.CreateLoggerInterceptor(logFactory),
+				AuthInterceptor(tokenService),
+			),
+		),
 	)
 	pb_authentication.RegisterAuthenticationServiceServer(grpcServer, authenticationServiceGRPCServer)
 	return grpcserver.NewGRPCService(grpcServer, grpcListener), nil
+}
+
+// chainUnaryInterceptors chains multiple unary interceptors into one.
+func chainUnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (resp interface{}, err error) {
+		// Build the interceptor chain
+		chain := handler
+		for i := len(interceptors) - 1; i >= 0; i-- {
+			interceptor := interceptors[i]
+			next := chain
+			chain = func(currentCtx context.Context, currentReq interface{}) (interface{}, error) {
+				return interceptor(currentCtx, currentReq, info, next)
+			}
+		}
+
+		// Execute the chain
+		return chain(ctx, req)
+	}
 }

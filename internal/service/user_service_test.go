@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
@@ -17,7 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	jwtPkg "qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
 	serviceMock "qd-authentication-api/internal/service/mock"
@@ -43,12 +43,12 @@ var (
 	testTokenValue          = "test-token-hash"
 	testTokenHashValue      = "test-token-hash"
 	newRefreshTokenValue    = "test_token_example"
-	accessTokenClaims       = &jwtPkg.TokenClaims{
+	accessTokenClaims       = &commonJWT.TokenClaims{
 		Email:  testEmail,
 		Type:   commonToken.AccessTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
-	refreshTokenClaims = &jwtPkg.TokenClaims{
+	refreshTokenClaims = &commonJWT.TokenClaims{
 		Email:  testEmail,
 		Type:   commonToken.RefreshTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),

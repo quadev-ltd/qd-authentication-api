@@ -8,13 +8,13 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/golang/mock/gomock"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	jwtPkg "qd-authentication-api/internal/jwt"
 	jwtManagerMock "qd-authentication-api/internal/jwt/mock"
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
@@ -54,13 +54,13 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 }
 
 func TestTokenService(test *testing.T) {
-	exampleAccessTokenClaims := &jwtPkg.TokenClaims{
+	exampleAccessTokenClaims := &commonJWT.TokenClaims{
 		Email:  testEmail,
 		Type:   commonToken.AccessTokenType,
 		Expiry: util.MockedTime.Add(AuthenticationTokenDuration),
 		UserID: userID.Hex(),
 	}
-	exampleRefreshTokenClaims := &jwtPkg.TokenClaims{
+	exampleRefreshTokenClaims := &commonJWT.TokenClaims{
 		Email:  testEmail,
 		Type:   commonToken.RefreshTokenType,
 		Expiry: util.MockedTime.Add(RefreshTokenDuration),
@@ -75,7 +75,7 @@ func TestTokenService(test *testing.T) {
 		token := "invalid-token"
 
 		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(nil, errExample)
-		mocks.MockLogger.EXPECT().Error(errExample, "Error verifying refresh token")
+		mocks.MockLogger.EXPECT().Error(errExample, "Error verifying token")
 
 		// Act
 		email, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
@@ -83,7 +83,7 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.Nil(test, email)
-		assert.Equal(test, "Invalid or expired refresh token", err.Error())
+		assert.Equal(test, "Invalid or expired token", err.Error())
 	})
 
 	test.Run("VerifyJWTToken_GetEmailFromToken_Error", func(test *testing.T) {
@@ -138,14 +138,14 @@ func TestTokenService(test *testing.T) {
 		errorExample := errors.New(errorMessage)
 
 		mocks.MockJWTManager.EXPECT().VerifyToken(gomock.Any()).Return(nil, errorExample)
-		mocks.MockLogger.EXPECT().Error(errorExample, "Error verifying refresh token")
+		mocks.MockLogger.EXPECT().Error(errorExample, "Error verifying token")
 
 		// Test RefreshToken
 		user, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, "Invalid or expired refresh token", err.Error())
+		assert.Equal(test, "Invalid or expired token", err.Error())
 		assert.Nil(test, user)
 	})
 
