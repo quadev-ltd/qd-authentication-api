@@ -3,27 +3,17 @@ package jwt
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/golang-jwt/jwt"
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
-	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 )
-
-// TokenClaims is the claims for a JWT token
-type TokenClaims struct {
-	Email  string
-	Type   commonToken.TokenType
-	Expiry time.Time
-	UserID string
-}
 
 // Managerer is an interface for JWTAuthenticator
 type Managerer interface {
 	GetPublicKey(ctx context.Context) (string, error)
-	SignToken(tokenClaims *TokenClaims) (*string, error)
+	SignToken(tokenClaims *commonJWT.TokenClaims) (*string, error)
 	VerifyToken(token string) (*jwt.Token, error)
-	GetClaimsFromToken(token *jwt.Token) (*TokenClaims, error)
+	GetClaimsFromToken(token *jwt.Token) (*commonJWT.TokenClaims, error)
 }
 
 // Manager is responsible for generating and verifying JWT tokens
@@ -67,7 +57,7 @@ func (authenticator *Manager) GetPublicKey(ctx context.Context) (string, error) 
 }
 
 // SignToken signs a JWT token
-func (authenticator *Manager) SignToken(tokenClaims *TokenClaims) (*string, error) {
+func (authenticator *Manager) SignToken(tokenClaims *commonJWT.TokenClaims) (*string, error) {
 	claims := []commonJWT.ClaimPair{
 		{Key: commonJWT.EmailClaim, Value: tokenClaims.Email},
 		{Key: commonJWT.TypeClaim, Value: tokenClaims.Type},
@@ -83,27 +73,6 @@ func (authenticator *Manager) VerifyToken(tokenString string) (*jwt.Token, error
 }
 
 // GetClaimsFromToken gets the email from a JWT token
-func (authenticator *Manager) GetClaimsFromToken(token *jwt.Token) (*TokenClaims, error) {
-	email, err := authenticator.tokenInspector.GetEmailFromToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting email from token: %v", err)
-	}
-	tokenType, err := authenticator.tokenInspector.GetTypeFromToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting type claim from token: %v", err)
-	}
-	expiry, err := authenticator.tokenInspector.GetExpiryFromToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting expiry claim from token: %v", err)
-	}
-	userID, err := authenticator.tokenInspector.GetUserIDFromToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting expiry claim from token: %v", err)
-	}
-	return &TokenClaims{
-		Email:  *email,
-		Type:   *tokenType,
-		Expiry: *expiry,
-		UserID: *userID,
-	}, nil
+func (authenticator *Manager) GetClaimsFromToken(token *jwt.Token) (*commonJWT.TokenClaims, error) {
+	return authenticator.tokenInspector.GetClaimsFromToken(token)
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
+	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 	commonUtil "github.com/quadev-ltd/qd-common/pkg/util"
@@ -202,42 +203,6 @@ func TestRegisterUserJourneys(t *testing.T) {
 		DateOfBirth: dateOfBirth,
 	}
 
-	// mongoServer := mock.SetUpMongoServer(t)
-	// defer mongoServer.Stop()
-
-	// var config config.Config
-	// config.Load("internal/config")
-	// config.AuthenticationDB.URI = mongoServer.URI()
-	// centralConfig := commonConfig.Config{
-	// 	TLSEnabled:                true,
-	// 	EmailVerificationEndpoint: "http://localhost:2222/",
-	// 	EmailService: commonConfig.Address{
-	// 		Host: "qd.email.api",
-	// 		Port: "1111",
-	// 	},
-	// 	AuthenticationService: commonConfig.Address{
-	// 		Host: "qd.authentication.api",
-	// 		Port: "3333",
-	// 	},
-	// }
-
-	// mockEmailServer, _ := startMockEmailServiceServer(t, fmt.Sprintf(
-	// 	"%s:%s",
-	// 	centralConfig.EmailService.Host,
-	// 	centralConfig.EmailService.Port),
-	// 	centralConfig.TLSEnabled,
-	// )
-	// defer mockEmailServer.Stop()
-
-	// application := NewApplication(&config, &centralConfig)
-	// go func() {
-	// 	t.Logf("Starting server on %s...\n", application.GetGRPCServerAddress())
-	// 	application.StartServer()
-	// }()
-	// defer application.Close()
-
-	// waitForServerUp(t, application, centralConfig.TLSEnabled)
-
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 		envParams := setUpTestEnvironment(t)
 		defer envParams.Application.Close()
@@ -260,6 +225,51 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NotNil(t, getPublicKeyResponse.PublicKey)
 		assert.Contains(t, getPublicKeyResponse.PublicKey, "BEGIN RSA PUBLIC KEY")
 		assert.Contains(t, getPublicKeyResponse.PublicKey, "END RSA PUBLIC KEY")
+	})
+
+	t.Run("UnauthenticatedRequestsError", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+
+		client := pb_authentication.NewAuthenticationServiceClient(connection)
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		_, err = client.RefreshToken(
+			ctxWithCorrelationID,
+			&pb_authentication.RefreshTokenRequest{},
+		)
+
+		assert.Error(t, err)
+		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Authorization token not provided")
+
+		_, err = client.ResendEmailVerification(
+			ctxWithCorrelationID,
+			&pb_authentication.ResendEmailVerificationRequest{},
+		)
+
+		assert.Error(t, err)
+		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Authorization token not provided")
+
+		_, err = client.GetUserProfile(
+			ctxWithCorrelationID,
+			&pb_authentication.GetUserProfileRequest{},
+		)
+
+		assert.Error(t, err)
+		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Authorization token not provided")
+
+		_, err = client.UpdateUserProfile(
+			ctxWithCorrelationID,
+			&pb_authentication.UpdateUserProfileRequest{},
+		)
+
+		assert.Error(t, err)
+		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Authorization token not provided")
 	})
 
 	t.Run("Register_Success", func(t *testing.T) {
@@ -431,6 +441,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
 		_, err = grpcClient.Register(
 			ctxWithCorrelationID,
 			registerRequest,
@@ -461,11 +472,11 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		authCtx := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authenticateResponse.AuthToken)
+
 		profileResponse, err := grpcClient.GetUserProfile(
-			ctxWithCorrelationID,
-			&pb_authentication.GetUserProfileRequest{
-				AuthToken: authenticateResponse.AuthToken,
-			},
+			authCtx,
+			&pb_authentication.GetUserProfileRequest{},
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -487,9 +498,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 		newLastName := "Doe"
 		newDOB := timestamppb.Now()
 		updateProfileResponse, err := grpcClient.UpdateUserProfile(
-			ctxWithCorrelationID,
+			authCtx,
 			&pb_authentication.UpdateUserProfileRequest{
-				AuthToken:   authenticateResponse.AuthToken,
 				FirstName:   newFirstName,
 				LastName:    newLastName,
 				DateOfBirth: newDOB,
@@ -509,10 +519,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, newDOB.Seconds, updateProfileResponse.User.DateOfBirth.Seconds)
 
 		profileResponse, err = grpcClient.GetUserProfile(
-			ctxWithCorrelationID,
-			&pb_authentication.GetUserProfileRequest{
-				AuthToken: authenticateResponse.AuthToken,
-			},
+			authCtx,
+			&pb_authentication.GetUserProfileRequest{},
 		)
 		if err != nil {
 			t.Fatal(err)
@@ -623,11 +631,11 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		authCtx := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authenticateResponse.AuthToken)
+
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
-			ctxWithCorrelationID,
-			&pb_authentication.ResendEmailVerificationRequest{
-				AuthToken: authenticateResponse.AuthToken,
-			},
+			authCtx,
+			&pb_authentication.ResendEmailVerificationRequest{},
 		)
 
 		assert.NoError(t, err)
@@ -647,18 +655,17 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 
 		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		ctxAuth := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, "jwtToken")
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
-			ctxWithCorrelationID,
-			&pb_authentication.ResendEmailVerificationRequest{
-				AuthToken: "jwtToken",
-			},
+			ctxAuth,
+			&pb_authentication.ResendEmailVerificationRequest{},
 		)
 
 		assert.Error(t, err)
 		assert.Nil(t, resendEamilVerificationResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid or expired refresh token", err.Error())
+		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid or expired token", err.Error())
 	})
 
 	t.Run("Verify_Email_Success", func(t *testing.T) {
@@ -733,17 +740,19 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ctx := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		ctxAuth := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, "wrong-token")
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		refreshTokenResponse, err := grpcClient.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
-			Token: "wrong-token",
-		})
+		refreshTokenResponse, err := grpcClient.RefreshToken(
+			ctxAuth,
+			&pb_authentication.RefreshTokenRequest{},
+		)
 
 		assert.Error(t, err)
 		assert.Nil(t, refreshTokenResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid or expired refresh token", err.Error())
+		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid or expired token", err.Error())
 	})
 
 	t.Run("Refresh_Token_Success", func(t *testing.T) {
@@ -777,11 +786,11 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		ctxAuth := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authenticateResponse.RefreshToken)
+
 		refreshTokenResponse, err := grpcClient.RefreshToken(
-			ctxWithCorrelationID,
-			&pb_authentication.RefreshTokenRequest{
-				Token: authenticateResponse.RefreshToken,
-			},
+			ctxAuth,
+			&pb_authentication.RefreshTokenRequest{},
 		)
 
 		assert.NoError(t, err)
@@ -822,40 +831,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		ctxAuth := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authenticateResponse.AuthToken)
 		refreshTokenResponse, err := grpcClient.RefreshToken(
-			ctxWithCorrelationID,
-			&pb_authentication.RefreshTokenRequest{
-				Token: authenticateResponse.AuthToken,
-			},
+			ctxAuth,
+			&pb_authentication.RefreshTokenRequest{},
 		)
 
 		assert.Error(t, err)
 		assert.Nil(t, refreshTokenResponse)
-		assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = Not a refresh token")
-	})
-
-	t.Run("Refresh_Token_Not_Listed_Error", func(t *testing.T) {
-		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
-		envParams := setUpTestEnvironment(t)
-		defer envParams.Application.Close()
-		defer envParams.MockMongoServer.Stop()
-		connection, err := commonTLS.CreateGRPCConnection(
-			envParams.Application.GetGRPCServerAddress(),
-			envParams.MockConfig.TLSEnabled,
-		)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
-
-		refreshTokenResponse, err := grpcClient.RefreshToken(ctxWithCorrelationID, &pb_authentication.RefreshTokenRequest{
-			Token: "some-token",
-		})
-
-		assert.Error(t, err)
-		assert.Nil(t, refreshTokenResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid or expired refresh token", err.Error())
+		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Not a refresh token")
 	})
 
 	t.Run("Forgot_Password_NotVerified_Error", func(t *testing.T) {

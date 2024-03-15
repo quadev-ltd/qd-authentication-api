@@ -6,11 +6,11 @@ package mock
 
 import (
 	context "context"
-	jwt0 "qd-authentication-api/internal/jwt"
 	reflect "reflect"
 
 	jwt "github.com/golang-jwt/jwt"
 	gomock "github.com/golang/mock/gomock"
+	jwt0 "github.com/quadev-ltd/qd-common/pkg/jwt"
 )
 
 // MockManagerer is a mock of Managerer interface.
