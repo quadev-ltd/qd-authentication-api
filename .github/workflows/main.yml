@@ -29,17 +29,6 @@ jobs:
       - name: Run Go Lint
         run: golint ./...
 
-      - name: Add proto files
-        run: |
-          git config --global --add safe.directory /__w/qd-authentication-api/qd-authentication-api
-          git submodule update --init --recursive
-
-      - name: Generate protobuf code
-        run: |
-          cd pb
-          buf generate
-          cd -
-
       - name: Add dertificates
         run: |
           cd certs
