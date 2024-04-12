@@ -5,7 +5,8 @@ import (
 
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/util"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
+
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // GetAccountStatusDescription returns the description of the account status

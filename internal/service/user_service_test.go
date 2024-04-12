@@ -21,7 +21,8 @@ import (
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
 	serviceMock "qd-authentication-api/internal/service/mock"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
+
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 const (
@@ -628,7 +629,7 @@ func TestAuthenticationService(test *testing.T) {
 		defer mocks.Controller.Finish()
 		user := model.NewUser()
 		profileDetails := &pb_authentication.UpdateUserProfileRequest{
-			FirstName:   "J",
+			FirstName:   "",
 			LastName:    user.LastName,
 			DateOfBirth: timestamppb.New(user.DateOfBirth),
 		}
@@ -643,7 +644,7 @@ func TestAuthenticationService(test *testing.T) {
 		// Assert
 		assert.Error(test, resultError)
 		assert.Nil(test, updateResponse)
-		assert.EqualError(test, resultError, "Key: 'User.FirstName' Error:Field validation for 'FirstName' failed on the 'min' tag")
+		assert.EqualError(test, resultError, "Key: 'User.FirstName' Error:Field validation for 'FirstName' failed on the 'required' tag")
 	})
 
 	test.Run("UpdateUserProfile_ValidateLastName_Error", func(test *testing.T) {

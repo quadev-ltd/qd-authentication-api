@@ -14,7 +14,7 @@ import (
 	servicePkg "qd-authentication-api/internal/service"
 )
 
-// Attach claims to context
+// NewContextWithClaims attach claims to context
 func NewContextWithClaims(ctx context.Context, claims *commonJWT.TokenClaims) context.Context {
 	return context.WithValue(ctx, commonJWT.ClaimsContextKey, claims)
 }

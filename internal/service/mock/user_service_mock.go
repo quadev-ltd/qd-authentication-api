@@ -7,7 +7,7 @@ package mock
 import (
 	context "context"
 	model "qd-authentication-api/internal/model"
-	pb_authentication "qd-authentication-api/pb/gen/go/pb_authentication"
+	pb_authentication "github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	reflect "reflect"
 	time "time"
 

@@ -10,9 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_email"
 	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
+	commonPB "github.com/quadev-ltd/qd-common/pkg/pb"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 	commonUtil "github.com/quadev-ltd/qd-common/pkg/util"
 	"github.com/rs/zerolog"
@@ -30,8 +33,6 @@ import (
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/mongo/mock"
 	"qd-authentication-api/internal/util"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
-	"qd-authentication-api/pb/gen/go/pb_email"
 )
 
 const wrongEmail = "wrong@email.com"
@@ -322,7 +323,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, registerResponse)
-		assert.Equal(t, err.Error(), "rpc error: code = InvalidArgument desc = Registration failed: email already in use")
+		assert.Equal(t, err.Error(), "rpc error: code = InvalidArgument desc = Registration failed")
+		fieldErrors, err := commonPB.GetFieldValidationErrors(err)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, fieldErrors[0].Field, "email")
+		assert.Equal(t, fieldErrors[0].Error, "already_used")
+
 	})
 
 	t.Run("Register_Failure_Send_Email_Error", func(t *testing.T) {

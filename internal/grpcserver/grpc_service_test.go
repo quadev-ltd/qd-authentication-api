@@ -3,14 +3,17 @@ package grpcserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
+	commonPB "github.com/quadev-ltd/qd-common/pkg/pb"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -21,7 +24,6 @@ import (
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/service"
 	"qd-authentication-api/internal/service/mock"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
 // TODO: use test suite table driven tests
@@ -95,7 +97,16 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		mockValidationError := validator.ValidationErrors{
 			&mock.CustomValidationError{
-				FieldName: "FieldName",
+				FieldName: "FieldName0",
+			},
+			&mock.CustomValidationError{
+				FieldName: "FieldName1",
+			},
+			&mock.CustomValidationError{
+				FieldName: "FieldName2",
+			},
+			&mock.CustomValidationError{
+				FieldName: "FieldName3",
 			},
 		}
 
@@ -104,9 +115,20 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Return(nil, mockValidationError)
 
 		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
-
-		assert.Equal(test, "rpc error: code = InvalidArgument desc = Registration failed: FieldName", returnedError.Error())
+		assert.Equal(test, "rpc error: code = InvalidArgument desc = Registration failed", returnedError.Error())
 		assert.Nil(test, response)
+
+		errorAmount := len(mockValidationError)
+		fieldErrors, err := commonPB.GetFieldValidationErrors(returnedError)
+		if err != nil {
+			test.Fatal(err)
+		}
+
+		assert.Len(test, fieldErrors, errorAmount)
+		for i := 0; i < errorAmount; i++ {
+			assert.Equal(test, fieldErrors[i].Field, fmt.Sprintf("FieldName%d", i))
+			assert.Equal(test, fieldErrors[i].Error, fmt.Sprintf("FieldName%d", i))
+		}
 	})
 
 	test.Run("Registration_Internal_Server_Error", func(test *testing.T) {
@@ -139,10 +161,49 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Equal(
 			test,
-			"rpc error: code = InvalidArgument desc = Registration failed: email already in use",
+			"rpc error: code = InvalidArgument desc = Registration failed",
 			returnedError.Error(),
 		)
 		assert.Nil(test, response)
+
+		fieldErrors, err := commonPB.GetFieldValidationErrors(returnedError)
+		if err != nil {
+			test.Fatal(err)
+		}
+		if err != nil {
+			test.Fatal(err)
+		}
+
+		assert.Equal(test, fieldErrors[0].Field, "email")
+		assert.Equal(test, fieldErrors[0].Error, "already_used")
+	})
+
+	test.Run("Registration_Error_PasswordComplexity", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		mockEmailInUseError := &service.NoComplexPasswordError{Message: "Password is not complex"}
+
+		mocks.MockUserService.EXPECT().
+			Register(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil, mockEmailInUseError)
+
+		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequest)
+
+		assert.Equal(
+			test,
+			"rpc error: code = InvalidArgument desc = Registration failed",
+			returnedError.Error(),
+		)
+		assert.Nil(test, response)
+
+		fieldErrors, err := commonPB.GetFieldValidationErrors(returnedError)
+		if err != nil {
+			test.Fatal(err)
+		}
+
+		assert.Equal(test, fieldErrors[0].Field, "password")
+		assert.Equal(test, fieldErrors[0].Error, "complex")
 	})
 
 	test.Run("Registration_Error_Date_Of_Birth_Not_Provided", func(test *testing.T) {

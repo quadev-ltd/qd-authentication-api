@@ -12,7 +12,8 @@ import (
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
 	"qd-authentication-api/internal/util"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
+
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // UserServicer is the interface for the authentication service

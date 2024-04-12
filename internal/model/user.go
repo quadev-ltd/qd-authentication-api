@@ -6,6 +6,7 @@ import (
 	"unicode"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -18,8 +19,8 @@ type User struct {
 	Email            string             `bson:"email" validate:"required,email"`
 	PasswordHash     string             `bson:"password_hash" validate:"required"`
 	PasswordSalt     string             `bson:"password_salt" validate:"required"`
-	FirstName        string             `bson:"first_name" validate:"required,min=2,max=30"`
-	LastName         string             `bson:"last_name" validate:"required,min=2,max=30"`
+	FirstName        string             `bson:"first_name" validate:"required,max=30"`
+	LastName         string             `bson:"last_name" validate:"required,max=30"`
 	DateOfBirth      time.Time          `bson:"date_of_birth" validate:"required,not_future"`
 	RegistrationDate time.Time          `bson:"registration_date" validate:"required"`
 	LastLoginDate    time.Time          `bson:"last_login_date" validate:"omitempty"`
@@ -54,13 +55,11 @@ func ValidateUser(user *User) error {
 // ValidatePartialUser validates the user properties
 func ValidatePartialUser(user *User, fields ...string) error {
 	validate := validator.New()
-	// Registering a custom validation for date of birth
 	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
 		asTime, ok := fl.Field().Interface().(time.Time)
 		if !ok {
-			return false // it's not even a time.Time
+			return false
 		}
-		// it's valid if the time is not after Now
 		return !asTime.After(time.Now())
 	})
 	error := validate.StructPartial(user, fields...)
@@ -68,6 +67,26 @@ func ValidatePartialUser(user *User, fields ...string) error {
 		return error
 	}
 	return nil
+}
+
+// ParseValidationError parses the validation error
+func ParseValidationError(validationError error) ([]*pb_errors.FieldError, error) {
+	if validationError != nil {
+		// Check if the errors are of type validator.ValidationErrors
+		if validationError, ok := validationError.(validator.ValidationErrors); ok {
+			var errors []*pb_errors.FieldError
+			for _, valErr := range validationError {
+				fieldError := &pb_errors.FieldError{
+					Field: valErr.Field(),
+					Error: valErr.Tag(),
+				}
+				errors = append(errors, fieldError)
+			}
+			return errors, nil
+		}
+		return nil, validationError
+	}
+	return nil, nil
 }
 
 // IsPasswordComplex checks if the password meets complexity requirements

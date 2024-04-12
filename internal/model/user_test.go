@@ -34,8 +34,8 @@ func TestValidateUser(t *testing.T) {
 	})
 	t.Run("Invalid_User_Names", func(t *testing.T) {
 		user := NewUser()
-		user.FirstName = "F"
-		user.LastName = "L"
+		user.FirstName = ""
+		user.LastName = ""
 		err := ValidateUser(user)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "FirstName")
