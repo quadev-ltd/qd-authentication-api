@@ -10,7 +10,8 @@ import (
 	"google.golang.org/grpc"
 
 	"qd-authentication-api/internal/service"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
+
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // Factoryer is the interfact for creating a gRPC server

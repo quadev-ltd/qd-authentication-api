@@ -6,10 +6,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
-
-	"qd-authentication-api/pb/gen/go/pb_authentication"
 )
 
 func main() {

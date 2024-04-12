@@ -8,7 +8,7 @@ import (
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 
-	"qd-authentication-api/pb/gen/go/pb_email"
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_email"
 )
 
 // EmailServiceConfig constains the configuration for the email service

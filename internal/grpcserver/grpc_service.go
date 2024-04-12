@@ -13,11 +13,15 @@ import (
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"qd-authentication-api/internal/dto"
 	"qd-authentication-api/internal/model"
 	servicePkg "qd-authentication-api/internal/service"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
+
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_errors"
+
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // AuthenticationServiceServer is the implementation of the authentication service
@@ -93,13 +97,41 @@ func (service *AuthenticationServiceServer) Register(
 		_, isValidationError := registerError.(validator.ValidationErrors)
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
 		_, isNoComplexPasswordError := registerError.(*servicePkg.NoComplexPasswordError)
-		if isValidationError || isNoComplexPasswordError {
-			err := status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
-			return nil, err
-		}
-		if isEmailInUseError {
-			err := status.Errorf(codes.InvalidArgument, "Registration failed: email already in use")
-			return nil, err
+		if isValidationError || isNoComplexPasswordError || isEmailInUseError {
+			fieldValidationErrors, err := model.ParseValidationError(registerError)
+			if err != nil {
+				status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
+			}
+			var fieldErrors []*pb_errors.FieldError = []*pb_errors.FieldError{}
+			if fieldValidationErrors != nil {
+				fieldErrors = append(fieldErrors, fieldValidationErrors...)
+			}
+			if isNoComplexPasswordError {
+				fieldErrors = append(fieldErrors, &pb_errors.FieldError{
+					Field: "password",
+					Error: "complex",
+				})
+			}
+			if isEmailInUseError {
+				fieldErrors = append(fieldErrors, &pb_errors.FieldError{
+					Field: "email",
+					Error: "already_used",
+				})
+			}
+
+			errStatus := status.New(codes.InvalidArgument, "Registration failed")
+			for _, fieldError := range fieldErrors {
+				genericDetail, err := anypb.New(fieldError)
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to marshal error details")
+				}
+				errStatus, err = errStatus.WithDetails(genericDetail)
+				if err != nil {
+					return nil, status.Errorf(codes.Internal, "failed to add error details")
+				}
+			}
+
+			return nil, errStatus.Err()
 		}
 		err := status.Errorf(codes.Internal, "Registration failed: internal server error")
 		return nil, err

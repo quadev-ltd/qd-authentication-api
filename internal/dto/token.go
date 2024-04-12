@@ -3,7 +3,8 @@ package dto
 import (
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/util"
-	"qd-authentication-api/pb/gen/go/pb_authentication"
+
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // ConvertAuthTokensToResponse converts auth tokens to a response
