@@ -53,7 +53,7 @@ func (mr *MockTokenRepositoryerMockRecorder) GetByToken(ctx, token interface{}) 
 }
 
 // GetByUserIDAndTokenType mocks base method.
-func (m *MockTokenRepositoryer) GetByUserIDAndTokenType(ctx context.Context, userID primitive.ObjectID, tokenType token.TokenType) (*model.Token, error) {
+func (m *MockTokenRepositoryer) GetByUserIDAndTokenType(ctx context.Context, userID primitive.ObjectID, tokenType token.Type) (*model.Token, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByUserIDAndTokenType", ctx, userID, tokenType)
 	ret0, _ := ret[0].(*model.Token)

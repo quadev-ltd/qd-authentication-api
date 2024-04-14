@@ -5,9 +5,8 @@ go 1.21.2
 require (
 	github.com/go-playground/validator/v10 v10.14.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/quadev-ltd/qd-common v0.0.43
+	github.com/quadev-ltd/qd-common v0.0.46
 	github.com/rs/zerolog v1.31.0
-	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/tryvium-travels/memongo v0.11.0
 	go.mongodb.org/mongo-driver v1.11.6
@@ -35,6 +34,7 @@ require (
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
+	github.com/spf13/viper v1.18.2 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect

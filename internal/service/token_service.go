@@ -56,7 +56,7 @@ func NewTokenService(
 func (service *TokenService) generateVerificationToken(
 	ctx context.Context,
 	userID primitive.ObjectID,
-	tokenType commonToken.TokenType,
+	tokenType commonToken.Type,
 ) (*string, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
@@ -220,7 +220,7 @@ func (service *TokenService) VerifyTokenValidity(
 	ctx context.Context,
 	userID,
 	tokenValue string,
-	tokenType commonToken.TokenType,
+	tokenType commonToken.Type,
 ) (*model.Token, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
