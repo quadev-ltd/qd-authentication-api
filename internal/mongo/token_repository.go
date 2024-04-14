@@ -51,7 +51,7 @@ func (tokenRepository *TokenRepository) GetByToken(ctx context.Context, token st
 func (tokenRepository *TokenRepository) GetByUserIDAndTokenType(
 	ctx context.Context,
 	userID primitive.ObjectID,
-	tokenType commonToken.TokenType,
+	tokenType commonToken.Type,
 ) (*model.Token, error) {
 	collection := tokenRepository.getCollection()
 

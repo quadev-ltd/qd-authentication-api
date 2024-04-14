@@ -1,12 +1,12 @@
 name: Go CI/CD
 
 on:
-  push:
+  pull_request:
     branches:
       - main
 
 jobs:
-  sanity-check:
+  build:
     name: Build and Test
     runs-on: ubuntu-20.04
     container: tavoargento/quadev-go-service:0.0.1  # Specify the Docker image
@@ -69,46 +69,3 @@ jobs:
 
       - name: Build
         run: go build cmd/main.go
-
-  build-and-push:
-    needs: sanity-check
-    runs-on: ubuntu-latest
-        
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::116203835544:role/Github-ECR-Docker
-          aws-region: eu-west-1
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Add dertificates
-        run: |
-          cd certs
-          echo "${{ secrets.CA_PEM }}" | base64 -d > ca.pem
-          echo "${{ secrets.QD_AUTHENTICATION_API_CRT }}" | base64 -d > qd.authentication.api.crt
-          echo "${{ secrets.QD_AUTHENTICATION_API_KEY }}" | base64 -d > qd.authentication.api.key
-          echo "${{ secrets.QD_EMAIL_API_CRT }}" | base64 -d > qd.email.api.crt
-          echo "${{ secrets.QD_EMAIL_API_KEY }}" | base64 -d > qd.email.api.key
-          cd -
-  
-      - name: Build, tag, and push docker image to Amazon ECR
-        env:
-          REGISTRY: 116203835544.dkr.ecr.eu-west-1.amazonaws.com
-          REPOSITORY: test.qd.authentication.api
-          IMAGE_TAG: 0.0.0
-        run: |
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
-          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-
-      - name: Cleanup
-        run: |
-          docker image prune -f

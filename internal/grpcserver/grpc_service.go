@@ -3,9 +3,12 @@ package grpcserver
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_errors"
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
@@ -18,10 +21,6 @@ import (
 	"qd-authentication-api/internal/dto"
 	"qd-authentication-api/internal/model"
 	servicePkg "qd-authentication-api/internal/service"
-
-	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_errors"
-
-	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // AuthenticationServiceServer is the implementation of the authentication service
@@ -87,7 +86,7 @@ func (service *AuthenticationServiceServer) Register(
 
 	createdUser, registerError := service.userService.Register(
 		ctx,
-		request.Email,
+		strings.ToLower(request.Email),
 		request.Password,
 		request.FirstName,
 		request.LastName,
@@ -250,7 +249,7 @@ func (service *AuthenticationServiceServer) Authenticate(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	user, err := service.userService.Authenticate(ctx, request.Email, request.Password)
+	user, err := service.userService.Authenticate(ctx, strings.ToLower(request.Email), request.Password)
 	if err != nil {
 		err = handleAuthenticationError(err, logger)
 		return nil, err
@@ -332,7 +331,7 @@ func (service *AuthenticationServiceServer) ForgotPassword(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	error := service.passwordService.ForgotPassword(ctx, request.Email)
+	error := service.passwordService.ForgotPassword(ctx, strings.ToLower(request.Email))
 	if error != nil {
 		if serviceErr, ok := error.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
