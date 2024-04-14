@@ -94,12 +94,15 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Add certificates
+      - name: Add dertificates
         run: |
-          mkdir certs
           cd certs
           echo "${{ secrets.CA_PEM }}" | base64 -d > ca.pem
-          cd -  
+          echo "${{ secrets.QD_AUTHENTICATION_API_CRT }}" | base64 -d > qd.authentication.api.crt
+          echo "${{ secrets.QD_AUTHENTICATION_API_KEY }}" | base64 -d > qd.authentication.api.key
+          echo "${{ secrets.QD_EMAIL_API_CRT }}" | base64 -d > qd.email.api.crt
+          echo "${{ secrets.QD_EMAIL_API_KEY }}" | base64 -d > qd.email.api.key
+          cd -
   
       - name: Build, tag, and push docker image to Amazon ECR
         env:
