@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 	"unicode"
 
@@ -16,7 +17,7 @@ type AccountStatus int
 // User is the model for the user
 type User struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty"`
-	Email            string             `bson:"email" validate:"required,email"`
+	Email            string             `bson:"email" validate:"required,email,lowercase"`
 	PasswordHash     string             `bson:"password_hash" validate:"required"`
 	PasswordSalt     string             `bson:"password_salt" validate:"required"`
 	FirstName        string             `bson:"first_name" validate:"required,max=30"`
@@ -33,18 +34,24 @@ const (
 	AccountStatusVerified   AccountStatus = 2
 )
 
-// ValidateUser validates the userproperties
-func ValidateUser(user *User) error {
+func getValidator() *validator.Validate {
 	validate := validator.New()
-	// Registering a custom validation for date of birth
 	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
 		asTime, ok := fl.Field().Interface().(time.Time)
 		if !ok {
-			return false // it's not even a time.Time
+			return false
 		}
-		// it's valid if the time is not after Now
 		return !asTime.After(time.Now())
 	})
+	validate.RegisterValidation("lowercase", func(fl validator.FieldLevel) bool {
+		return strings.ToLower(fl.Field().String()) == fl.Field().String()
+	})
+	return validate
+}
+
+// ValidateUser validates the userproperties
+func ValidateUser(user *User) error {
+	validate := getValidator()
 	error := validate.Struct(user)
 	if error != nil {
 		return error
@@ -54,14 +61,8 @@ func ValidateUser(user *User) error {
 
 // ValidatePartialUser validates the user properties
 func ValidatePartialUser(user *User, fields ...string) error {
-	validate := validator.New()
-	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
-		asTime, ok := fl.Field().Interface().(time.Time)
-		if !ok {
-			return false
-		}
-		return !asTime.After(time.Now())
-	})
+	validate := getValidator()
+
 	error := validate.StructPartial(user, fields...)
 	if error != nil {
 		return error

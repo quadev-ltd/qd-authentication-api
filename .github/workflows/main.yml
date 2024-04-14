@@ -1,13 +1,9 @@
 name: Go CI/CD
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-# on:
-#   push:
-#     branches:
-#       - main
 
 jobs:
   sanity-check:
