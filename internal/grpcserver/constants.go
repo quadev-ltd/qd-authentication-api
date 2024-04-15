@@ -20,6 +20,7 @@ var PublicMethods = map[string]string{
 	GetPublicKeyMethod:             "/pb_authentication.AuthenticationService/GetPublicKey",
 	RegisterMethod:                 "/pb_authentication.AuthenticationService/Register",
 	VerifyEmailMethod:              "/pb_authentication.AuthenticationService/VerifyEmail",
+	ResendEmailVerificationMethod:  "/pb_authentication.AuthenticationService/ResendEmailVerification",
 	AuthenticateMethod:             "/pb_authentication.AuthenticationService/Authenticate",
 	ForgotPasswordMethod:           "/pb_authentication.AuthenticationService/ForgotPassword",
 	ResetPasswordMethod:            "/pb_authentication.AuthenticationService/ResetPassword",
@@ -37,8 +38,7 @@ func PublicMethodsArray() []string {
 
 // AuthenticatedMethods are GRPC authenticated method routes
 var AuthenticatedMethods = map[string]string{
-	RefreshTokenMethod:            "/pb_authentication.AuthenticationService/RefreshToken",
-	ResendEmailVerificationMethod: "/pb_authentication.AuthenticationService/ResendEmailVerification",
-	GetUserProfileMethod:          "/pb_authentication.AuthenticationService/GetUserProfile",
-	UpdateUserProfileMethod:       "/pb_authentication.AuthenticationService/UpdateUserProfile",
+	RefreshTokenMethod:      "/pb_authentication.AuthenticationService/RefreshToken",
+	GetUserProfileMethod:    "/pb_authentication.AuthenticationService/GetUserProfile",
+	UpdateUserProfileMethod: "/pb_authentication.AuthenticationService/UpdateUserProfile",
 }
