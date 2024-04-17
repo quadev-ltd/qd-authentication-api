@@ -248,14 +248,6 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Error(t, err)
 		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Authorization token not provided")
 
-		_, err = client.ResendEmailVerification(
-			ctxWithCorrelationID,
-			&pb_authentication.ResendEmailVerificationRequest{},
-		)
-
-		assert.Error(t, err)
-		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Authorization token not provided")
-
 		_, err = client.GetUserProfile(
 			ctxWithCorrelationID,
 			&pb_authentication.GetUserProfileRequest{},
@@ -293,6 +285,10 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, registerResponse.Success, true)
 		assert.Equal(t, registerResponse.Message, "Registration successful")
+		assert.NotNil(t, registerResponse.User.UserId)
+		assert.Equal(t, registerResponse.User.Email, registerRequest.Email)
+		assert.Equal(t, registerResponse.User.FirstName, registerRequest.FirstName)
+		assert.Equal(t, registerResponse.User.LastName, registerRequest.LastName)
 	})
 
 	t.Run("Register_Failure_Already_Existing_User", func(t *testing.T) {
@@ -643,7 +639,9 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
 			authCtx,
-			&pb_authentication.ResendEmailVerificationRequest{},
+			&pb_authentication.ResendEmailVerificationRequest{
+				UserId: authenticateResponse.UserId,
+			},
 		)
 
 		assert.NoError(t, err)
@@ -652,7 +650,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, resendEamilVerificationResponse.Message, "Email verification sent successfully")
 	})
 
-	t.Run("ResendVerificationEmail_JWT_Error", func(t *testing.T) {
+	t.Run("ResendVerificationEmail_UserID_Error", func(t *testing.T) {
 		envParams := setUpTestEnvironment(t)
 		defer envParams.Application.Close()
 		defer envParams.MockMongoServer.Stop()
@@ -673,7 +671,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, resendEamilVerificationResponse)
-		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid or expired token", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid user ID", err.Error())
 	})
 
 	t.Run("Verify_Email_Success", func(t *testing.T) {
@@ -731,8 +729,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotNil(t, verifyEmailResponse)
-		assert.Equal(t, verifyEmailResponse.Message, "Email verified successfully")
-		assert.Equal(t, verifyEmailResponse.Success, true)
+		assert.NotNil(t, verifyEmailResponse.AuthToken)
+		assert.NotNil(t, verifyEmailResponse.RefreshToken)
 	})
 
 	t.Run("Refresh_Token_Error", func(t *testing.T) {

@@ -100,6 +100,12 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/quadev-ltd/qd-common v0.0.46 h1:wt536HqAtWRW3Etgr6iPbIUgUx/XHV5LwtKZ1mMqBA4=
 github.com/quadev-ltd/qd-common v0.0.46/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
+github.com/quadev-ltd/qd-common v0.0.47 h1:I1Jd2KBoL6hXRL+Il3VkQlY7CS7qNLOQAo61W2Wjxqs=
+github.com/quadev-ltd/qd-common v0.0.47/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
+github.com/quadev-ltd/qd-common v0.0.48 h1:xDEWLLzVe3ediqxNiIDTQ3oLAJwoR/DS0IkiJgssSnI=
+github.com/quadev-ltd/qd-common v0.0.48/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
+github.com/quadev-ltd/qd-common v0.0.49 h1:xJg+mpQ3OgqieLiY8jKFImMS21zUo9GWwFM7nTYTNA4=
+github.com/quadev-ltd/qd-common v0.0.49/go.mod h1:sunwGB8LaO/71HhiqVdtukaDux0mDxyxrAJE0CeY7Oc=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rs/xid v1.5.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=

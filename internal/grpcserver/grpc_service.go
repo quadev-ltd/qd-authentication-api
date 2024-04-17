@@ -12,7 +12,6 @@ import (
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -70,7 +69,7 @@ func (service *AuthenticationServiceServer) GetPublicKey(
 func (service *AuthenticationServiceServer) Register(
 	ctx context.Context,
 	request *pb_authentication.RegisterRequest,
-) (*pb_authentication.BaseResponse, error) {
+) (*pb_authentication.RegisterResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -143,14 +142,16 @@ func (service *AuthenticationServiceServer) Register(
 
 	if err != nil {
 		logger.Info("Registration successful")
-		return &pb_authentication.BaseResponse{
+		return &pb_authentication.RegisterResponse{
+			User:    dto.ConvertUserToUserDTO(createdUser),
 			Success: true,
 			Message: "Registration successful. However, verification email failed to send",
 		}, nil
 	}
 
 	logger.Info("Registration successful")
-	return &pb_authentication.BaseResponse{
+	return &pb_authentication.RegisterResponse{
+		User:    dto.ConvertUserToUserDTO(createdUser),
 		Success: true,
 		Message: "Registration successful",
 	}, nil
@@ -160,7 +161,7 @@ func (service *AuthenticationServiceServer) Register(
 func (service *AuthenticationServiceServer) VerifyEmail(
 	ctx context.Context,
 	request *pb_authentication.VerifyEmailRequest,
-) (*pb_authentication.BaseResponse, error) {
+) (*pb_authentication.AuthenticateResponse, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
@@ -183,12 +184,24 @@ func (service *AuthenticationServiceServer) VerifyEmail(
 	}
 
 	service.tokenService.RemoveUsedToken(ctx, token)
+	user, err := service.userService.GetUserProfile(ctx, request.UserId)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Internal server error")
+	}
+	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Error generating authentication tokens")
+	}
+	authenticateResponse := *dto.ConvertAuthTokensToResponse(jwtTokens)
 
 	logger.Info("Email verified successfully")
-	return &pb_authentication.BaseResponse{
-		Success: true,
-		Message: "Email verified successfully",
-	}, nil
+	return &authenticateResponse, nil
 }
 
 var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 7)
@@ -211,21 +224,22 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	claims, err := commonJWT.GetClaimsFromContext(ctx)
+	user, err := service.userService.GetUserProfile(ctx, request.UserId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Could not obtain token claims from context")
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Error while getting user details")
 	}
-	userID, err := primitive.ObjectIDFromHex(claims.UserID)
-	if err != nil {
-		logger.Error(err, "Failed to convert user ID to object ID")
-		return nil, status.Errorf(codes.InvalidArgument, "Invalid token")
+	if user.AccountStatus == model.AccountStatusVerified {
+		return nil, status.Errorf(codes.InvalidArgument, "Email already verified")
 	}
-	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, userID)
+	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, user.ID)
 	if err != nil {
 		logger.Error(err, "Failed to generate email verification token")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
-	err = service.userService.ResendEmailVerification(ctx, claims.Email, *emailVerificationToken)
+	err = service.userService.ResendEmailVerification(ctx, user.Email, *emailVerificationToken)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())

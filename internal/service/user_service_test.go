@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	loggerMock "github.com/quadev-ltd/qd-common/pkg/log/mock"
@@ -21,8 +22,6 @@ import (
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
 	serviceMock "qd-authentication-api/internal/service/mock"
-
-	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 const (
@@ -87,7 +86,7 @@ func createUserService(test *testing.T) *AuthServiceMockedParams {
 	}
 }
 
-func TestAuthenticationService(test *testing.T) {
+func TestUserService(test *testing.T) {
 	// Register
 	test.Run("Register_Success", func(test *testing.T) {
 		// Arrange
