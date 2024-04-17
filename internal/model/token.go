@@ -15,7 +15,7 @@ type Token struct {
 	ExpiresAt time.Time          `bson:"expires_at"`
 	Revoked   bool               `bson:"revoked"`
 	Type      commonToken.Type   `bson:"type"`
-	UserID    primitive.ObjectID `bson:"user_id"` // Reference to User
+	UserID    primitive.ObjectID `bson:"userID"` // Reference to User
 }
 
 // ValidateToken validates the userproperties
