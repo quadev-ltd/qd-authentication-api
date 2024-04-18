@@ -285,7 +285,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, registerResponse.Success, true)
 		assert.Equal(t, registerResponse.Message, "Registration successful")
-		assert.NotNil(t, registerResponse.User.UserId)
+		assert.NotNil(t, registerResponse.User.UserID)
 		assert.Equal(t, registerResponse.User.Email, registerRequest.Email)
 		assert.Equal(t, registerResponse.User.FirstName, registerRequest.FirstName)
 		assert.Equal(t, registerResponse.User.LastName, registerRequest.LastName)
@@ -371,12 +371,12 @@ func TestRegisterUserJourneys(t *testing.T) {
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
-				UserId:            primitive.NewObjectID().Hex(),
+				UserID:            primitive.NewObjectID().Hex(),
 			})
 
 		assert.Error(t, err)
 		assert.Nil(t, verifyEmailResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid token", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = invalid_token", err.Error())
 	})
 
 	t.Run("Authenticate_Success", func(t *testing.T) {
@@ -489,7 +489,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.Equal(t, foundUser.Email, profileResponse.User.Email)
-		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserId)
+		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserID)
 		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), profileResponse.User.AccountStatus)
 		assert.Equal(t, foundUser.FirstName, profileResponse.User.FirstName)
 		assert.Equal(t, foundUser.LastName, profileResponse.User.LastName)
@@ -515,7 +515,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.Equal(t, foundUser.Email, updateProfileResponse.User.Email)
-		assert.Equal(t, foundUser.ID.Hex(), updateProfileResponse.User.UserId)
+		assert.Equal(t, foundUser.ID.Hex(), updateProfileResponse.User.UserID)
 		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), updateProfileResponse.User.AccountStatus)
 		assert.Equal(t, newFirstName, updateProfileResponse.User.FirstName)
 		assert.Equal(t, newLastName, updateProfileResponse.User.LastName)
@@ -533,7 +533,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.Equal(t, foundUser.Email, profileResponse.User.Email)
-		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserId)
+		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserID)
 		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), profileResponse.User.AccountStatus)
 		assert.Equal(t, newFirstName, profileResponse.User.FirstName)
 		assert.Equal(t, newLastName, profileResponse.User.LastName)
@@ -640,7 +640,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
 			authCtx,
 			&pb_authentication.ResendEmailVerificationRequest{
-				UserId: authenticateResponse.UserId,
+				UserID: authenticateResponse.UserID,
 			},
 		)
 
@@ -671,7 +671,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, resendEamilVerificationResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid user ID", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = invalid_user_id", err.Error())
 	})
 
 	t.Run("Verify_Email_Success", func(t *testing.T) {
@@ -723,7 +723,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		verifyEmailResponse, err := grpcClient.VerifyEmail(
 			ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
 				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
-				UserId:            foundToken.UserID.Hex(),
+				UserID:            foundToken.UserID.Hex(),
 			},
 		)
 
@@ -938,7 +938,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
-				UserId:            foundUser.ID.Hex(),
+				UserID:            foundUser.ID.Hex(),
 			},
 		)
 		if err != nil {
@@ -959,7 +959,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		}
 
 		verifyPasswordResetTokenResponse, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
-			UserId: foundToken.UserID.Hex(),
+			UserID: foundToken.UserID.Hex(),
 			Token:  mockEmailService.LastCapturedPasswordResetToken,
 		})
 
@@ -970,7 +970,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		newPassword := "NewPassword@000!"
 		resetPasswordResponse, err := grpcClient.ResetPassword(ctxWithCorrelationID, &pb_authentication.ResetPasswordRequest{
-			UserId:      foundToken.UserID.Hex(),
+			UserID:      foundToken.UserID.Hex(),
 			Token:       mockEmailService.LastCapturedPasswordResetToken,
 			NewPassword: newPassword,
 		})

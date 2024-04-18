@@ -215,6 +215,7 @@ func (service *TokenService) VerifyJWTToken(
 	return claims, nil
 }
 
+// TODO: take out token type check to the caller function
 // VerifyTokenValidity verifies a email verification or password reset token validity
 func (service *TokenService) VerifyTokenValidity(
 	ctx context.Context,
@@ -229,7 +230,7 @@ func (service *TokenService) VerifyTokenValidity(
 	userIDObject, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		logger.Error(err, "Error converting user id to object id")
-		return nil, &Error{Message: "Invalid user id"}
+		return nil, &Error{Message: InvalidUserIDError}
 	}
 	token, err := service.tokenRepository.GetByUserIDAndTokenType(
 		ctx,
@@ -238,17 +239,17 @@ func (service *TokenService) VerifyTokenValidity(
 	)
 	if err != nil {
 		logger.Error(err, "Error getting token by user id and type")
-		return nil, &Error{Message: "Invalid token"}
+		return nil, &Error{Message: InvalidTokenError}
 	}
 	resultError := bcrypt.CompareHashAndPassword([]byte(token.TokenHash), []byte(tokenValue))
 	if resultError != nil {
 		logger.Error(err, "Invalid verification token")
-		return nil, &Error{Message: "Invalid token"}
+		return nil, &Error{Message: InvalidTokenError}
 	}
 	current := service.timeProvider.Now()
 	timeDifference := current.Sub(token.ExpiresAt)
 	if timeDifference >= 0 {
-		return nil, &Error{Message: "Token expired"}
+		return nil, &Error{Message: TokenExpiredError}
 	}
 	return token, nil
 }

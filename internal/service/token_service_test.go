@@ -244,7 +244,7 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Nil(test, token)
 		assert.Error(test, err)
-		assert.Equal(test, "Token expired", err.Error())
+		assert.Equal(test, "token_expired", err.Error())
 	})
 
 	test.Run("VerifyResetPasswordToken_MissingToken_Error", func(test *testing.T) {
@@ -271,7 +271,7 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.Nil(test, token)
 		assert.Error(test, err)
-		assert.Equal(test, "Invalid token", err.Error())
+		assert.Equal(test, "invalid_token", err.Error())
 	})
 
 	// GenerateEmailVerificationToken
@@ -388,7 +388,7 @@ func TestTokenService(test *testing.T) {
 		assert.Nil(test, token)
 		assert.Error(test, err)
 		assert.IsType(test, &Error{}, err)
-		assert.Contains(test, err.Error(), "Token expired")
+		assert.Contains(test, err.Error(), "token_expired")
 	})
 
 	test.Run("VerifyEmailVerificationToken_WrongUserID_Error", func(test *testing.T) {
@@ -407,7 +407,7 @@ func TestTokenService(test *testing.T) {
 		assert.Nil(test, token)
 		assert.Error(test, err)
 		assert.IsType(test, &Error{}, err)
-		assert.EqualError(test, err, "Invalid user id")
+		assert.EqualError(test, err, "invalid_user_id")
 	})
 
 	test.Run("VerifyEmailVerificationToken_Value_Error", func(test *testing.T) {
@@ -431,7 +431,7 @@ func TestTokenService(test *testing.T) {
 		assert.Nil(test, token)
 		assert.Error(test, err)
 		assert.IsType(test, &Error{}, err)
-		assert.Contains(test, err.Error(), "Invalid token")
+		assert.Contains(test, err.Error(), "invalid_token")
 	})
 
 	// GenerateJWTToken

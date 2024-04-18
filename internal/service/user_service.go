@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -12,16 +13,14 @@ import (
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
 	"qd-authentication-api/internal/util"
-
-	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // UserServicer is the interface for the authentication service
 type UserServicer interface {
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) (*model.User, error)
 	SendEmailVerification(ctx context.Context, user *model.User, emailVerificationToken string) error
-	ResendEmailVerification(ctx context.Context, email, emailVerificationToken string) error
-	VerifyEmail(ctx context.Context, token *model.Token) error
+	ResendEmailVerification(ctx context.Context, email *model.User, emailVerificationToken string) error
+	VerifyEmail(ctx context.Context, token *model.Token) (*string, error)
 	Authenticate(ctx context.Context, email, password string) (*model.User, error)
 	GetUserProfile(ctx context.Context, userID string) (*model.User, error)
 	UpdateProfileDetails(ctx context.Context, userID string, profileDetails *pb_authentication.UpdateUserProfileRequest) (*model.User, error)
@@ -133,23 +132,11 @@ func (service *UserService) SendEmailVerification(
 // ResendEmailVerification resends a verification email
 func (service *UserService) ResendEmailVerification(
 	ctx context.Context,
-	email,
+	user *model.User,
 	emailVerificationToken string,
 ) error {
-	logger, err := log.GetLoggerFromContext(ctx)
-	if err != nil {
-		return err
-	}
-	user, err := service.userRepository.GetByEmail(ctx, email)
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("Error getting user by email: %v", email))
-		return fmt.Errorf("Error searching user by email")
-	}
-	if user == nil {
-		return &Error{Message: "Invalid email"}
-	}
 	if user.AccountStatus == model.AccountStatusVerified {
-		return &Error{Message: "Email already verified"}
+		return &Error{Message: EmailVerifiedError}
 	}
 
 	if err := service.emailService.SendVerificationMail(
@@ -166,27 +153,27 @@ func (service *UserService) ResendEmailVerification(
 }
 
 // VerifyEmail verifies a user's email
-func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token) error {
+func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token) (*string, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
 	if err != nil {
 		logger.Error(err, "Error getting user by ID")
-		return &Error{Message: "Invalid verification token"}
+		return nil, &Error{Message: InvalidTokenError}
 	}
 	if user.AccountStatus == model.AccountStatusVerified {
-		return &Error{Message: "Email already verified"}
+		return nil, &Error{Message: EmailVerifiedError}
 	}
 
 	user.AccountStatus = model.AccountStatusVerified
 
 	if err := service.userRepository.UpdateStatus(ctx, user); err != nil {
 		logger.Error(err, "Error updating user status")
-		return fmt.Errorf("Error updating user status")
+		return nil, fmt.Errorf("Error updating user status")
 	}
-	return nil
+	return &user.Email, nil
 }
 
 // Authenticate authenticates a user and provides a token
@@ -223,8 +210,8 @@ func (service *UserService) GetUserProfile(ctx context.Context, userID string) (
 	}
 	userIDObj, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		logger.Error(err, "Could not convert user ID to ObjectID")
-		return nil, &Error{Message: "Invalid user ID"}
+		logger.Error(err, fmt.Sprintf("Could not convert user ID %s to ObjectID", userID))
+		return nil, &Error{Message: InvalidUserIDError}
 	}
 	user, err := service.userRepository.GetByUserID(ctx, userIDObj)
 	if err != nil {
@@ -246,7 +233,7 @@ func (service *UserService) UpdateProfileDetails(
 	}
 	ID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
-		logger.Error(err, "Could not convert user ID to ObjectID")
+		logger.Error(err, fmt.Sprintf("Could not convert user ID %s to ObjectID", userID))
 		return nil, &Error{Message: "Invalid user ID"}
 	}
 	updatedUser := &model.User{

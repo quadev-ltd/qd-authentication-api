@@ -7,11 +7,11 @@ package mock
 import (
 	context "context"
 	model "qd-authentication-api/internal/model"
-	pb_authentication "github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	reflect "reflect"
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
+	pb_authentication "github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // MockUserServicer is a mock of UserServicer interface.
@@ -67,21 +67,6 @@ func (mr *MockUserServicerMockRecorder) GetUserProfile(ctx, userID interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserProfile", reflect.TypeOf((*MockUserServicer)(nil).GetUserProfile), ctx, userID)
 }
 
-// RefreshToken mocks base method.
-func (m *MockUserServicer) RefreshToken(ctx context.Context, refreshTokenString string) (*model.AuthTokensResponse, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RefreshToken", ctx, refreshTokenString)
-	ret0, _ := ret[0].(*model.AuthTokensResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// RefreshToken indicates an expected call of RefreshToken.
-func (mr *MockUserServicerMockRecorder) RefreshToken(ctx, refreshTokenString interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefreshToken", reflect.TypeOf((*MockUserServicer)(nil).RefreshToken), ctx, refreshTokenString)
-}
-
 // Register mocks base method.
 func (m *MockUserServicer) Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) (*model.User, error) {
 	m.ctrl.T.Helper()
@@ -98,7 +83,7 @@ func (mr *MockUserServicerMockRecorder) Register(ctx, email, password, firstName
 }
 
 // ResendEmailVerification mocks base method.
-func (m *MockUserServicer) ResendEmailVerification(ctx context.Context, email, emailVerificationToken string) error {
+func (m *MockUserServicer) ResendEmailVerification(ctx context.Context, email *model.User, emailVerificationToken string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ResendEmailVerification", ctx, email, emailVerificationToken)
 	ret0, _ := ret[0].(error)
@@ -141,11 +126,12 @@ func (mr *MockUserServicerMockRecorder) UpdateProfileDetails(ctx, userID, profil
 }
 
 // VerifyEmail mocks base method.
-func (m *MockUserServicer) VerifyEmail(ctx context.Context, token *model.Token) error {
+func (m *MockUserServicer) VerifyEmail(ctx context.Context, token *model.Token) (*string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyEmail", ctx, token)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // VerifyEmail indicates an expected call of VerifyEmail.
