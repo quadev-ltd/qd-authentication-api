@@ -173,6 +173,13 @@ func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token)
 		logger.Error(err, "Error updating user status")
 		return nil, fmt.Errorf("Error updating user status")
 	}
+	if err := service.emailService.SendEVerificationSuccessMail(
+		ctx,
+		user.Email,
+		user.FirstName,
+	); err != nil {
+		return nil, err
+	}
 	return &user.Email, nil
 }
 
