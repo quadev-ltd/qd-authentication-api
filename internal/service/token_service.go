@@ -223,6 +223,7 @@ func (service *TokenService) VerifyJWTToken(
 }
 
 // TODO: take out token type check to the caller function
+
 // VerifyTokenValidity verifies a email verification or password reset token validity
 func (service *TokenService) VerifyTokenValidity(
 	ctx context.Context,
