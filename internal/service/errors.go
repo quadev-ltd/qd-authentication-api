@@ -1,5 +1,14 @@
 package service
 
+// Error messages
+const (
+	InvalidUserIDError = "invalid_user_id"
+	InvalidEmailError  = "invalid_email"
+	EmailVerifiedError = "email_already_verified"
+	InvalidTokenError  = "invalid_token"
+	TokenExpiredError  = "token_expired"
+)
+
 // Error is the error type for the service
 type Error struct {
 	Message string

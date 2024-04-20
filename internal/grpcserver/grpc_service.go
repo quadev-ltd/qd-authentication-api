@@ -157,53 +157,6 @@ func (service *AuthenticationServiceServer) Register(
 	}, nil
 }
 
-// VerifyEmail verifies the email
-func (service *AuthenticationServiceServer) VerifyEmail(
-	ctx context.Context,
-	request *pb_authentication.VerifyEmailRequest,
-) (*pb_authentication.AuthenticateResponse, error) {
-	logger, err := commonLogger.GetLoggerFromContext(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
-	}
-	token, err := service.tokenService.
-		VerifyEmailVerificationToken(ctx, request.UserId, request.VerificationToken)
-	if err != nil {
-		if serviceErr, ok := err.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
-		}
-		return nil, status.Errorf(codes.Internal, "Email verification token creation failed")
-	}
-	verifyEmailError := service.userService.VerifyEmail(ctx, token)
-	if verifyEmailError != nil {
-		logger.Error(verifyEmailError, "Email verification failed")
-		if serviceErr, ok := verifyEmailError.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
-		}
-		return nil, status.Errorf(codes.Internal, "Email verification failed")
-	}
-
-	service.tokenService.RemoveUsedToken(ctx, token)
-	user, err := service.userService.GetUserProfile(ctx, request.UserId)
-	if err != nil {
-		if serviceErr, ok := err.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
-		}
-		return nil, status.Errorf(codes.Internal, "Internal server error")
-	}
-	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
-	if err != nil {
-		if serviceErr, ok := err.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
-		}
-		return nil, status.Errorf(codes.Internal, "Error generating authentication tokens")
-	}
-	authenticateResponse := *dto.ConvertAuthTokensToResponse(jwtTokens)
-
-	logger.Info("Email verified successfully")
-	return &authenticateResponse, nil
-}
-
 var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 7)
 
 // ResendEmailVerification resends the email verification
@@ -224,22 +177,20 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 			},
 			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
-	user, err := service.userService.GetUserProfile(ctx, request.UserId)
+
+	user, err := service.userService.GetUserProfile(ctx, request.UserID)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		return nil, status.Errorf(codes.Internal, "Error while getting user details")
 	}
-	if user.AccountStatus == model.AccountStatusVerified {
-		return nil, status.Errorf(codes.InvalidArgument, "Email already verified")
-	}
 	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, user.ID)
 	if err != nil {
 		logger.Error(err, "Failed to generate email verification token")
 		return nil, status.Errorf(codes.Internal, "Internal server error")
 	}
-	err = service.userService.ResendEmailVerification(ctx, user.Email, *emailVerificationToken)
+	err = service.userService.ResendEmailVerification(ctx, user, *emailVerificationToken)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -252,6 +203,47 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 		Success: true,
 		Message: "Email verification sent successfully",
 	}, nil
+}
+
+// VerifyEmail verifies the email
+func (service *AuthenticationServiceServer) VerifyEmail(
+	ctx context.Context,
+	request *pb_authentication.VerifyEmailRequest,
+) (*pb_authentication.AuthenticateResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	token, err := service.tokenService.
+		VerifyEmailVerificationToken(ctx, request.UserID, request.VerificationToken)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Email verification token creation failed")
+	}
+	email, verifyEmailError := service.userService.VerifyEmail(ctx, token)
+	if verifyEmailError != nil {
+		logger.Error(verifyEmailError, "Email verification failed")
+		if serviceErr, ok := verifyEmailError.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Email verification failed")
+	}
+
+	service.tokenService.RemoveUsedToken(ctx, token)
+
+	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, *email, request.UserID)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Error generating authentication tokens")
+	}
+	authenticateResponse := *dto.ConvertAuthTokensToResponse(jwtTokens)
+
+	logger.Info("Email verified successfully")
+	return &authenticateResponse, nil
 }
 
 // Authenticate authenticates a user
@@ -369,7 +361,7 @@ func (service *AuthenticationServiceServer) VerifyResetPasswordToken(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.UserId, request.Token)
+	_, err = service.tokenService.VerifyResetPasswordToken(ctx, request.UserID, request.Token)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -395,7 +387,7 @@ func (service *AuthenticationServiceServer) ResetPassword(
 	}
 	resetPasswordError := service.passwordService.ResetPassword(
 		ctx,
-		request.UserId,
+		request.UserID,
 		request.Token,
 		request.NewPassword,
 	)

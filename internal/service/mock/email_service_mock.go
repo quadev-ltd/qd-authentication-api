@@ -34,6 +34,20 @@ func (m *MockEmailServicer) EXPECT() *MockEmailServicerMockRecorder {
 	return m.recorder
 }
 
+// SendEVerificationSuccessMail mocks base method.
+func (m *MockEmailServicer) SendEVerificationSuccessMail(ctx context.Context, dest, userName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendEVerificationSuccessMail", ctx, dest, userName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendEVerificationSuccessMail indicates an expected call of SendEVerificationSuccessMail.
+func (mr *MockEmailServicerMockRecorder) SendEVerificationSuccessMail(ctx, dest, userName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendEVerificationSuccessMail", reflect.TypeOf((*MockEmailServicer)(nil).SendEVerificationSuccessMail), ctx, dest, userName)
+}
+
 // SendPasswordResetMail mocks base method.
 func (m *MockEmailServicer) SendPasswordResetMail(ctx context.Context, dest, userName, userID, resetToken string) error {
 	m.ctrl.T.Helper()

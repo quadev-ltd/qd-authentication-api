@@ -81,7 +81,7 @@ func (userRepository *UserRepository) GetByUserID(ctx context.Context, userID pr
 func (userRepository *UserRepository) UpdateStatus(ctx context.Context, user *model.User) error {
 	update := bson.M{
 		"$set": bson.M{
-			"account_status": user.AccountStatus,
+			"accountStatus": user.AccountStatus,
 		},
 	}
 
@@ -92,8 +92,8 @@ func (userRepository *UserRepository) UpdateStatus(ctx context.Context, user *mo
 func (userRepository *UserRepository) UpdatePassword(ctx context.Context, user *model.User) error {
 	update := bson.M{
 		"$set": bson.M{
-			"password_hash": user.PasswordHash,
-			"password_salt": user.PasswordSalt,
+			"passwordHash": user.PasswordHash,
+			"passwordSalt": user.PasswordSalt,
 		},
 	}
 	return userRepository.Update(ctx, user, update)
@@ -106,9 +106,9 @@ func (userRepository *UserRepository) UpdateProfileDetails(
 ) (*model.User, error) {
 	update := bson.M{
 		"$set": bson.M{
-			"first_name":    user.FirstName,
-			"last_name":     user.LastName,
-			"date_of_birth": user.DateOfBirth,
+			"firstName":   user.FirstName,
+			"lastName":    user.LastName,
+			"dateOfBirth": user.DateOfBirth,
 		},
 	}
 	collection := userRepository.getCollection()

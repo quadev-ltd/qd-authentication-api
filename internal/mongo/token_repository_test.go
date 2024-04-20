@@ -86,7 +86,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		token := model.NewToken("test_hash")
 		user, error := repo.GetByUserIDAndTokenType(context.Background(), token.UserID, token.Type)
 		assert.Error(test, error)
-		assert.Equal(test, "Error finding token by user_id and token_hash: mongo: no documents in result", error.Error())
+		assert.Equal(test, "Error finding token by userID and token_hash: mongo: no documents in result", error.Error())
 		assert.Nil(test, user)
 	})
 	test.Run("Update_Success", func(test *testing.T) {
@@ -147,7 +147,7 @@ func TestMongoTokenRepository(test *testing.T) {
 
 		foundToken, err := repo.GetByUserIDAndTokenType(context.Background(), token.UserID, token.Type)
 		assert.Error(test, err)
-		assert.Equal(test, "Error finding token by user_id and token_hash: mongo: no documents in result", err.Error())
+		assert.Equal(test, "Error finding token by userID and token_hash: mongo: no documents in result", err.Error())
 		assert.Nil(test, foundToken)
 	})
 }

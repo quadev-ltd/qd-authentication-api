@@ -204,6 +204,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 		DateOfBirth: dateOfBirth,
 	}
 
+	tokenInspector := &commonJWT.TokenInspector{}
+
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 		envParams := setUpTestEnvironment(t)
 		defer envParams.Application.Close()
@@ -285,7 +287,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, registerResponse.Success, true)
 		assert.Equal(t, registerResponse.Message, "Registration successful")
-		assert.NotNil(t, registerResponse.User.UserId)
+		assert.NotNil(t, registerResponse.User.UserID)
 		assert.Equal(t, registerResponse.User.Email, registerRequest.Email)
 		assert.Equal(t, registerResponse.User.FirstName, registerRequest.FirstName)
 		assert.Equal(t, registerResponse.User.LastName, registerRequest.LastName)
@@ -371,12 +373,12 @@ func TestRegisterUserJourneys(t *testing.T) {
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: "1234567890",
-				UserId:            primitive.NewObjectID().Hex(),
+				UserID:            primitive.NewObjectID().Hex(),
 			})
 
 		assert.Error(t, err)
 		assert.Nil(t, verifyEmailResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid token", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = invalid_token", err.Error())
 	})
 
 	t.Run("Authenticate_Success", func(t *testing.T) {
@@ -426,7 +428,6 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NotNil(t, authenticateResponse)
 		assert.NotNil(t, authenticateResponse.AuthToken)
 		assert.NotNil(t, authenticateResponse.RefreshToken)
-		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
 	})
 
 	t.Run("Authenticate_UpdateAndGetUserProfile_Success", func(t *testing.T) {
@@ -489,7 +490,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.Equal(t, foundUser.Email, profileResponse.User.Email)
-		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserId)
+		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserID)
 		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), profileResponse.User.AccountStatus)
 		assert.Equal(t, foundUser.FirstName, profileResponse.User.FirstName)
 		assert.Equal(t, foundUser.LastName, profileResponse.User.LastName)
@@ -515,7 +516,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.Equal(t, foundUser.Email, updateProfileResponse.User.Email)
-		assert.Equal(t, foundUser.ID.Hex(), updateProfileResponse.User.UserId)
+		assert.Equal(t, foundUser.ID.Hex(), updateProfileResponse.User.UserID)
 		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), updateProfileResponse.User.AccountStatus)
 		assert.Equal(t, newFirstName, updateProfileResponse.User.FirstName)
 		assert.Equal(t, newLastName, updateProfileResponse.User.LastName)
@@ -533,7 +534,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.Equal(t, foundUser.Email, profileResponse.User.Email)
-		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserId)
+		assert.Equal(t, foundUser.ID.Hex(), profileResponse.User.UserID)
 		assert.Equal(t, dto.GetAccountStatusDescription(foundUser.AccountStatus), profileResponse.User.AccountStatus)
 		assert.Equal(t, newFirstName, profileResponse.User.FirstName)
 		assert.Equal(t, newLastName, profileResponse.User.LastName)
@@ -637,10 +638,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		authCtx := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authenticateResponse.AuthToken)
 
+		claims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
 			authCtx,
 			&pb_authentication.ResendEmailVerificationRequest{
-				UserId: authenticateResponse.UserId,
+				UserID: claims.UserID,
 			},
 		)
 
@@ -671,7 +677,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, resendEamilVerificationResponse)
-		assert.Equal(t, "rpc error: code = InvalidArgument desc = Invalid user ID", err.Error())
+		assert.Equal(t, "rpc error: code = InvalidArgument desc = invalid_user_id", err.Error())
 	})
 
 	t.Run("Verify_Email_Success", func(t *testing.T) {
@@ -715,7 +721,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 		var foundToken model.Token
-		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"user_id": foundUser.ID}).Decode(&foundToken)
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userID": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -723,7 +729,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		verifyEmailResponse, err := grpcClient.VerifyEmail(
 			ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
 				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
-				UserId:            foundToken.UserID.Hex(),
+				UserID:            foundToken.UserID.Hex(),
 			},
 		)
 
@@ -799,11 +805,21 @@ func TestRegisterUserJourneys(t *testing.T) {
 			&pb_authentication.RefreshTokenRequest{},
 		)
 
+		authClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+		refreshClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.RefreshToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		assert.NoError(t, err)
 		assert.NotNil(t, refreshTokenResponse)
 		assert.NotNil(t, refreshTokenResponse.AuthToken)
 		assert.NotNil(t, refreshTokenResponse.RefreshToken)
-		assert.Equal(t, registerRequest.Email, refreshTokenResponse.UserEmail)
+		assert.Equal(t, registerRequest.Email, authClaims.Email)
+		assert.Equal(t, registerRequest.Email, refreshClaims.Email)
 	})
 
 	t.Run("Refresh_Token_Type_Error", func(t *testing.T) {
@@ -929,7 +945,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 		var foundToken model.Token
-		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"user_id": foundUser.ID}).Decode(&foundToken)
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userID": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -938,7 +954,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
 				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
-				UserId:            foundUser.ID.Hex(),
+				UserID:            foundUser.ID.Hex(),
 			},
 		)
 		if err != nil {
@@ -953,13 +969,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, "Forgot password request successful", forgotPasswordResponse.Message)
 		assert.True(t, forgotPasswordResponse.Success)
 
-		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"user_id": foundUser.ID}).Decode(&foundToken)
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userID": foundUser.ID}).Decode(&foundToken)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		verifyPasswordResetTokenResponse, err := grpcClient.VerifyResetPasswordToken(ctxWithCorrelationID, &pb_authentication.VerifyResetPasswordTokenRequest{
-			UserId: foundToken.UserID.Hex(),
+			UserID: foundToken.UserID.Hex(),
 			Token:  mockEmailService.LastCapturedPasswordResetToken,
 		})
 
@@ -970,7 +986,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		newPassword := "NewPassword@000!"
 		resetPasswordResponse, err := grpcClient.ResetPassword(ctxWithCorrelationID, &pb_authentication.ResetPasswordRequest{
-			UserId:      foundToken.UserID.Hex(),
+			UserID:      foundToken.UserID.Hex(),
 			Token:       mockEmailService.LastCapturedPasswordResetToken,
 			NewPassword: newPassword,
 		})
@@ -985,10 +1001,20 @@ func TestRegisterUserJourneys(t *testing.T) {
 			Password: newPassword,
 		})
 
+		authClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+		refreshClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.RefreshToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.NotNil(t, authenticateResponse.AuthToken)
 		assert.NotNil(t, authenticateResponse.RefreshToken)
-		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
+		assert.Equal(t, foundUser.Email, authClaims.Email)
+		assert.Equal(t, foundUser.Email, refreshClaims.Email)
 	})
 }

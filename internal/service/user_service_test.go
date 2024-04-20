@@ -250,12 +250,14 @@ func TestUserService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdateStatus(gomock.Any(), testUser).Return(nil)
+		mocks.MockEmailService.EXPECT().SendEVerificationSuccessMail(gomock.Any(), testUser.Email, testUser.FirstName)
 
 		// Test successful verification
-		err := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		email, err := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		assert.NoError(test, err)
 		assert.Equal(test, model.AccountStatusVerified, testUser.AccountStatus)
+		assert.Equal(test, testUser.Email, *email)
 	})
 
 	test.Run("VerifyEmail_Get_User_By_ID_Error", func(test *testing.T) {
@@ -269,13 +271,14 @@ func TestUserService(test *testing.T) {
 		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user by ID")
 
 		// Test Verify
-		resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		email, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		assert.Error(test, resultError)
 		assert.NotNil(test, resultError)
-		assert.Equal(test, "Invalid verification token", resultError.Error())
+		assert.Equal(test, "invalid_token", resultError.Error())
+		assert.Nil(test, email)
 	})
-	test.Run("Invalid verification token", func(test *testing.T) {
+	test.Run("Invalid_Token_Error", func(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
@@ -287,11 +290,12 @@ func TestUserService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 
 		// Test Verify
-		resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		email, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		assert.Error(test, resultError)
 		assert.IsType(test, &Error{}, resultError)
-		assert.Equal(test, "Email already verified", resultError.Error())
+		assert.Equal(test, "email_already_verified", resultError.Error())
+		assert.Nil(test, email)
 	})
 	test.Run("VerifyEmail_Update_error", func(test *testing.T) {
 		// Arrange
@@ -305,11 +309,12 @@ func TestUserService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().UpdateStatus(gomock.Any(), testUser).Return(errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error updating user status")
 		// Act
-		resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		email, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		// Assert
 		assert.Error(test, resultError)
 		assert.Equal(test, "Error updating user status", resultError.Error())
+		assert.Nil(test, email)
 	})
 
 	// Authenticate
@@ -356,10 +361,10 @@ func TestUserService(test *testing.T) {
 
 		email := "test@example.com"
 
-		user := model.NewUser()
+		testUser := model.NewUser()
 		invalidPassword := "invalidpassword"
 
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(user, nil)
+		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), email).Return(testUser, nil)
 
 		// Test Authenticate
 		resultUser, resultError := mocks.UserService.Authenticate(mocks.Ctx, email, invalidPassword)
@@ -375,11 +380,11 @@ func TestUserService(test *testing.T) {
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		user := model.NewUser()
-		user.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
-		user.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
+		testUser := model.NewUser()
+		testUser.PasswordHash = "$2a$10$b4R.rxNHsELRW/JaqI1kS.CXO.xVamz.rwFXxchWD2pdKhKzZp94u"
+		testUser.PasswordSalt = "7jQQnlalvK1E0iDzugF18ewa1Auf7R71Dr6OWnJbZbI="
 
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
+		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 
 		// Act
 		resultUser, resultError := mocks.UserService.Authenticate(mocks.Ctx, testEmail, testPassword)
@@ -387,65 +392,29 @@ func TestUserService(test *testing.T) {
 		// Assert
 		assert.NoError(test, resultError)
 		assert.NotNil(test, resultUser)
-		assert.Equal(test, user.PasswordHash, resultUser.PasswordHash)
-		assert.Equal(test, user.PasswordSalt, resultUser.PasswordSalt)
-		assert.Equal(test, user.FirstName, resultUser.FirstName)
-		assert.Equal(test, user.LastName, resultUser.LastName)
-		assert.Equal(test, user.Email, resultUser.Email)
+		assert.Equal(test, testUser.PasswordHash, resultUser.PasswordHash)
+		assert.Equal(test, testUser.PasswordSalt, resultUser.PasswordSalt)
+		assert.Equal(test, testUser.FirstName, resultUser.FirstName)
+		assert.Equal(test, testUser.LastName, resultUser.LastName)
+		assert.Equal(test, testUser.Email, resultUser.Email)
 	})
 
 	// // ResendEmailVerification
-	test.Run("ResendEmailVerification_GetByEmail_Error", func(test *testing.T) {
-		// Arrange
-		mocks := createUserService(test)
-		defer mocks.Controller.Finish()
-
-		errExample := errors.New("User repository error")
-
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errExample)
-		mocks.MockLogger.EXPECT().Error(errExample, fmt.Sprintf("Error getting user by email: %v", testEmail))
-
-		// Act
-		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testEmail, testTokenValue)
-
-		// Assert
-		assert.Error(test, err)
-		assert.Equal(test, "Error searching user by email", err.Error())
-	})
-
-	test.Run("ResendEmailVerification_GetByEmail_NotFound", func(test *testing.T) {
-		// Arrange
-		mocks := createUserService(test)
-		defer mocks.Controller.Finish()
-
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
-
-		// Act
-		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testEmail, testTokenValue)
-
-		// Assert
-		assert.Error(test, err)
-		assert.IsType(test, &Error{}, err)
-		assert.Contains(test, err.Error(), "Invalid email")
-	})
-
 	test.Run("ResendEmailVerification_GetByEmail_AlreadyVerified", func(test *testing.T) {
 		// Arrange
 
-		user := model.NewUser()
-		user.AccountStatus = model.AccountStatusVerified
+		testUser := model.NewUser()
+		testUser.AccountStatus = model.AccountStatusVerified
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
 
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(user, nil)
-
 		// Act
-		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testEmail, testTokenValue)
+		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testUser, testTokenValue)
 
 		// Assert
 		assert.Error(test, err)
 		assert.IsType(test, &Error{}, err)
-		assert.Contains(test, err.Error(), "Email already verified")
+		assert.Contains(test, err.Error(), "email_already_verified")
 	})
 
 	test.Run("ResendEmailVerification_SendEmail_Error", func(test *testing.T) {
@@ -455,7 +424,6 @@ func TestUserService(test *testing.T) {
 		testUser := model.NewUser()
 		errExample := errors.New("Email service error")
 
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 		mocks.MockEmailService.EXPECT().SendVerificationMail(
 			mocks.Ctx,
 			testEmail,
@@ -465,7 +433,7 @@ func TestUserService(test *testing.T) {
 		).Return(errExample)
 
 		// Act
-		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testEmail, testTokenValue)
+		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testUser, testTokenValue)
 
 		// Assert
 		assert.Error(test, err)
@@ -478,7 +446,6 @@ func TestUserService(test *testing.T) {
 
 		testUser := model.NewUser()
 
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 		mocks.MockEmailService.EXPECT().SendVerificationMail(
 			mocks.Ctx,
 			testEmail,
@@ -488,7 +455,7 @@ func TestUserService(test *testing.T) {
 		).Return(nil)
 
 		// Act
-		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testEmail, testTokenValue)
+		err := mocks.UserService.ResendEmailVerification(mocks.Ctx, testUser, testTokenValue)
 
 		// Assert
 		assert.NoError(test, err)
@@ -499,42 +466,42 @@ func TestUserService(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
-		user := model.NewUser()
+		testUser := model.NewUser()
 
 		mocks.MockUserRepo.EXPECT().GetByUserID(
 			gomock.Any(),
-			user.ID,
-		).Return(user, nil)
+			testUser.ID,
+		).Return(testUser, nil)
 
 		// Test RefreshToken
 		profileResult, resultError := mocks.UserService.GetUserProfile(
 			mocks.Ctx,
-			user.ID.Hex(),
+			testUser.ID.Hex(),
 		)
 
 		// Assert
 		assert.NoError(test, resultError)
 		assert.NotNil(test, profileResult)
-		assert.True(test, reflect.DeepEqual(profileResult, user))
+		assert.True(test, reflect.DeepEqual(profileResult, testUser))
 	})
 
 	test.Run("GetUserProfile_GetUser_Error", func(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
-		user := model.NewUser()
+		testUser := model.NewUser()
 		mockedError := errors.New("test-error")
 
 		mocks.MockUserRepo.EXPECT().GetByUserID(
 			gomock.Any(),
-			user.ID,
+			testUser.ID,
 		).Return(nil, mockedError)
 		mocks.MockLogger.EXPECT().Error(mockedError, "Error getting user by ID")
 
 		// Test RefreshToken
 		profileResult, resultError := mocks.UserService.GetUserProfile(
 			mocks.Ctx,
-			user.ID.Hex(),
+			testUser.ID.Hex(),
 		)
 
 		// Assert
@@ -548,56 +515,56 @@ func TestUserService(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
-		user := model.NewUser()
+		testUser := model.NewUser()
 		profileDetails := &pb_authentication.UpdateUserProfileRequest{
-			FirstName:   user.FirstName,
-			LastName:    user.LastName,
-			DateOfBirth: timestamppb.New(user.DateOfBirth),
+			FirstName:   testUser.FirstName,
+			LastName:    testUser.LastName,
+			DateOfBirth: timestamppb.New(testUser.DateOfBirth),
 		}
 		createdProfileUser := &model.User{
-			ID:          user.ID,
-			FirstName:   user.FirstName,
-			LastName:    user.LastName,
-			DateOfBirth: user.DateOfBirth.UTC(),
+			ID:          testUser.ID,
+			FirstName:   testUser.FirstName,
+			LastName:    testUser.LastName,
+			DateOfBirth: testUser.DateOfBirth.UTC(),
 		}
 
 		mocks.MockUserRepo.EXPECT().UpdateProfileDetails(
 			gomock.Any(),
 			gomock.Eq(createdProfileUser),
-		).Return(user, nil)
+		).Return(testUser, nil)
 
 		// Test RefreshToken
 		updateResponse, resultError := mocks.UserService.UpdateProfileDetails(
 			mocks.Ctx,
-			user.ID.Hex(),
+			testUser.ID.Hex(),
 			profileDetails,
 		)
 
 		// Assert
 		assert.NoError(test, resultError)
-		assert.Equal(test, user.ID.Hex(), updateResponse.ID.Hex())
-		assert.Equal(test, user.FirstName, updateResponse.FirstName)
-		assert.Equal(test, user.LastName, updateResponse.LastName)
-		assert.Equal(test, user.DateOfBirth.Unix(), updateResponse.DateOfBirth.Unix())
-		assert.Equal(test, user.Email, updateResponse.Email)
-		assert.Equal(test, user.AccountStatus, updateResponse.AccountStatus)
+		assert.Equal(test, testUser.ID.Hex(), updateResponse.ID.Hex())
+		assert.Equal(test, testUser.FirstName, updateResponse.FirstName)
+		assert.Equal(test, testUser.LastName, updateResponse.LastName)
+		assert.Equal(test, testUser.DateOfBirth.Unix(), updateResponse.DateOfBirth.Unix())
+		assert.Equal(test, testUser.Email, updateResponse.Email)
+		assert.Equal(test, testUser.AccountStatus, updateResponse.AccountStatus)
 	})
 
 	test.Run("UpdateUserProfile_Update_Error", func(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
-		user := model.NewUser()
+		testUser := model.NewUser()
 		profileDetails := &pb_authentication.UpdateUserProfileRequest{
-			FirstName:   user.FirstName,
-			LastName:    user.LastName,
-			DateOfBirth: timestamppb.New(user.DateOfBirth),
+			FirstName:   testUser.FirstName,
+			LastName:    testUser.LastName,
+			DateOfBirth: timestamppb.New(testUser.DateOfBirth),
 		}
 		createdProfileUser := &model.User{
-			ID:          user.ID,
-			FirstName:   user.FirstName,
-			LastName:    user.LastName,
-			DateOfBirth: user.DateOfBirth.UTC(),
+			ID:          testUser.ID,
+			FirstName:   testUser.FirstName,
+			LastName:    testUser.LastName,
+			DateOfBirth: testUser.DateOfBirth.UTC(),
 		}
 		mockedError := errors.New("test-error")
 		mocks.MockUserRepo.EXPECT().UpdateProfileDetails(
@@ -612,7 +579,7 @@ func TestUserService(test *testing.T) {
 		// Test RefreshToken
 		updateResponse, resultError := mocks.UserService.UpdateProfileDetails(
 			mocks.Ctx,
-			user.ID.Hex(),
+			testUser.ID.Hex(),
 			profileDetails,
 		)
 
@@ -626,17 +593,17 @@ func TestUserService(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
-		user := model.NewUser()
+		testUser := model.NewUser()
 		profileDetails := &pb_authentication.UpdateUserProfileRequest{
 			FirstName:   "",
-			LastName:    user.LastName,
-			DateOfBirth: timestamppb.New(user.DateOfBirth),
+			LastName:    testUser.LastName,
+			DateOfBirth: timestamppb.New(testUser.DateOfBirth),
 		}
 
 		// Test RefreshToken
 		updateResponse, resultError := mocks.UserService.UpdateProfileDetails(
 			mocks.Ctx,
-			user.ID.Hex(),
+			testUser.ID.Hex(),
 			profileDetails,
 		)
 
@@ -650,17 +617,17 @@ func TestUserService(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
-		user := model.NewUser()
+		testUser := model.NewUser()
 		profileDetails := &pb_authentication.UpdateUserProfileRequest{
-			FirstName:   user.FirstName,
+			FirstName:   testUser.FirstName,
 			LastName:    "user.LastNameuser.LastNameuser.LastNameuser.LastNameuser.LastNameuser.LastNameuser.LastNameuser.LastNameuser.LastName",
-			DateOfBirth: timestamppb.New(user.DateOfBirth),
+			DateOfBirth: timestamppb.New(testUser.DateOfBirth),
 		}
 
 		// Test RefreshToken
 		updateResponse, resultError := mocks.UserService.UpdateProfileDetails(
 			mocks.Ctx,
-			user.ID.Hex(),
+			testUser.ID.Hex(),
 			profileDetails,
 		)
 
@@ -674,17 +641,17 @@ func TestUserService(test *testing.T) {
 		// Arrange
 		mocks := createUserService(test)
 		defer mocks.Controller.Finish()
-		user := model.NewUser()
+		testUser := model.NewUser()
 		profileDetails := &pb_authentication.UpdateUserProfileRequest{
-			FirstName:   user.FirstName,
-			LastName:    user.LastName,
-			DateOfBirth: timestamppb.New(user.DateOfBirth.Add(1 * time.Hour)),
+			FirstName:   testUser.FirstName,
+			LastName:    testUser.LastName,
+			DateOfBirth: timestamppb.New(testUser.DateOfBirth.Add(1 * time.Hour)),
 		}
 
 		// Test RefreshToken
 		updateResponse, resultError := mocks.UserService.UpdateProfileDetails(
 			mocks.Ctx,
-			user.ID.Hex(),
+			testUser.ID.Hex(),
 			profileDetails,
 		)
 

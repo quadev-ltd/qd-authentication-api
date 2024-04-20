@@ -18,14 +18,14 @@ type AccountStatus int
 type User struct {
 	ID               primitive.ObjectID `bson:"_id,omitempty"`
 	Email            string             `bson:"email" validate:"required,email,lowercase"`
-	PasswordHash     string             `bson:"password_hash" validate:"required"`
-	PasswordSalt     string             `bson:"password_salt" validate:"required"`
-	FirstName        string             `bson:"first_name" validate:"required,max=30"`
-	LastName         string             `bson:"last_name" validate:"required,max=30"`
-	DateOfBirth      time.Time          `bson:"date_of_birth" validate:"required,not_future"`
-	RegistrationDate time.Time          `bson:"registration_date" validate:"required"`
-	LastLoginDate    time.Time          `bson:"last_login_date" validate:"omitempty"`
-	AccountStatus    AccountStatus      `bson:"account_status" validate:"required"`
+	PasswordHash     string             `bson:"passwordHash" validate:"required"`
+	PasswordSalt     string             `bson:"passwordSalt" validate:"required"`
+	FirstName        string             `bson:"firstName" validate:"required,max=30"`
+	LastName         string             `bson:"lastName" validate:"required,max=30"`
+	DateOfBirth      time.Time          `bson:"dateOfBirth" validate:"required,not_future"`
+	RegistrationDate time.Time          `bson:"registrationDate" validate:"required"`
+	LastLoginDate    time.Time          `bson:"lastLoginDate" validate:"omitempty"`
+	AccountStatus    AccountStatus      `bson:"accountStatus" validate:"required"`
 }
 
 // AccountStatus constants

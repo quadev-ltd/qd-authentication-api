@@ -55,12 +55,12 @@ func (tokenRepository *TokenRepository) GetByUserIDAndTokenType(
 ) (*model.Token, error) {
 	collection := tokenRepository.getCollection()
 
-	filter := bson.M{"user_id": userID, "type": tokenType}
+	filter := bson.M{"userID": userID, "type": tokenType}
 	var foundToken model.Token
 
 	err := collection.FindOne(ctx, filter).Decode(&foundToken)
 	if err != nil {
-		return nil, fmt.Errorf("Error finding token by user_id and token_hash: %v", err)
+		return nil, fmt.Errorf("Error finding token by userID and token_hash: %v", err)
 	}
 
 	return &foundToken, nil
@@ -71,7 +71,7 @@ func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model
 	collection := tokenRepository.getCollection()
 	filter := bson.M{
 		"token_hash": token.TokenHash,
-		"user_id":    token.UserID,
+		"userID":     token.UserID,
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -97,7 +97,7 @@ func (tokenRepository *TokenRepository) Update(ctx context.Context, token *model
 // Remove removes a token from the mongo database
 func (tokenRepository *TokenRepository) Remove(ctx context.Context, token *model.Token) error {
 	collection := tokenRepository.getCollection()
-	filter := bson.M{"user_id": token.UserID, "token_hash": token.TokenHash, "type": token.Type}
+	filter := bson.M{"userID": token.UserID, "token_hash": token.TokenHash, "type": token.Type}
 
 	result, err := collection.DeleteOne(ctx, filter)
 	if err != nil {

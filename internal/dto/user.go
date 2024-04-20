@@ -24,7 +24,7 @@ func GetAccountStatusDescription(accountStatus model.AccountStatus) string {
 // ConvertUserToUserDTO converts a user to a user DTO
 func ConvertUserToUserDTO(user *model.User) *pb_authentication.User {
 	return &pb_authentication.User{
-		UserId:           user.ID.Hex(),
+		UserID:           user.ID.Hex(),
 		Email:            user.Email,
 		FirstName:        user.FirstName,
 		LastName:         user.LastName,

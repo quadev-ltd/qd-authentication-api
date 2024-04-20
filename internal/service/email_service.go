@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_email"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
-
-	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_email"
 )
 
 // EmailServiceConfig constains the configuration for the email service
@@ -22,6 +21,7 @@ type EmailServiceConfig struct {
 
 // EmailServicer is the interface for the email service
 type EmailServicer interface {
+	SendEVerificationSuccessMail(ctx context.Context, dest, userName string) error
 	SendVerificationMail(ctx context.Context, dest string, userName, userID, verificationToken string) error
 	SendPasswordResetMail(ctx context.Context, dest string, userName, userID, resetToken string) error
 }
@@ -131,4 +131,11 @@ func (service *EmailService) SendPasswordResetMail(ctx context.Context, destinat
 	subject, body := service.CreatePasswordResetEmailContent(ctx, destination, userName, userID, verificationToken)
 	err := service.sendMail(ctx, destination, subject, body)
 	return err
+}
+
+// SendEVerificationSuccessMail sends an email verification success email
+func (service *EmailService) SendEVerificationSuccessMail(ctx context.Context, dest, userName string) error {
+	subject := "Email Verification Success"
+	body := fmt.Sprintf("Hi %s,\nYour email has been verified successfully.\n\nThanks.", userName)
+	return service.sendMail(ctx, dest, subject, body)
 }
