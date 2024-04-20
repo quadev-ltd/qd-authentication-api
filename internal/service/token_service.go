@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	"github.com/quadev-ltd/qd-common/pkg/log"
@@ -72,7 +73,13 @@ func (service *TokenService) generateVerificationToken(
 		logger.Error(err, "Error hashing verification token")
 		return nil, fmt.Errorf("Error hashing verification token")
 	}
-	verificationTokentExpiryDate := service.timeProvider.Now().Add(VerificationTokenExpiry)
+	var activeWinidow time.Duration
+	if tokenType == commonToken.EmailVerificationTokenType {
+		activeWinidow = VerificationTokenExpiry
+	} else {
+		activeWinidow = PasswordResetTokenExpiry
+	}
+	verificationTokentExpiryDate := service.timeProvider.Now().Add(activeWinidow)
 	emailVerificationToken := &model.Token{
 		UserID:    userID,
 		TokenHash: string(tokenHash),

@@ -488,11 +488,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		successfulResponse := &pb_authentication.AuthenticateResponse{
-			AuthToken:          authenticateResponse.AuthToken,
-			AuthTokenExpiry:    timestamppb.New(authenticateResponse.AuthTokenExpiry),
-			RefreshToken:       authenticateResponse.RefreshToken,
-			RefreshTokenExpiry: timestamppb.New(authenticateResponse.RefreshTokenExpiry),
-			UserEmail:          authenticateResponse.UserEmail,
+			AuthToken:    authenticateResponse.AuthToken,
+			RefreshToken: authenticateResponse.RefreshToken,
 		}
 
 		mocks.MockTokenService.EXPECT().
@@ -611,11 +608,8 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		}
 
 		successfulResponse := &pb_authentication.AuthenticateResponse{
-			AuthToken:          authenticateResponse.AuthToken,
-			AuthTokenExpiry:    timestamppb.New(authenticateResponse.AuthTokenExpiry),
-			RefreshToken:       authenticateResponse.RefreshToken,
-			RefreshTokenExpiry: timestamppb.New(authenticateResponse.RefreshTokenExpiry),
-			UserEmail:          authenticateResponse.UserEmail,
+			AuthToken:    authenticateResponse.AuthToken,
+			RefreshToken: authenticateResponse.RefreshToken,
 		}
 
 		mocks.MockUserService.EXPECT().

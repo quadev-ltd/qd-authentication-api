@@ -204,6 +204,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 		DateOfBirth: dateOfBirth,
 	}
 
+	tokenInspector := &commonJWT.TokenInspector{}
+
 	t.Run("Get_Public_Key_Success", func(t *testing.T) {
 		envParams := setUpTestEnvironment(t)
 		defer envParams.Application.Close()
@@ -426,7 +428,6 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NotNil(t, authenticateResponse)
 		assert.NotNil(t, authenticateResponse.AuthToken)
 		assert.NotNil(t, authenticateResponse.RefreshToken)
-		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
 	})
 
 	t.Run("Authenticate_UpdateAndGetUserProfile_Success", func(t *testing.T) {
@@ -637,10 +638,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		authCtx := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authenticateResponse.AuthToken)
 
+		claims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		resendEamilVerificationResponse, err := grpcClient.ResendEmailVerification(
 			authCtx,
 			&pb_authentication.ResendEmailVerificationRequest{
-				UserID: authenticateResponse.UserID,
+				UserID: claims.UserID,
 			},
 		)
 
@@ -799,11 +805,21 @@ func TestRegisterUserJourneys(t *testing.T) {
 			&pb_authentication.RefreshTokenRequest{},
 		)
 
+		authClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+		refreshClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.RefreshToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		assert.NoError(t, err)
 		assert.NotNil(t, refreshTokenResponse)
 		assert.NotNil(t, refreshTokenResponse.AuthToken)
 		assert.NotNil(t, refreshTokenResponse.RefreshToken)
-		assert.Equal(t, registerRequest.Email, refreshTokenResponse.UserEmail)
+		assert.Equal(t, registerRequest.Email, authClaims.Email)
+		assert.Equal(t, registerRequest.Email, refreshClaims.Email)
 	})
 
 	t.Run("Refresh_Token_Type_Error", func(t *testing.T) {
@@ -985,10 +1001,20 @@ func TestRegisterUserJourneys(t *testing.T) {
 			Password: newPassword,
 		})
 
+		authClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+		refreshClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.RefreshToken)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		assert.NoError(t, err)
 		assert.NotNil(t, authenticateResponse)
 		assert.NotNil(t, authenticateResponse.AuthToken)
 		assert.NotNil(t, authenticateResponse.RefreshToken)
-		assert.Equal(t, foundUser.Email, authenticateResponse.UserEmail)
+		assert.Equal(t, foundUser.Email, authClaims.Email)
+		assert.Equal(t, foundUser.Email, refreshClaims.Email)
 	})
 }
