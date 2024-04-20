@@ -250,6 +250,7 @@ func TestUserService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdateStatus(gomock.Any(), testUser).Return(nil)
+		mocks.MockEmailService.EXPECT().SendEVerificationSuccessMail(gomock.Any(), testUser.Email, testUser.FirstName)
 
 		// Test successful verification
 		email, err := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
