@@ -1,5 +1,6 @@
 package service
 
+// Error messages
 const (
 	InvalidUserIDError = "invalid_user_id"
 	InvalidEmailError  = "invalid_email"

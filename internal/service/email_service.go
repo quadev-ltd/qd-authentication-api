@@ -133,6 +133,7 @@ func (service *EmailService) SendPasswordResetMail(ctx context.Context, destinat
 	return err
 }
 
+// SendEVerificationSuccessMail sends an email verification success email
 func (service *EmailService) SendEVerificationSuccessMail(ctx context.Context, dest, userName string) error {
 	subject := "Email Verification Success"
 	body := fmt.Sprintf("Hi %s,\nYour email has been verified successfully.\n\nThanks.", userName)
