@@ -1,0 +1,42 @@
+<html>
+  <head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 30px;
+            border-radius: 20px;
+            background-color: #000;
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+        <h2>Hi Test,</h2>
+        <p>You've just signed up to MyApp!</p>
+        <p>We need to verify your email.</p>
+        <p>Please click on the following link to verify your account:</p>
+        <a href="http://myapp.com/user/{userID}/email/abcd1234" class="button">Verify your email</a>
+        <p class="footer">Thanks.</p>
+    </div>
+  </body>
+</html>

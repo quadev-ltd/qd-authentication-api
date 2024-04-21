@@ -91,7 +91,7 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 	if req.To == wrongEmail {
 		return &pb_email.SendEmailResponse{Success: false, Message: "Email not sent"}, fmt.Errorf("Email not sent")
 	}
-	pattern := `/user/.*/email/(.*)`
+	pattern := `/user/.*/email/(.*)" class="button">Verify your email</a>`
 	re := regexp.MustCompile(pattern)
 	matches := re.FindStringSubmatch(req.Body)
 
@@ -99,13 +99,14 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 		m.LastCapturedEmailVerificationToken = matches[1]
 	}
 
-	pattern = `/user/.*/password/(.*)`
+	pattern = `/user/.*/password/(.*)" class="button">Reset password</a>`
 	re = regexp.MustCompile(pattern)
 	matches = re.FindStringSubmatch(req.Body)
 
 	if len(matches) > 1 {
 		m.LastCapturedPasswordResetToken = matches[1]
 	}
+
 	return &pb_email.SendEmailResponse{Success: true, Message: "Mocked email sent"}, nil
 }
 
@@ -675,8 +676,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 			&pb_authentication.ResendEmailVerificationRequest{},
 		)
 
-		assert.Error(t, err)
 		assert.Nil(t, resendEamilVerificationResponse)
+		assert.Error(t, err)
 		assert.Equal(t, "rpc error: code = InvalidArgument desc = invalid_user_id", err.Error())
 	})
 
@@ -733,8 +734,8 @@ func TestRegisterUserJourneys(t *testing.T) {
 			},
 		)
 
-		assert.NoError(t, err)
 		assert.NotNil(t, verifyEmailResponse)
+		assert.NoError(t, err)
 		assert.NotNil(t, verifyEmailResponse.AuthToken)
 		assert.NotNil(t, verifyEmailResponse.RefreshToken)
 	})
