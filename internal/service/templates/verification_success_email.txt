@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 30px;
+            border-radius: 20px;
+            background-color: #000;
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+        <h2>Hi {firstName},</h2>
+        <p>Your email account has been successfully verified.</p>
+        <p>Thanks.</p>
+    </div>
+  </body>
+</html>
