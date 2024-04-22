@@ -106,7 +106,7 @@ func (service *EmailService) CreateVerificationEmailContent(
 	verificationToken string,
 ) (string, string, error) {
 	subject := fmt.Sprintf("Welcome to %s", service.config.AppName)
-	emailVerificationLink := fmt.Sprintf("%suser/%s/email/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
+	emailVerificationLink := fmt.Sprintf("%s/user/%s/email/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
 
 	body := strings.ReplaceAll(string(verificationEmail), "{firstName}", userName)
 	body = strings.ReplaceAll(body, "{appName}", service.config.AppName)
@@ -133,7 +133,7 @@ func (service *EmailService) SendVerificationMail(
 // CreatePasswordResetEmailContent creates the content of the verification email
 func (service *EmailService) CreatePasswordResetEmailContent(ctx context.Context, destination string, userName, userID, verificationToken string) (string, string) {
 	subject := "Password Reset Request"
-	passwordResetLink := fmt.Sprintf("%suser/%s/password/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
+	passwordResetLink := fmt.Sprintf("%s/user/%s/password/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
 
 	body := strings.ReplaceAll(passwordResetEmail, "{firstName}", userName)
 	body = strings.ReplaceAll(body, "{appName}", service.config.AppName)
