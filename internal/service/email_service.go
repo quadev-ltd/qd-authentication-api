@@ -106,7 +106,7 @@ func (service *EmailService) CreateVerificationEmailContent(
 	verificationToken string,
 ) (string, string, error) {
 	subject := fmt.Sprintf("Welcome to %s", service.config.AppName)
-	emailVerificationLink := fmt.Sprintf("%suser/%s/email/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
+	emailVerificationLink := fmt.Sprintf("%s/user/%s/email/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
 
 	body := strings.ReplaceAll(string(verificationEmail), "{firstName}", userName)
 	body = strings.ReplaceAll(body, "{appName}", service.config.AppName)
