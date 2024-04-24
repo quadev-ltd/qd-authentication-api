@@ -107,13 +107,13 @@ func (service *AuthenticationServiceServer) Register(
 			if isNoComplexPasswordError {
 				fieldErrors = append(fieldErrors, &pb_errors.FieldError{
 					Field: "password",
-					Error: "complex",
+					Error: NonComplexPassword,
 				})
 			}
 			if isEmailInUseError {
 				fieldErrors = append(fieldErrors, &pb_errors.FieldError{
 					Field: "email",
-					Error: "already_used",
+					Error: EmailAlreadyUsed,
 				})
 			}
 
@@ -276,14 +276,12 @@ func handleAuthenticationError(err error, logger commonLogger.Loggerer) error {
 	switch err.(type) {
 	case *model.WrongEmailOrPassword:
 		logger.Error(err, "Invalid email or password")
-		return status.Errorf(codes.Unauthenticated, "Invalid email or password")
+		return status.Errorf(codes.Unauthenticated, InvalidEmailOrPassword)
 	default:
 		logger.Error(err, "Internal error")
 		return status.Errorf(codes.Internal, "Internal server error")
 	}
 }
-
-var refreshTokenLimiter = rate.NewLimiter(rate.Limit(1), 5)
 
 // RefreshToken authenticates a user
 func (service *AuthenticationServiceServer) RefreshToken(
@@ -293,11 +291,6 @@ func (service *AuthenticationServiceServer) RefreshToken(
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
-	}
-	if !refreshTokenLimiter.Allow() {
-		logger.Warn("Rate limit exceeded")
-		return nil,
-			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
 	claims, err := commonJWT.GetClaimsFromContext(ctx)
 	if err != nil {

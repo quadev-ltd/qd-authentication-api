@@ -522,7 +522,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		invalidEmailOrPasswordError := &model.WrongEmailOrPassword{
 			FieldName: "Email",
 		}
-		expectedError := status.Errorf(codes.Unauthenticated, "Invalid email or password")
+		expectedError := status.Errorf(codes.Unauthenticated, InvalidEmailOrPassword)
 
 		mocks.MockUserService.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any(), gomock.Any()).
