@@ -87,7 +87,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 	exampleClaims := &commonJWT.TokenClaims{
 		UserID: primitive.NewObjectID().Hex(),
 		Email:  "test@example.com",
-		Type:   commonToken.AccessTokenType,
+		Type:   commonToken.AuthTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
 	// Register

@@ -54,9 +54,9 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 }
 
 func TestTokenService(test *testing.T) {
-	exampleAccessTokenClaims := &commonJWT.TokenClaims{
+	exampleauthTokenClaims := &commonJWT.TokenClaims{
 		Email:  testEmail,
-		Type:   commonToken.AccessTokenType,
+		Type:   commonToken.AuthTokenType,
 		Expiry: util.MockedTime.Add(AuthenticationTokenDuration),
 		UserID: userID.Hex(),
 	}
@@ -114,7 +114,7 @@ func TestTokenService(test *testing.T) {
 		token := "valid-token"
 		jwtToken := jwt.Token{}
 		mocks.MockJWTManager.EXPECT().VerifyToken(token).Return(&jwtToken, nil)
-		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(&jwtToken).Return(accessTokenClaims, nil)
+		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(&jwtToken).Return(authTokenClaims, nil)
 
 		// Act
 		resultClaims, err := mocks.TokenService.VerifyJWTToken(mocks.Ctx, token)
@@ -122,9 +122,9 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.NoError(test, err)
 		assert.NotNil(test, resultClaims)
-		assert.Equal(test, accessTokenClaims.Email, resultClaims.Email)
-		assert.Equal(test, accessTokenClaims.Type, resultClaims.Type)
-		assert.Equal(test, accessTokenClaims.Expiry, resultClaims.Expiry)
+		assert.Equal(test, authTokenClaims.Email, resultClaims.Email)
+		assert.Equal(test, authTokenClaims.Type, resultClaims.Type)
+		assert.Equal(test, authTokenClaims.Expiry, resultClaims.Expiry)
 	})
 
 	// RefreshToken
@@ -179,7 +179,7 @@ func TestTokenService(test *testing.T) {
 		jwtToken := &jwt.Token{}
 
 		mocks.MockJWTManager.EXPECT().VerifyToken(refreshTokenValue).Return(jwtToken, nil)
-		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(jwtToken).Return(accessTokenClaims, nil)
+		mocks.MockJWTManager.EXPECT().GetClaimsFromToken(jwtToken).Return(authTokenClaims, nil)
 
 		// Test RefreshToken
 		resultClaims, resultError := mocks.TokenService.VerifyJWTToken(mocks.Ctx, refreshTokenValue)
@@ -187,9 +187,9 @@ func TestTokenService(test *testing.T) {
 		// Assert
 		assert.NoError(test, resultError)
 		assert.NotNil(test, resultClaims)
-		assert.Equal(test, accessTokenClaims.Email, resultClaims.Email)
-		assert.Equal(test, accessTokenClaims.Type, resultClaims.Type)
-		assert.Equal(test, accessTokenClaims.Expiry, resultClaims.Expiry)
+		assert.Equal(test, authTokenClaims.Email, resultClaims.Email)
+		assert.Equal(test, authTokenClaims.Type, resultClaims.Type)
+		assert.Equal(test, authTokenClaims.Expiry, resultClaims.Expiry)
 	})
 
 	// VerifyResetPasswordToken
@@ -440,7 +440,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			gomock.Eq(exampleAccessTokenClaims),
+			gomock.Eq(exampleauthTokenClaims),
 		).Return(
 			&testTokenHashValue,
 			nil,
@@ -448,7 +448,7 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTToken(
 			mocks.Ctx,
-			exampleAccessTokenClaims,
+			exampleauthTokenClaims,
 		)
 
 		// Assert
@@ -461,7 +461,7 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 		mocks.MockJWTManager.EXPECT().SignToken(
-			gomock.Eq(exampleAccessTokenClaims),
+			gomock.Eq(exampleauthTokenClaims),
 		).Return(
 			nil,
 			errExample,
@@ -470,7 +470,7 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTToken(
 			mocks.Ctx,
-			exampleAccessTokenClaims,
+			exampleauthTokenClaims,
 		)
 
 		// Assert
@@ -485,14 +485,14 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		userID, err := primitive.ObjectIDFromHex(exampleauthTokenClaims.UserID)
 		if err != nil {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			gomock.Eq(exampleAccessTokenClaims),
+			gomock.Eq(exampleauthTokenClaims),
 		).Return(
 			&testTokenHashValue,
 			nil,
@@ -521,14 +521,14 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		userID, err := primitive.ObjectIDFromHex(exampleauthTokenClaims.UserID)
 		if err != nil {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			gomock.Eq(exampleAccessTokenClaims),
+			gomock.Eq(exampleauthTokenClaims),
 		).Return(
 			&testTokenHashValue,
 			nil,
@@ -553,19 +553,19 @@ func TestTokenService(test *testing.T) {
 		assert.EqualError(test, err, "Error creating refresh token: Error creating jwt token")
 	})
 
-	test.Run("GenerateJWTTokens_AccessTokenGeneration_Error", func(test *testing.T) {
+	test.Run("GenerateJWTTokens_AuthTokenGeneration_Error", func(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
 		testUser := model.NewUser()
-		userID, err := primitive.ObjectIDFromHex(exampleAccessTokenClaims.UserID)
+		userID, err := primitive.ObjectIDFromHex(exampleauthTokenClaims.UserID)
 		if err != nil {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
 
 		mocks.MockJWTManager.EXPECT().SignToken(
-			gomock.Eq(exampleAccessTokenClaims),
+			gomock.Eq(exampleauthTokenClaims),
 		).Return(
 			nil,
 			errExample,

@@ -158,15 +158,15 @@ func (service *TokenService) GenerateJWTTokens(
 	userEmail,
 	userID string,
 ) (*model.AuthTokensResponse, error) {
-	// Access token creation
+	// Auth token creation
 	authenticationTokenExpiration := service.timeProvider.Now().Add(AuthenticationTokenDuration)
-	accessTokenClaims := &commonJWT.TokenClaims{
+	authTokenClaims := &commonJWT.TokenClaims{
 		Email:  userEmail,
 		UserID: userID,
-		Type:   commonToken.AccessTokenType,
+		Type:   commonToken.AuthTokenType,
 		Expiry: authenticationTokenExpiration,
 	}
-	authTokenString, err := service.GenerateJWTToken(ctx, accessTokenClaims)
+	authTokenString, err := service.GenerateJWTToken(ctx, authTokenClaims)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating authentication token: %v", err)
 	}
