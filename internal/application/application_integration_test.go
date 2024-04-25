@@ -588,7 +588,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Nil(t, authenticateResponse)
-		assert.Equal(t, "rpc error: code = Unauthenticated desc = Invalid email or password", err.Error())
+		assert.Equal(t, "rpc error: code = Unauthenticated desc = invalid_email_password", err.Error())
 	})
 
 	t.Run("ResendVerificationEmail_Success", func(t *testing.T) {

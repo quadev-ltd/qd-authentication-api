@@ -42,3 +42,10 @@ var AuthenticatedMethods = map[string]string{
 	GetUserProfileMethod:    "/pb_authentication.AuthenticationService/GetUserProfile",
 	UpdateUserProfileMethod: "/pb_authentication.AuthenticationService/UpdateUserProfile",
 }
+
+// Errors
+const (
+	NonComplexPassword     = "complex"
+	EmailAlreadyUsed       = "already_used"
+	InvalidEmailOrPassword = "invalid_email_password"
+)

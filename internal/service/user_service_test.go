@@ -43,9 +43,9 @@ var (
 	testTokenValue          = "test-token-hash"
 	testTokenHashValue      = "test-token-hash"
 	newRefreshTokenValue    = "test_token_example"
-	accessTokenClaims       = &commonJWT.TokenClaims{
+	authTokenClaims         = &commonJWT.TokenClaims{
 		Email:  testEmail,
-		Type:   commonToken.AccessTokenType,
+		Type:   commonToken.AuthTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
 	refreshTokenClaims = &commonJWT.TokenClaims{

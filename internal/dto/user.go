@@ -3,19 +3,19 @@ package dto
 import (
 	"time"
 
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
+
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/util"
-
-	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
 
 // GetAccountStatusDescription returns the description of the account status
 func GetAccountStatusDescription(accountStatus model.AccountStatus) string {
 	switch accountStatus {
 	case model.AccountStatusUnverified:
-		return "AccountStatusUnverified"
+		return "Unverified"
 	case model.AccountStatusVerified:
-		return "AccountStatusVerified"
+		return "Verified"
 	default:
 		return "Unknown"
 	}

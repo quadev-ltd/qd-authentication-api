@@ -101,7 +101,7 @@ func TestMongoTokenRepository(test *testing.T) {
 
 		issueAt := time.Now()
 		expiresAt := time.Now().Add(33 * time.Hour)
-		token.Type = commonToken.AccessTokenType
+		token.Type = commonToken.AuthTokenType
 		token.Revoked = true
 		token.IssuedAt = issueAt
 		token.ExpiresAt = expiresAt
@@ -112,7 +112,7 @@ func TestMongoTokenRepository(test *testing.T) {
 		foundToken, err := repo.GetByToken(context.Background(), token.TokenHash)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundToken)
-		assert.Equal(test, commonToken.AccessTokenType, foundToken.Type)
+		assert.Equal(test, commonToken.AuthTokenType, foundToken.Type)
 		assert.True(test, foundToken.Revoked)
 		assert.Equal(test, issueAt, token.IssuedAt)
 		assert.Equal(test, expiresAt, token.ExpiresAt)
