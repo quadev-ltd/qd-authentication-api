@@ -48,7 +48,6 @@ func (userRepository *UserRepository) ExistsByEmail(ctx context.Context, email s
 // GetByEmail gets a user by email from the mongo database, returns nil if user is not found
 func (userRepository *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	collection := userRepository.getCollection()
-
 	filter := bson.M{"email": email}
 	var foundUser model.User
 

@@ -99,7 +99,7 @@ func (m *MockEmailServiceServer) SendEmail(ctx context.Context, req *pb_email.Se
 		m.LastCapturedEmailVerificationToken = matches[1]
 	}
 
-	pattern = `/user/.*/password/(.*)" class="button">Reset password</a>`
+	pattern = `/user/.*/password/reset/(.*)" class="button">Reset password</a>`
 	re = regexp.MustCompile(pattern)
 	matches = re.FindStringSubmatch(req.Body)
 
@@ -865,7 +865,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = Not a refresh token")
 	})
 
-	t.Run("Forgot_Password_NotVerified_Error", func(t *testing.T) {
+	t.Run("CompleteResetPassword_EmailNotFound_Success", func(t *testing.T) {
 		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
 		envParams := setUpTestEnvironment(t)
 		defer envParams.Application.Close()
@@ -880,22 +880,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 
 		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
 
-		_, err = grpcClient.Register(
-			ctxWithCorrelationID,
-			registerRequest,
-		)
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		forgotPasswordResponse, err := grpcClient.ForgotPassword(ctxWithCorrelationID, &pb_authentication.ForgotPasswordRequest{
 			Email: email,
 		})
 
-		assert.Error(t, err)
-		assert.Nil(t, forgotPasswordResponse)
-		assert.EqualError(t, err, "rpc error: code = InvalidArgument desc = Email account test@test.com not verified yet")
+		assert.NoError(t, err)
+		assert.NotNil(t, forgotPasswordResponse)
+		assert.Equal(t, "Forgot password request successful", forgotPasswordResponse.Message)
+		assert.True(t, forgotPasswordResponse.Success)
 	})
 
 	t.Run("CompleteResetPassword_Success", func(t *testing.T) {

@@ -311,8 +311,6 @@ func (service *AuthenticationServiceServer) RefreshToken(
 	return &refreshTokenResponse, nil
 }
 
-var forgotPasswordLimiter = rate.NewLimiter(rate.Limit(1), 5)
-
 // ForgotPassword sends a forgot password email
 func (service *AuthenticationServiceServer) ForgotPassword(
 	ctx context.Context,
@@ -322,21 +320,16 @@ func (service *AuthenticationServiceServer) ForgotPassword(
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
 	}
-	if !forgotPasswordLimiter.Allow() {
-		logger.Warn("Rate limit exceeded")
-		return &pb_authentication.BaseResponse{
-				Success: false,
-				Message: "Rate limit exceeded",
-			},
-			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
-	}
 	error := service.passwordService.ForgotPassword(ctx, strings.ToLower(request.Email))
 	if error != nil {
-		if serviceErr, ok := error.(*servicePkg.Error); ok {
-			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		if _, ok := error.(*servicePkg.Error); ok {
+			return &pb_authentication.BaseResponse{
+				Success: true,
+				Message: "Forgot password request successful",
+			}, nil
 		}
 		logger.Error(error, "Forgot password failed")
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, "Error trying to send password reset email.")
 	}
 	logger.Info("Forgot password request successful")
 	return &pb_authentication.BaseResponse{

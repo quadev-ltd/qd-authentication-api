@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -100,7 +99,7 @@ func TestPasswordService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, "Error sending password reset email: test-error", err.Error())
+		assert.Equal(test, "Error sending password reset email for test@example.com: test-error", err.Error())
 	})
 
 	test.Run("ForgotPassword_GenerateToken_Error", func(test *testing.T) {
@@ -118,24 +117,7 @@ func TestPasswordService(test *testing.T) {
 
 		// Assert
 		assert.Error(test, err)
-		assert.Equal(test, "Could not generate reset password token: test-error", err.Error())
-	})
-
-	test.Run("ForgotPassword_Unverified_Error", func(test *testing.T) {
-
-		mocks := createPasswordService(test)
-		defer mocks.Controller.Finish()
-
-		testUser := model.NewUser()
-
-		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
-
-		// Act
-		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
-
-		// Assert
-		assert.Error(test, err)
-		assert.Equal(test, fmt.Sprintf("Email account %s not verified yet", testUser.Email), err.Error())
+		assert.Equal(test, "Could not generate reset password token for user 000000000000000000000000: test-error", err.Error())
 	})
 
 	test.Run("ForgotPassword_GetByEmail_Error", func(test *testing.T) {
@@ -144,7 +126,22 @@ func TestPasswordService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, errExample)
-		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user by email")
+		mocks.MockLogger.EXPECT().Error(errExample, "Error retrieving user by email: test@example.com")
+		// Act
+		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
+
+		// Assert
+		assert.Error(test, err)
+		assert.Equal(test, "Error trying to get user from DB", err.Error())
+	})
+
+	test.Run("ForgotPassword_NotFound_Error", func(test *testing.T) {
+
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
+
+		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(nil, nil)
+		mocks.MockLogger.EXPECT().Error(nil, "User email does not exist in DB: test@example.com")
 		// Act
 		err := mocks.PasswordService.ForgotPassword(mocks.Ctx, testEmail)
 

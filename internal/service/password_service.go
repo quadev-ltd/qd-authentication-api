@@ -47,15 +47,16 @@ func (service *PasswordService) ForgotPassword(ctx context.Context, email string
 	}
 	user, err := service.userRepository.GetByEmail(ctx, email)
 	if err != nil {
-		logger.Error(err, "Error getting user by email")
-		return &Error{Message: "Error getting user by email"}
+		logger.Error(err, fmt.Sprintf("Error retrieving user by email: %s", email))
+		return fmt.Errorf("Error trying to get user from DB")
 	}
-	if user.AccountStatus == model.AccountStatusUnverified {
-		return &Error{Message: fmt.Sprintf("Email account %s not verified yet", email)}
+	if user == nil {
+		logger.Error(nil, fmt.Sprintf("User email does not exist in DB: %s", email))
+		return &Error{Message: "Error getting user by email"}
 	}
 	resetToken, err := service.tokenService.GeneratePasswordResetToken(ctx, user.ID)
 	if err != nil {
-		return fmt.Errorf("Could not generate reset password token: %v", err)
+		return fmt.Errorf("Could not generate reset password token for user %s: %v", user.ID.Hex(), err)
 	}
 	if err := service.emailService.SendPasswordResetMail(
 		ctx,
@@ -64,7 +65,7 @@ func (service *PasswordService) ForgotPassword(ctx context.Context, email string
 		user.ID.Hex(),
 		*resetToken,
 	); err != nil {
-		return fmt.Errorf("Error sending password reset email: %v", err)
+		return fmt.Errorf("Error sending password reset email for %s: %v", user.Email, err)
 	}
 	return nil
 }

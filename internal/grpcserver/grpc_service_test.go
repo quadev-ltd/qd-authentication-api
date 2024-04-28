@@ -900,6 +900,30 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.True(test, response.Success)
 	})
 
+	test.Run("ForgotPassword_Error_ReturnsSuccess", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		testEmail := "test@email.com"
+		exampleError := &service.Error{
+			Message: "example of expected error",
+		}
+
+		mocks.MockPasswordService.EXPECT().ForgotPassword(gomock.Any(),
+			testEmail,
+		).Return(exampleError)
+
+		response, returnedError := mocks.AuthenticationServer.ForgotPassword(
+			mocks.Ctx,
+			&pb_authentication.ForgotPasswordRequest{
+				Email: testEmail,
+			},
+		)
+
+		assert.Nil(test, returnedError)
+		assert.Equal(test, "Forgot password request successful", response.Message)
+		assert.True(test, response.Success)
+	})
+
 	test.Run("ForgotPassword_Error", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
@@ -917,7 +941,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Error(test, returnedError)
 		assert.Nil(test, response)
-		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+		assert.Equal(test, "rpc error: code = Internal desc = Error trying to send password reset email.", returnedError.Error())
 	})
 
 	test.Run("ForgotPassword_MissingLogger_Error", func(test *testing.T) {
