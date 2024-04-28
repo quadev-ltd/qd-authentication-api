@@ -58,7 +58,7 @@ func (service *PasswordService) ForgotPassword(ctx context.Context, email string
 	if err != nil {
 		return fmt.Errorf("Could not generate reset password token for user %s: %v", user.ID.Hex(), err)
 	}
-	if err := service.emailService.SendPasswordResetMail(
+	if err := service.emailService.SendPasswordResetEmail(
 		ctx,
 		user.Email,
 		user.FirstName,
@@ -100,6 +100,10 @@ func (service *PasswordService) ResetPassword(ctx context.Context, userID, token
 	if err := service.userRepository.UpdatePassword(ctx, user); err != nil {
 		logger.Error(err, "Error updating user")
 		return fmt.Errorf("Error updating user")
+	}
+	err = service.emailService.SendPasswordResetSuccessEmail(ctx, user.Email, user.FirstName)
+	if err != nil {
+		logger.Error(err, "Error trying to send a password reset notification")
 	}
 	return nil
 }

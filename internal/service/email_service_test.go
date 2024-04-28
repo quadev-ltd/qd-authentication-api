@@ -13,7 +13,7 @@ import (
 //go:embed templates/verification_email_test.txt
 var verificationEmailTest string
 
-//go:embed templates/reset_password_test.txt
+//go:embed templates/reset_password_email_test.txt
 var passwordResetEmailTest string
 
 //go:embed templates/verification_success_email_test.txt

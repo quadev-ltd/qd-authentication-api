@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -61,7 +62,7 @@ func TestPasswordService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenHashValue, nil)
-		mocks.MockEmailService.EXPECT().SendPasswordResetMail(
+		mocks.MockEmailService.EXPECT().SendPasswordResetEmail(
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
@@ -86,7 +87,7 @@ func TestPasswordService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().GetByEmail(gomock.Any(), testEmail).Return(testUser, nil)
 		mocks.MockTokenService.EXPECT().GeneratePasswordResetToken(gomock.Any(), testUser.ID).Return(&testTokenHashValue, nil)
-		mocks.MockEmailService.EXPECT().SendPasswordResetMail(
+		mocks.MockEmailService.EXPECT().SendPasswordResetEmail(
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
@@ -170,6 +171,47 @@ func TestPasswordService(test *testing.T) {
 		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(nil)
+		mocks.MockEmailService.EXPECT().SendPasswordResetSuccessEmail(
+			gomock.Any(),
+			testUser.Email,
+			testUser.FirstName,
+		).Return(nil)
+
+		err := mocks.PasswordService.ResetPassword(
+			mocks.Ctx,
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+			testPassword,
+		)
+		assert.NoError(test, err)
+	})
+
+	test.Run("ResetPassword_Error_Success", func(test *testing.T) {
+		// Arrange
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
+
+		testUser := model.NewUser()
+
+		testToken := model.NewToken(testTokenHashValue)
+		testToken.Type = commonToken.ResetPasswordTokenType
+		testToken.UserID = testUser.ID
+		testPassword := "NewPassword@123"
+		exampleError := errors.New("test-error")
+
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testToken.UserID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
+		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(nil)
+		mocks.MockEmailService.EXPECT().SendPasswordResetSuccessEmail(
+			gomock.Any(),
+			testUser.Email,
+			testUser.FirstName,
+		).Return(exampleError)
+		mocks.MockLogger.EXPECT().Error(exampleError, "Error trying to send a password reset notification")
 
 		err := mocks.PasswordService.ResetPassword(
 			mocks.Ctx,
