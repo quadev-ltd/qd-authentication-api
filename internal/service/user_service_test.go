@@ -250,7 +250,7 @@ func TestUserService(test *testing.T) {
 
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdateStatus(gomock.Any(), testUser).Return(nil)
-		mocks.MockEmailService.EXPECT().SendEVerificationSuccessMail(gomock.Any(), testUser.Email, testUser.FirstName)
+		mocks.MockEmailService.EXPECT().SendVerificationSuccessEmail(gomock.Any(), testUser.Email, testUser.FirstName)
 
 		// Test successful verification
 		email, err := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
@@ -424,7 +424,7 @@ func TestUserService(test *testing.T) {
 		testUser := model.NewUser()
 		errExample := errors.New("Email service error")
 
-		mocks.MockEmailService.EXPECT().SendVerificationMail(
+		mocks.MockEmailService.EXPECT().SendVerificationEmail(
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,
@@ -446,7 +446,7 @@ func TestUserService(test *testing.T) {
 
 		testUser := model.NewUser()
 
-		mocks.MockEmailService.EXPECT().SendVerificationMail(
+		mocks.MockEmailService.EXPECT().SendVerificationEmail(
 			mocks.Ctx,
 			testEmail,
 			testUser.FirstName,

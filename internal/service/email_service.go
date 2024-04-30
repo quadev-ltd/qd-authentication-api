@@ -16,11 +16,14 @@ import (
 //go:embed templates/verification_email.txt
 var verificationEmail string
 
-//go:embed templates/reset_password.txt
+//go:embed templates/reset_password_email.txt
 var passwordResetEmail string
 
 //go:embed templates/verification_success_email.txt
 var verificationSuccessEmail string
+
+//go:embed templates/reset_password_success_email.txt
+var passwordResetSuccessEmail string
 
 // EmailServiceConfig constains the configuration for the email service
 type EmailServiceConfig struct {
@@ -33,9 +36,10 @@ type EmailServiceConfig struct {
 
 // EmailServicer is the interface for the email service
 type EmailServicer interface {
-	SendEVerificationSuccessMail(ctx context.Context, dest, userName string) error
-	SendVerificationMail(ctx context.Context, dest string, userName, userID, verificationToken string) error
-	SendPasswordResetMail(ctx context.Context, dest string, userName, userID, resetToken string) error
+	SendVerificationSuccessEmail(ctx context.Context, dest, userName string) error
+	SendVerificationEmail(ctx context.Context, dest string, userName, userID, verificationToken string) error
+	SendPasswordResetEmail(ctx context.Context, dest string, userName, userID, resetToken string) error
+	SendPasswordResetSuccessEmail(ctx context.Context, dest string, userName string) error
 }
 
 // EmailService is the implementation of the email service
@@ -114,8 +118,8 @@ func (service *EmailService) CreateVerificationEmailContent(
 	return subject, body, nil
 }
 
-// SendVerificationMail sends a verification email to the given destination
-func (service *EmailService) SendVerificationMail(
+// SendVerificationEmail sends a verification email to the given destination
+func (service *EmailService) SendVerificationEmail(
 	ctx context.Context,
 	destination,
 	userName,
@@ -133,7 +137,7 @@ func (service *EmailService) SendVerificationMail(
 // CreatePasswordResetEmailContent creates the content of the verification email
 func (service *EmailService) CreatePasswordResetEmailContent(ctx context.Context, destination string, userName, userID, verificationToken string) (string, string) {
 	subject := "Password Reset Request"
-	passwordResetLink := fmt.Sprintf("%suser/%s/password/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
+	passwordResetLink := fmt.Sprintf("%suser/%s/password/reset/%s", service.config.EmailVerificationEndpoint, userID, verificationToken)
 
 	body := strings.ReplaceAll(passwordResetEmail, "{firstName}", userName)
 	body = strings.ReplaceAll(body, "{appName}", service.config.AppName)
@@ -142,8 +146,8 @@ func (service *EmailService) CreatePasswordResetEmailContent(ctx context.Context
 	return subject, body
 }
 
-// SendPasswordResetMail sends a verification email to the given destination
-func (service *EmailService) SendPasswordResetMail(ctx context.Context, destination, userName, userID, verificationToken string) error {
+// SendPasswordResetEmail sends a verification email to the given destination
+func (service *EmailService) SendPasswordResetEmail(ctx context.Context, destination, userName, userID, verificationToken string) error {
 	subject, body := service.CreatePasswordResetEmailContent(ctx, destination, userName, userID, verificationToken)
 	err := service.sendMail(ctx, destination, subject, body)
 	return err
@@ -156,8 +160,21 @@ func (service *EmailService) CreateVerificationSuccessEmailContent(ctx context.C
 	return subject, body
 }
 
-// SendEVerificationSuccessMail sends an email verification success email
-func (service *EmailService) SendEVerificationSuccessMail(ctx context.Context, dest, userName string) error {
+// SendVerificationSuccessEmail sends an email verification success email
+func (service *EmailService) SendVerificationSuccessEmail(ctx context.Context, dest, userName string) error {
 	subject, body := service.CreateVerificationSuccessEmailContent(ctx, userName)
+	return service.sendMail(ctx, dest, subject, body)
+}
+
+// CreatePasswordResetSuccessEmailContent generates teh content for the success notification
+func (service *EmailService) CreatePasswordResetSuccessEmailContent(ctx context.Context, userName string) (string, string) {
+	subject := "Email Verification Success"
+	body := strings.ReplaceAll(passwordResetSuccessEmail, "{firstName}", userName)
+	return subject, body
+}
+
+// SendPasswordResetSuccessEmail sends an email verification success email
+func (service *EmailService) SendPasswordResetSuccessEmail(ctx context.Context, dest, userName string) error {
+	subject, body := service.CreatePasswordResetSuccessEmailContent(ctx, userName)
 	return service.sendMail(ctx, dest, subject, body)
 }

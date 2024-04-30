@@ -96,6 +96,20 @@ func (mr *MockTokenRepositoryerMockRecorder) Remove(ctx, token interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Remove", reflect.TypeOf((*MockTokenRepositoryer)(nil).Remove), ctx, token)
 }
 
+// RemoveAllByUserIDAndTokenType mocks base method.
+func (m *MockTokenRepositoryer) RemoveAllByUserIDAndTokenType(ctx context.Context, userID primitive.ObjectID, tokenType token.Type) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveAllByUserIDAndTokenType", ctx, userID, tokenType)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveAllByUserIDAndTokenType indicates an expected call of RemoveAllByUserIDAndTokenType.
+func (mr *MockTokenRepositoryerMockRecorder) RemoveAllByUserIDAndTokenType(ctx, userID, tokenType interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveAllByUserIDAndTokenType", reflect.TypeOf((*MockTokenRepositoryer)(nil).RemoveAllByUserIDAndTokenType), ctx, userID, tokenType)
+}
+
 // Update mocks base method.
 func (m *MockTokenRepositoryer) Update(ctx context.Context, token *model.Token) error {
 	m.ctrl.T.Helper()

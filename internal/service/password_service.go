@@ -47,24 +47,25 @@ func (service *PasswordService) ForgotPassword(ctx context.Context, email string
 	}
 	user, err := service.userRepository.GetByEmail(ctx, email)
 	if err != nil {
-		logger.Error(err, "Error getting user by email")
-		return &Error{Message: "Error getting user by email"}
+		logger.Error(err, fmt.Sprintf("Error retrieving user by email: %s", email))
+		return fmt.Errorf("Error trying to get user from DB")
 	}
-	if user.AccountStatus == model.AccountStatusUnverified {
-		return &Error{Message: fmt.Sprintf("Email account %s not verified yet", email)}
+	if user == nil {
+		logger.Error(nil, fmt.Sprintf("User email does not exist in DB: %s", email))
+		return &Error{Message: "Error getting user by email"}
 	}
 	resetToken, err := service.tokenService.GeneratePasswordResetToken(ctx, user.ID)
 	if err != nil {
-		return fmt.Errorf("Could not generate reset password token: %v", err)
+		return fmt.Errorf("Could not generate reset password token for user %s: %v", user.ID.Hex(), err)
 	}
-	if err := service.emailService.SendPasswordResetMail(
+	if err := service.emailService.SendPasswordResetEmail(
 		ctx,
 		user.Email,
 		user.FirstName,
 		user.ID.Hex(),
 		*resetToken,
 	); err != nil {
-		return fmt.Errorf("Error sending password reset email: %v", err)
+		return fmt.Errorf("Error sending password reset email for %s: %v", user.Email, err)
 	}
 	return nil
 }
@@ -77,7 +78,7 @@ func (service *PasswordService) ResetPassword(ctx context.Context, userID, token
 	}
 	token, err := service.tokenService.VerifyResetPasswordToken(ctx, userID, tokenValue)
 	if err != nil {
-		return fmt.Errorf("Unable to verify reset password token: %v", err)
+		return err
 	}
 	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
 	if err != nil {
@@ -99,6 +100,14 @@ func (service *PasswordService) ResetPassword(ctx context.Context, userID, token
 	if err := service.userRepository.UpdatePassword(ctx, user); err != nil {
 		logger.Error(err, "Error updating user")
 		return fmt.Errorf("Error updating user")
+	}
+	err = service.emailService.SendPasswordResetSuccessEmail(ctx, user.Email, user.FirstName)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Error trying to send a password reset notification for %s", user.Email))
+	}
+	err = service.tokenService.RemoveUsedToken(ctx, token)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Error trying to remove used token for user ID %s", token.UserID.Hex()))
 	}
 	return nil
 }

@@ -283,6 +283,9 @@ func TestTokenService(test *testing.T) {
 			gomock.Any(),
 			gomock.Any(),
 		).Return(primitive.NewObjectID(), nil)
+		mocks.MockTokenRepo.EXPECT().
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			Return(nil)
 
 		token, resultError := mocks.TokenService.GenerateEmailVerificationToken(mocks.Ctx, userID)
 
@@ -295,6 +298,9 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
+		mocks.MockTokenRepo.EXPECT().
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			Return(nil)
 		mocks.MockTokenRepo.EXPECT().InsertToken(
 			gomock.Any(),
 			gomock.Any(),
@@ -309,6 +315,23 @@ func TestTokenService(test *testing.T) {
 		assert.EqualError(test, resultError, "Error storing verification token")
 	})
 
+	test.Run("GenerateEmailVerificationToken_RemoveOldToken_Error", func(test *testing.T) {
+		mocks := createTokenService(test)
+		defer mocks.Controller.Finish()
+
+		mocks.MockTokenRepo.EXPECT().
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			Return(errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error removing old tokens")
+
+		token, resultError := mocks.TokenService.GenerateEmailVerificationToken(mocks.Ctx, userID)
+
+		// Assert
+		assert.Error(test, resultError)
+		assert.Nil(test, token)
+		assert.EqualError(test, resultError, "Could not remove old tokens")
+	})
+
 	// GeneratePasswordResetToken
 	test.Run("GeneratePasswordResetToken_Success", func(test *testing.T) {
 		mocks := createTokenService(test)
@@ -318,6 +341,9 @@ func TestTokenService(test *testing.T) {
 			gomock.Any(),
 			gomock.Any(),
 		).Return(primitive.NewObjectID(), nil)
+		mocks.MockTokenRepo.EXPECT().
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			Return(nil)
 
 		token, resultError := mocks.TokenService.GeneratePasswordResetToken(mocks.Ctx, userID)
 
@@ -330,11 +356,30 @@ func TestTokenService(test *testing.T) {
 		mocks := createTokenService(test)
 		defer mocks.Controller.Finish()
 
+		mocks.MockTokenRepo.EXPECT().
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			Return(nil)
 		mocks.MockTokenRepo.EXPECT().InsertToken(
 			gomock.Any(),
 			gomock.Any(),
 		).Return(nil, errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error inserting verification token in DB")
+
+		token, resultError := mocks.TokenService.GeneratePasswordResetToken(mocks.Ctx, userID)
+
+		// Assert
+		assert.Error(test, resultError)
+		assert.Nil(test, token)
+	})
+
+	test.Run("GeneratePasswordResetToken_RemoveOldTokens_Error", func(test *testing.T) {
+		mocks := createTokenService(test)
+		defer mocks.Controller.Finish()
+
+		mocks.MockTokenRepo.EXPECT().
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			Return(errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error removing old tokens")
 
 		token, resultError := mocks.TokenService.GeneratePasswordResetToken(mocks.Ctx, userID)
 

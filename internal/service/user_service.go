@@ -117,7 +117,7 @@ func (service *UserService) SendEmailVerification(
 	user *model.User,
 	emailVerificationToken string,
 ) error {
-	if err := service.emailService.SendVerificationMail(
+	if err := service.emailService.SendVerificationEmail(
 		ctx,
 		user.Email,
 		user.FirstName,
@@ -139,7 +139,7 @@ func (service *UserService) ResendEmailVerification(
 		return &Error{Message: EmailVerifiedError}
 	}
 
-	if err := service.emailService.SendVerificationMail(
+	if err := service.emailService.SendVerificationEmail(
 		ctx,
 		user.Email,
 		user.FirstName,
@@ -173,7 +173,7 @@ func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token)
 		logger.Error(err, "Error updating user status")
 		return nil, fmt.Errorf("Error updating user status")
 	}
-	if err := service.emailService.SendEVerificationSuccessMail(
+	if err := service.emailService.SendVerificationSuccessEmail(
 		ctx,
 		user.Email,
 		user.FirstName,

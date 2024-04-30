@@ -16,4 +16,9 @@ type TokenRepositoryer interface {
 	GetByUserIDAndTokenType(ctx context.Context, userID primitive.ObjectID, tokenType commonToken.Type) (*model.Token, error)
 	Update(ctx context.Context, token *model.Token) error
 	Remove(ctx context.Context, token *model.Token) error
+	RemoveAllByUserIDAndTokenType(
+		ctx context.Context,
+		userID primitive.ObjectID,
+		tokenType commonToken.Type,
+	) error
 }

@@ -110,3 +110,19 @@ func (tokenRepository *TokenRepository) Remove(ctx context.Context, token *model
 
 	return nil
 }
+
+// RemoveAllByUserIDAndTokenType deletes all tokens for a given userID and tokenType in the mongo database
+func (tokenRepository *TokenRepository) RemoveAllByUserIDAndTokenType(
+	ctx context.Context,
+	userID primitive.ObjectID,
+	tokenType commonToken.Type,
+) error {
+	collection := tokenRepository.getCollection()
+	filter := bson.M{"userID": userID, "type": tokenType}
+
+	_, err := collection.DeleteMany(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("could not delete tokens: %v", err)
+	}
+	return nil
+}
