@@ -11,7 +11,6 @@ require (
 	github.com/tryvium-travels/memongo v0.11.0
 	go.mongodb.org/mongo-driver v1.11.6
 	golang.org/x/crypto v0.16.0
-	golang.org/x/time v0.5.0
 	google.golang.org/grpc v1.59.0
 )
 

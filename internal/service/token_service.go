@@ -29,6 +29,7 @@ type TokenServicer interface {
 	VerifyResetPasswordToken(ctx context.Context, userID, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error)
 	RemoveUsedToken(ctx context.Context, token *model.Token) error
+	RemoveUnusedTokens(ctx context.Context, userID primitive.ObjectID, tokenType commonToken.Type) error
 }
 
 // TokenService is the implementation of the authentication service
@@ -60,6 +61,10 @@ func (service *TokenService) generateVerificationToken(
 	tokenType commonToken.Type,
 ) (*string, error) {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = service.RemoveUnusedTokens(ctx, userID, commonToken.ResetPasswordTokenType)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +120,24 @@ func (service *TokenService) RemoveUsedToken(ctx context.Context, token *model.T
 	if err != nil {
 		logger.Error(err, "Error removing old token")
 		return &Error{Message: "Could not remove old token"}
+	}
+	return nil
+}
+
+// RemoveUnusedTokens removes the user old tokens from the database
+func (service *TokenService) RemoveUnusedTokens(
+	ctx context.Context,
+	userID primitive.ObjectID,
+	tokenType commonToken.Type,
+) error {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	err = service.tokenRepository.RemoveAllByUserIDAndTokenType(ctx, userID, tokenType)
+	if err != nil {
+		logger.Error(err, "Error removing old tokens")
+		return &Error{Message: "Could not remove old tokens"}
 	}
 	return nil
 }

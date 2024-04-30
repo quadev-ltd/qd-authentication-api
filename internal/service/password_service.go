@@ -78,7 +78,7 @@ func (service *PasswordService) ResetPassword(ctx context.Context, userID, token
 	}
 	token, err := service.tokenService.VerifyResetPasswordToken(ctx, userID, tokenValue)
 	if err != nil {
-		return fmt.Errorf("Unable to verify reset password token: %v", err)
+		return err
 	}
 	user, err := service.userRepository.GetByUserID(ctx, token.UserID)
 	if err != nil {
@@ -103,7 +103,11 @@ func (service *PasswordService) ResetPassword(ctx context.Context, userID, token
 	}
 	err = service.emailService.SendPasswordResetSuccessEmail(ctx, user.Email, user.FirstName)
 	if err != nil {
-		logger.Error(err, "Error trying to send a password reset notification")
+		logger.Error(err, fmt.Sprintf("Error trying to send a password reset notification for %s", user.Email))
+	}
+	err = service.tokenService.RemoveUsedToken(ctx, token)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Error trying to remove used token for user ID %s", token.UserID.Hex()))
 	}
 	return nil
 }

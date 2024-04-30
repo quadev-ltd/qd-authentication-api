@@ -12,7 +12,6 @@ import (
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
-	"golang.org/x/time/rate"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -157,8 +156,6 @@ func (service *AuthenticationServiceServer) Register(
 	}, nil
 }
 
-var resendEmailVerificationLimiter = rate.NewLimiter(rate.Limit(1), 7)
-
 // ResendEmailVerification resends the email verification
 func (service *AuthenticationServiceServer) ResendEmailVerification(
 	ctx context.Context,
@@ -167,15 +164,6 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, err.Error())
-	}
-
-	if !resendEmailVerificationLimiter.Allow() {
-		logger.Warn("Rate limit exceeded")
-		return &pb_authentication.BaseResponse{
-				Success: false,
-				Message: "Rate limit exceeded",
-			},
-			status.Errorf(codes.ResourceExhausted, "Rate limit exceeded")
 	}
 
 	user, err := service.userService.GetUserProfile(ctx, request.UserID)

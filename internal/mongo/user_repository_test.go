@@ -2,10 +2,13 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
+	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"qd-authentication-api/internal/model"
@@ -279,4 +282,95 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Nil(test, updatedUser)
 		assert.Equal(test, "No account was found", err.Error())
 	})
+
+	test.Run("RemoveByUserIdAndTokenType_AllSameUser_Succcess", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		tokenRepo := NewTokenRepository(client)
+
+		// Create a user for the tokens
+		userID := primitive.NewObjectID()
+
+		// Create tokens for the user
+		tokenType := commonToken.EmailVerificationTokenType
+		tokens := make([]*model.Token, 4)
+		for i := range tokens {
+			tokens[i] = &model.Token{
+				UserID:    userID,
+				TokenHash: "token-hash",
+				Type:      tokenType,
+			}
+			if i == 3 {
+				tokens[i].Type = commonToken.ResetPasswordTokenType
+			}
+			_, err = tokenRepo.InsertToken(context.Background(), tokens[i])
+			assert.NoError(test, err)
+		}
+
+		// Remove tokens by UserID and TokenType
+		err = tokenRepo.RemoveAllByUserIDAndTokenType(context.Background(), userID, tokenType)
+		assert.NoError(test, err)
+
+		// Assert that only the last token with a different type remains
+		count, err := tokenRepo.getCollection().CountDocuments(context.Background(), bson.M{"userID": userID})
+		assert.NoError(test, err)
+		assert.Equal(test, int64(1), count, "There should only be one token left after removal")
+	})
+
+	test.Run("RemoveByUserIdAndTokenType_DifferentUSers_Successs", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		tokenRepo := NewTokenRepository(client)
+
+		// Create a user for the tokens
+		user1ID := primitive.NewObjectID()
+		user2ID := primitive.NewObjectID()
+
+		// Create tokens for the user
+		tokenType := commonToken.EmailVerificationTokenType
+		tokens := make([]*model.Token, 5)
+		for i := range tokens {
+			tokens[i] = &model.Token{
+				UserID:    user1ID,
+				TokenHash: "token-hash",
+				Type:      tokenType,
+			}
+			if i == 0 {
+				tokens[i].Type = commonToken.ResetPasswordTokenType
+			}
+			if i == 3 {
+				tokens[i].UserID = user2ID
+			}
+			if i == 4 {
+				tokens[i].UserID = user2ID
+				tokens[i].Type = commonToken.ResetPasswordTokenType
+			}
+			fmt.Println("Tokens:::", tokens[i])
+			_, err = tokenRepo.InsertToken(context.Background(), tokens[i])
+			assert.NoError(test, err)
+		}
+
+		// Remove tokens by UserID and TokenType
+		err = tokenRepo.RemoveAllByUserIDAndTokenType(context.Background(), user1ID, tokenType)
+		assert.NoError(test, err)
+
+		// Assert that only the last token with a different type remains
+		count, err := tokenRepo.getCollection().CountDocuments(context.Background(), bson.M{"userID": user1ID})
+		assert.NoError(test, err)
+		assert.Equal(test, int64(1), count, "There should only be one tokens left after removal")
+		count, err = tokenRepo.getCollection().CountDocuments(context.Background(), bson.M{"userID": user2ID})
+		assert.NoError(test, err)
+		assert.Equal(test, int64(2), count, "There should only be two tokens left after removal")
+	})
+
 }

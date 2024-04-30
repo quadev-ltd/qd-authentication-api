@@ -11,6 +11,7 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	jwt "github.com/quadev-ltd/qd-common/pkg/jwt"
+	token "github.com/quadev-ltd/qd-common/pkg/token"
 	primitive "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -110,6 +111,20 @@ func (m *MockTokenServicer) GetPublicKey(ctx context.Context) (string, error) {
 func (mr *MockTokenServicerMockRecorder) GetPublicKey(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublicKey", reflect.TypeOf((*MockTokenServicer)(nil).GetPublicKey), ctx)
+}
+
+// RemoveUnusedTokens mocks base method.
+func (m *MockTokenServicer) RemoveUnusedTokens(ctx context.Context, userID primitive.ObjectID, tokenType token.Type) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveUnusedTokens", ctx, userID, tokenType)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RemoveUnusedTokens indicates an expected call of RemoveUnusedTokens.
+func (mr *MockTokenServicerMockRecorder) RemoveUnusedTokens(ctx, userID, tokenType interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveUnusedTokens", reflect.TypeOf((*MockTokenServicer)(nil).RemoveUnusedTokens), ctx, userID, tokenType)
 }
 
 // RemoveUsedToken mocks base method.
