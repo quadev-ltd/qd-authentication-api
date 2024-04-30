@@ -64,8 +64,9 @@ func (service *TokenService) generateVerificationToken(
 	if err != nil {
 		return nil, err
 	}
+  
 	err = service.RemoveUnusedTokens(ctx, userID, tokenType)
-	if err != nil {
+  if err != nil {
 		return nil, err
 	}
 	verificationToken, err := util.GenerateVerificationToken()
