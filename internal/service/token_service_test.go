@@ -284,7 +284,7 @@ func TestTokenService(test *testing.T) {
 			gomock.Any(),
 		).Return(primitive.NewObjectID(), nil)
 		mocks.MockTokenRepo.EXPECT().
-			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.EmailVerificationTokenType).
 			Return(nil)
 
 		token, resultError := mocks.TokenService.GenerateEmailVerificationToken(mocks.Ctx, userID)
@@ -299,7 +299,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		mocks.MockTokenRepo.EXPECT().
-			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.EmailVerificationTokenType).
 			Return(nil)
 		mocks.MockTokenRepo.EXPECT().InsertToken(
 			gomock.Any(),
@@ -320,7 +320,7 @@ func TestTokenService(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		mocks.MockTokenRepo.EXPECT().
-			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.ResetPasswordTokenType).
+			RemoveAllByUserIDAndTokenType(gomock.Any(), userID, commonToken.EmailVerificationTokenType).
 			Return(errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error removing old tokens")
 
