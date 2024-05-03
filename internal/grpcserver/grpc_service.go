@@ -173,6 +173,10 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 		}
 		return nil, status.Errorf(codes.Internal, "Error while getting user details")
 	}
+	if user.AccountStatus == model.AccountStatusVerified {
+		return nil, status.Errorf(codes.InvalidArgument, servicePkg.EmailVerifiedError)
+	}
+
 	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, user.ID)
 	if err != nil {
 		logger.Error(err, "Failed to generate email verification token")
