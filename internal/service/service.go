@@ -3,46 +3,66 @@ package service
 import (
 	"errors"
 
+	"qd-authentication-api/internal/firebase"
 	"qd-authentication-api/internal/repository"
 )
 
-// Servicer is the interface for the service
-type Servicer interface {
-	GetAuthenticationService() UserServicer
+// Managerer is the interface for the service
+type Managerer interface {
+	GetUserService() UserServicer
+	GetFirebaseAuthService() firebase.AuthServicer
 	GetTokenService() TokenServicer
 	GetPasswordService() PasswordServicer
 	Close() error
 }
 
-// Service is the implementation of the service
-type Service struct {
-	userService     UserServicer
-	tokenService    TokenServicer
-	passwordService PasswordServicer
-	repository      repository.Storer
+// Manager is the implementation of the service
+type Manager struct {
+	userService         UserServicer
+	firebaseAuthService firebase.AuthServicer
+	tokenService        TokenServicer
+	passwordService     PasswordServicer
+	emailService        EmailServicer
+	repository          repository.Storer
 }
 
-var _ Servicer = &Service{}
+var _ Managerer = &Manager{}
 
-// GetAuthenticationService Returns the authentication service
-func (service *Service) GetAuthenticationService() UserServicer {
+// GetUserService Returns the authentication service
+func (service *Manager) GetUserService() UserServicer {
 	return service.userService
 }
 
+// GetFirebaseAuthService Returns firebase authentication service
+func (service *Manager) GetFirebaseAuthService() firebase.AuthServicer {
+	return service.firebaseAuthService
+}
+
 // GetTokenService Returns the token service
-func (service *Service) GetTokenService() TokenServicer {
+func (service *Manager) GetTokenService() TokenServicer {
 	return service.tokenService
 }
 
 // GetPasswordService Returns the password service
-func (service *Service) GetPasswordService() PasswordServicer {
+func (service *Manager) GetPasswordService() PasswordServicer {
 	return service.passwordService
 }
 
-// Close closes the service
-func (service *Service) Close() error {
-	if service.repository != nil {
-		return service.repository.Close()
+// Close closes the services
+func (service *Manager) Close() error {
+	if service.repository == nil {
+		return errors.New("Service repository is nil")
 	}
-	return errors.New("Service repository is nil")
+	err := service.repository.Close()
+	if err != nil {
+		return err
+	}
+	if service.emailService == nil {
+		return errors.New("Email service is nil")
+	}
+	err = service.emailService.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }

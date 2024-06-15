@@ -2,11 +2,13 @@ package service
 
 // Error messages
 const (
-	InvalidUserIDError = "invalid_user_id"
-	InvalidEmailError  = "invalid_email"
-	EmailVerifiedError = "email_already_verified"
-	InvalidTokenError  = "invalid_token"
-	TokenExpiredError  = "token_expired"
+	InvalidUserIDError        = "invalid_user_id"
+	InvalidEmailError         = "invalid_email"
+	EmailVerifiedError        = "email_already_verified"
+	InvalidTokenError         = "invalid_token"
+	TokenExpiredError         = "token_expired"
+	InternalServerError       = "internal_server_error"
+	FirebaseVerificationError = "firebase_verification_failed"
 )
 
 // Error is the error type for the service

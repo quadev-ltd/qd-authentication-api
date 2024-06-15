@@ -10,21 +10,22 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-//go:embed templates/verification_email_test.txt
+//go:embed email_templates/verification_email_test.txt
 var verificationEmailTest string
 
-//go:embed templates/reset_password_email_test.txt
+//go:embed email_templates/reset_password_email_test.txt
 var passwordResetEmailTest string
 
-//go:embed templates/verification_success_email_test.txt
+//go:embed email_templates/verification_success_email_test.txt
 var verificationSuccessEmailTest string
+
+//go:embed email_templates/authentication_success_email_test.txt
+var authenticationSuccessEmailTest string
 
 func TestCreateVerificationEmailContent(test *testing.T) {
 	emailService := &EmailService{
-		config: EmailServiceConfig{
-			AppName:                   "MyApp",
-			EmailVerificationEndpoint: "http://myapp.com/",
-		},
+		appName:                   "MyApp",
+		emailVerificationEndpoint: "http://myapp.com/",
 	}
 
 	userName := "Test"
@@ -46,10 +47,8 @@ func TestCreateVerificationEmailContent(test *testing.T) {
 
 func TestCreatePasswordResetEmailContent(test *testing.T) {
 	emailService := &EmailService{
-		config: EmailServiceConfig{
-			AppName:                   "MyApp",
-			EmailVerificationEndpoint: "http://myapp.com/",
-		},
+		appName:                   "MyApp",
+		emailVerificationEndpoint: "http://myapp.com/",
 	}
 
 	userName := "Test"
@@ -72,12 +71,10 @@ func TestCreatePasswordResetEmailContent(test *testing.T) {
 	assert.Equal(test, expectedBody, body)
 }
 
-func TestCreateVerificationSuccessMailContent(test *testing.T) {
+func TestCreateVerificationSuccessEmailContent(test *testing.T) {
 	emailService := &EmailService{
-		config: EmailServiceConfig{
-			AppName:                   "MyApp",
-			EmailVerificationEndpoint: "http://myapp.com/",
-		},
+		appName:                   "MyApp",
+		emailVerificationEndpoint: "http://myapp.com/",
 	}
 
 	userName := "Test"
@@ -86,6 +83,26 @@ func TestCreateVerificationSuccessMailContent(test *testing.T) {
 	expectedBody := verificationSuccessEmailTest
 
 	subject, body := emailService.CreateVerificationSuccessEmailContent(
+		context.Background(),
+		userName,
+	)
+
+	assert.Equal(test, expectedSubject, subject)
+	assert.Equal(test, expectedBody, body)
+}
+
+func TestCreateAuthenticationSuccessEmailContent(test *testing.T) {
+	emailService := &EmailService{
+		appName:                   "appName",
+		emailVerificationEndpoint: "http://myapp.com/",
+	}
+
+	userName := "firstName"
+
+	expectedSubject := "Authentication Success"
+	expectedBody := authenticationSuccessEmailTest
+
+	subject, body := emailService.CreateAuthenticationSuccessEmailContent(
 		context.Background(),
 		userName,
 	)

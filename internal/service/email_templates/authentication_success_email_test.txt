@@ -20,7 +20,7 @@
             margin-top: 30px;
             border-radius: 20px;
             background-color: #5050C3;
-            color: #ffffff;
+            color: #ffffff !important;
             text-decoration: none;
             font-weight: bold;
         }
@@ -31,9 +31,13 @@
   </head>
   <body>
     <div class="container">
-        <h2>Hi Test,</h2>
-        <p>Your email account has been successfully verified.</p>
-        <p>Thanks.</p>
+        <h2>Hi firstName,</h2>
+        <p>We wanted to let you know that your account has been successfully signed into our app.</p>
+        <p>If this was you, no further action is needed.</p>
+        <p>If you did not sign in or if you notice any suspicious activity, please change your password immediately and contact our support team.</p>
+        <p>Thank you for using appName.</p>
+        <p>Best Regards,</p>
+        <p>appName Support Team</p>
     </div>
   </body>
 </html>

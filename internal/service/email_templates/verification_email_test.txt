@@ -20,7 +20,7 @@
             margin-top: 30px;
             border-radius: 20px;
             background-color: #5050C3;
-            color: #ffffff;
+            color: #ffffff !important;
             text-decoration: none;
             font-weight: bold;
         }
@@ -31,11 +31,11 @@
   </head>
   <body>
     <div class="container">
-        <h2>Hi {firstName},</h2>
-        <p>You've just signed up to {appName}!</p>
+        <h2>Hi Test,</h2>
+        <p>You've just signed up to MyApp!</p>
         <p>We need to verify your email.</p>
         <p>Please click on the following link to verify your account:</p>
-        <a href="{emailVerificationLink}" class="button">Verify your email</a>
+        <a href="http://myapp.com/user/{userID}/email/abcd1234" class="button">Verify your email</a>
         <p class="footer">Thanks.</p>
     </div>
   </body>

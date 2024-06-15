@@ -8,6 +8,7 @@ import (
 	"github.com/quadev-ltd/qd-common/pkg/log"
 
 	"qd-authentication-api/internal/config"
+	"qd-authentication-api/internal/firebase"
 	grpcFactory "qd-authentication-api/internal/grpcserver"
 	"qd-authentication-api/internal/service"
 )
@@ -23,12 +24,16 @@ type Applicationer interface {
 type Application struct {
 	grpcServiceServer grpcserver.GRPCServicer
 	grpcServerAddress string
-	service           service.Servicer
+	service           service.Managerer
 	logger            log.Loggerer
 }
 
 // NewApplication creates a new application
-func NewApplication(config *config.Config, centralConfig *commonConfig.Config) Applicationer {
+func NewApplication(
+	config *config.Config,
+	centralConfig *commonConfig.Config,
+	firebaseService firebase.AuthServicer,
+) Applicationer {
 	logFactory := log.NewLogFactory(config.Environment)
 	logger := logFactory.NewLogger()
 	if centralConfig.TLSEnabled {
@@ -37,7 +42,7 @@ func NewApplication(config *config.Config, centralConfig *commonConfig.Config) A
 		logger.Info("TLS is disabled")
 	}
 
-	serviceManager, err := (&service.Factory{}).CreateServiceManager(config, centralConfig)
+	serviceManager, err := (&service.Factory{}).CreateServiceManager(config, centralConfig, firebaseService)
 	if err != nil {
 		logger.Error(err, "Failed to create authentication service")
 		return nil
@@ -49,12 +54,12 @@ func NewApplication(config *config.Config, centralConfig *commonConfig.Config) A
 		centralConfig.AuthenticationService.Port,
 	)
 	grpcServiceServer, err := (&grpcFactory.Factory{}).Create(
-		grpcServerAddress,
-		serviceManager.GetAuthenticationService(),
-		serviceManager.GetTokenService(),
-		serviceManager.GetPasswordService(),
+		grpcFactory.Config{
+			GRPCServerAddress: grpcServerAddress,
+			TLSEnabled:        centralConfig.TLSEnabled,
+		},
+		serviceManager,
 		logFactory,
-		centralConfig.TLSEnabled,
 	)
 
 	if err != nil {
@@ -66,7 +71,7 @@ func NewApplication(config *config.Config, centralConfig *commonConfig.Config) A
 }
 
 // New creates a new application with raw parameters
-func New(grpcServiceServer grpcserver.GRPCServicer, grpcServerAddress string, service service.Servicer, logger log.Loggerer) Applicationer {
+func New(grpcServiceServer grpcserver.GRPCServicer, grpcServerAddress string, service service.Managerer, logger log.Loggerer) Applicationer {
 	return &Application{
 		grpcServiceServer: grpcServiceServer,
 		grpcServerAddress: grpcServerAddress,

@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"qd-authentication-api/internal/dto"
+	"qd-authentication-api/internal/firebase"
 	"qd-authentication-api/internal/model"
 	servicePkg "qd-authentication-api/internal/service"
 )
@@ -31,18 +32,36 @@ type AuthenticationServiceServer struct {
 
 // NewAuthenticationServiceServer creates a new authentication service server
 func NewAuthenticationServiceServer(
-	authenticationService servicePkg.UserServicer,
+	userService servicePkg.UserServicer,
+	firebaseAuthService firebase.AuthServicer,
 	tokenService servicePkg.TokenServicer,
 	passwordService servicePkg.PasswordServicer,
 ) *AuthenticationServiceServer {
 	return &AuthenticationServiceServer{
-		userService:     authenticationService,
+		userService:     userService,
 		tokenService:    tokenService,
 		passwordService: passwordService,
 	}
 }
 
 var _ pb_authentication.AuthenticationServiceServer = &AuthenticationServiceServer{}
+
+func createFieldDetailStatusError(
+	fieldErrors []*pb_errors.FieldError,
+) (*status.Status, error) {
+	errStatus := status.New(codes.InvalidArgument, "Registration failed")
+	for _, fieldError := range fieldErrors {
+		genericDetail, err := anypb.New(fieldError)
+		if err != nil {
+			return nil, err
+		}
+		errStatus, err = errStatus.WithDetails(genericDetail)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return errStatus, nil
+}
 
 // GetPublicKey returns the public key
 func (service *AuthenticationServiceServer) GetPublicKey(
@@ -56,7 +75,7 @@ func (service *AuthenticationServiceServer) GetPublicKey(
 	publicKey, err := service.tokenService.GetPublicKey(ctx)
 	if err != nil {
 		logger.Error(err, "Failed to get public key")
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 
 	return &pb_authentication.GetPublicKeyResponse{
@@ -78,8 +97,6 @@ func (service *AuthenticationServiceServer) Register(
 	if request.DateOfBirth != nil {
 		dateOfBirthValue := time.Unix(request.DateOfBirth.GetSeconds(), int64(request.DateOfBirth.GetNanos()))
 		dateOfBirth = &dateOfBirthValue
-	} else {
-		return nil, status.Errorf(codes.InvalidArgument, "Date of birth was not provided")
 	}
 
 	createdUser, registerError := service.userService.Register(
@@ -95,14 +112,7 @@ func (service *AuthenticationServiceServer) Register(
 		_, isEmailInUseError := registerError.(*model.EmailInUseError)
 		_, isNoComplexPasswordError := registerError.(*servicePkg.NoComplexPasswordError)
 		if isValidationError || isNoComplexPasswordError || isEmailInUseError {
-			fieldValidationErrors, err := model.ParseValidationError(registerError)
-			if err != nil {
-				status.Errorf(codes.InvalidArgument, fmt.Sprint("Registration failed: ", registerError.Error()))
-			}
 			var fieldErrors []*pb_errors.FieldError = []*pb_errors.FieldError{}
-			if fieldValidationErrors != nil {
-				fieldErrors = append(fieldErrors, fieldValidationErrors...)
-			}
 			if isNoComplexPasswordError {
 				fieldErrors = append(fieldErrors, &pb_errors.FieldError{
 					Field: "password",
@@ -115,17 +125,20 @@ func (service *AuthenticationServiceServer) Register(
 					Error: EmailAlreadyUsed,
 				})
 			}
+			fieldValidationErrors, err := model.ParseValidationError(registerError)
+			if err != nil && len(fieldErrors) == 0 {
+				logger.Error(err, "Parsing error")
+				status.Errorf(codes.Internal, servicePkg.InternalServerError)
+			}
 
-			errStatus := status.New(codes.InvalidArgument, "Registration failed")
-			for _, fieldError := range fieldErrors {
-				genericDetail, err := anypb.New(fieldError)
-				if err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to marshal error details")
-				}
-				errStatus, err = errStatus.WithDetails(genericDetail)
-				if err != nil {
-					return nil, status.Errorf(codes.Internal, "failed to add error details")
-				}
+			if fieldValidationErrors != nil {
+				fieldErrors = append(fieldErrors, fieldValidationErrors...)
+			}
+
+			errStatus, err := createFieldDetailStatusError(fieldErrors)
+			if err != nil {
+				logger.Error(err, "Failed to create field detail status error")
+				return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 			}
 
 			return nil, errStatus.Err()
@@ -180,7 +193,7 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 	emailVerificationToken, err := service.tokenService.GenerateEmailVerificationToken(ctx, user.ID)
 	if err != nil {
 		logger.Error(err, "Failed to generate email verification token")
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 	err = service.userService.ResendEmailVerification(ctx, user, *emailVerificationToken)
 	if err != nil {
@@ -188,7 +201,7 @@ func (service *AuthenticationServiceServer) ResendEmailVerification(
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(err, "Failed to resend email verification")
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 	logger.Info("Email verification sent successfully")
 	return &pb_authentication.BaseResponse{
@@ -249,7 +262,7 @@ func (service *AuthenticationServiceServer) Authenticate(
 	}
 	user, err := service.userService.Authenticate(ctx, strings.ToLower(request.Email), request.Password)
 	if err != nil {
-		err = handleAuthenticationError(err, logger)
+		err = handleAuthenticationError(err, logger, request.Email)
 		return nil, err
 	}
 	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
@@ -264,14 +277,68 @@ func (service *AuthenticationServiceServer) Authenticate(
 	return &authenticateResponse, nil
 }
 
-func handleAuthenticationError(err error, logger commonLogger.Loggerer) error {
+// AuthenticateWithFirebase uses firebase idToken to authenticate/register the user
+func (service *AuthenticationServiceServer) AuthenticateWithFirebase(
+	ctx context.Context,
+	request *pb_authentication.AuthenticateWithFirebaseRequest,
+) (*pb_authentication.AuthenticateResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	firebaseUser, firebaseAuthError := service.userService.AuthenticateWithFirebase(
+		ctx,
+		request.IdToken,
+		request.Email,
+		request.FirstName,
+		request.LastName,
+	)
+	if firebaseAuthError != nil {
+		if serviceErr, ok := firebaseAuthError.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		_, isValidationError := firebaseAuthError.(validator.ValidationErrors)
+		if isValidationError {
+			fieldValidationErrors, parseError := model.ParseValidationError(firebaseAuthError)
+			if parseError != nil {
+				logger.Error(parseError, "Firebase authentication failed")
+				status.Errorf(codes.Internal, servicePkg.InternalServerError)
+			}
+			var fieldErrors []*pb_errors.FieldError = []*pb_errors.FieldError{}
+			if fieldValidationErrors != nil {
+				fieldErrors = append(fieldErrors, fieldValidationErrors...)
+			}
+
+			errStatus, err := createFieldDetailStatusError(fieldErrors)
+			if err != nil {
+				logger.Error(err, "Failed to create field detail status error")
+				return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
+			}
+
+			return nil, errStatus.Err()
+		}
+		return nil, status.Errorf(codes.Internal, "Error authenticating with Firebase")
+	}
+	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, firebaseUser.Email, firebaseUser.ID.Hex())
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Error generating new tokens")
+	}
+	refreshTokenResponse := *dto.ConvertAuthTokensToResponse(authTokens)
+	logger.Info("Firebase authentication successful")
+	return &refreshTokenResponse, nil
+}
+
+func handleAuthenticationError(err error, logger commonLogger.Loggerer, email string) error {
 	switch err.(type) {
 	case *model.WrongEmailOrPassword:
-		logger.Error(err, "Invalid email or password")
+		logger.Error(err, fmt.Sprintf("Invalid email or password for user: %s", email))
 		return status.Errorf(codes.Unauthenticated, InvalidEmailOrPassword)
 	default:
 		logger.Error(err, "Internal error")
-		return status.Errorf(codes.Internal, "Internal server error")
+		return status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 }
 
@@ -345,7 +412,7 @@ func (service *AuthenticationServiceServer) VerifyResetPasswordToken(
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(err, "Verify reset password token failed")
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 	logger.Info("Verify reset password token successful")
 	return &pb_authentication.VerifyResetPasswordTokenResponse{
@@ -374,7 +441,7 @@ func (service *AuthenticationServiceServer) ResetPassword(
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
 		logger.Error(resetPasswordError, "Reset password failed")
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 	logger.Info("Reset password successful")
 	return &pb_authentication.BaseResponse{
@@ -401,7 +468,7 @@ func (service *AuthenticationServiceServer) GetUserProfile(
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 	userDTO := dto.ConvertUserToUserDTO(user)
 	userProfileResponse := &pb_authentication.GetUserProfileResponse{
@@ -433,7 +500,7 @@ func (service *AuthenticationServiceServer) UpdateUserProfile(
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
 		}
-		return nil, status.Errorf(codes.Internal, "Internal server error")
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
 	}
 	logger.Info("Update user profile successful")
 	return &pb_authentication.UpdateUserProfileResponse{

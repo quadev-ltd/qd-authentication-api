@@ -31,5 +31,19 @@ func NewUser() *User {
 		RegistrationDate: time.Now(),
 		LastLoginDate:    time.Now(),
 		AccountStatus:    AccountStatusUnverified,
+		AuthTypes:        []AuthenticationType{PasswordAuthType},
+	}
+}
+
+// NewFirebaseUser creates a new user with Firebase auth type
+func NewFirebaseUser() *User {
+	return &User{
+		Email:            "test@firebase.com",
+		FirstName:        "Test",
+		LastName:         "User",
+		RegistrationDate: time.Now(),
+		LastLoginDate:    time.Now(),
+		AccountStatus:    AccountStatusVerified,
+		AuthTypes:        []AuthenticationType{FirebaseAuthType},
 	}
 }

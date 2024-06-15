@@ -185,6 +185,7 @@ func TestMongoUserRepository(test *testing.T) {
 		defer mongoServer.Stop()
 		repo := NewUserRepository(client)
 		user := model.NewUser()
+		user.AuthTypes[0] = model.FirebaseAuthType
 
 		insertedID, err := repo.InsertUser(context.Background(), user)
 		assert.NoError(test, err)
@@ -196,6 +197,8 @@ func TestMongoUserRepository(test *testing.T) {
 		newSalt := "new-salt"
 		user.PasswordHash = newHash
 		user.PasswordSalt = newSalt
+		user.AuthTypes = append(user.AuthTypes, model.PasswordAuthType)
+
 		user.ID = id
 
 		err = repo.UpdatePassword(context.Background(), user)
@@ -204,9 +207,42 @@ func TestMongoUserRepository(test *testing.T) {
 		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
 		assert.NoError(test, err)
 		assert.NotNil(test, foundUser)
-		assert.Equal(test, user.PasswordHash, newHash)
-		assert.Equal(test, user.PasswordSalt, newSalt)
+		assert.Equal(test, foundUser.PasswordHash, newHash)
+		assert.Equal(test, foundUser.PasswordSalt, newSalt)
+		assert.True(test, model.ContainsAuthType(foundUser.AuthTypes, model.PasswordAuthType))
+		assert.True(test, model.ContainsAuthType(foundUser.AuthTypes, model.FirebaseAuthType))
 	})
+
+	test.Run("UpdateAuthTypes_Success", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+		repo := NewUserRepository(client)
+		user := model.NewUser()
+
+		insertedID, err := repo.InsertUser(context.Background(), user)
+		assert.NoError(test, err)
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
+
+		user.AuthTypes[0] = model.FirebaseAuthType
+
+		user.ID = id
+
+		err = repo.UpdateAuthTypes(context.Background(), user)
+		assert.NoError(test, err)
+
+		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
+		assert.NoError(test, err)
+		assert.NotNil(test, foundUser)
+		assert.False(test, model.ContainsAuthType(foundUser.AuthTypes, model.PasswordAuthType))
+		assert.True(test, model.ContainsAuthType(foundUser.AuthTypes, model.FirebaseAuthType))
+	})
+
 	test.Run("UpdatePassword_User_Not_Found", func(test *testing.T) {
 		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
 		if err != nil {

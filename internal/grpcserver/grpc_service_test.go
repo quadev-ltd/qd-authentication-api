@@ -74,6 +74,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		DateOfBirth: timestamppb.New(time.Now()),
 	}
 
+	// Create a sample of AuthenticateWithFirebase request for testing.
+	authenticateWithFirebaseRequest := &pb_authentication.AuthenticateWithFirebaseRequest{
+		IdToken:   "test-id-token",
+		Email:     "test@example.com",
+		FirstName: "John",
+		LastName:  "Doe",
+	}
+
 	// Create a sample request for testing.
 	verifyEmailRequest := &pb_authentication.VerifyEmailRequest{
 		VerificationToken: "some_verification_token",
@@ -90,6 +98,17 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		Type:   commonToken.AuthTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
+
+	firebaseUser := &model.User{
+		ID:               primitive.NewObjectID(),
+		Email:            "test@email.com",
+		FirstName:        "FirstName",
+		LastName:         "LastName",
+		RegistrationDate: time.Now(),
+		AccountStatus:    model.AccountStatusVerified,
+		AuthTypes:        []model.AuthenticationType{model.FirebaseAuthType},
+	}
+
 	// Register
 	test.Run("Registration_Error_Validation", func(test *testing.T) {
 		mocks := initialiseTest(test)
@@ -204,27 +223,6 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Equal(test, fieldErrors[0].Field, "password")
 		assert.Equal(test, fieldErrors[0].Error, "complex")
-	})
-
-	test.Run("Registration_Error_Date_Of_Birth_Not_Provided", func(test *testing.T) {
-		registerRequestNoDOB := &pb_authentication.RegisterRequest{
-			Email:     "test@example.com",
-			Password:  "password",
-			FirstName: "John",
-			LastName:  "Doe",
-		}
-
-		mocks := initialiseTest(test)
-		defer mocks.Controller.Finish()
-
-		response, returnedError := mocks.AuthenticationServer.Register(mocks.Ctx, registerRequestNoDOB)
-
-		assert.Equal(
-			test,
-			"rpc error: code = InvalidArgument desc = Date of birth was not provided",
-			returnedError.Error(),
-		)
-		assert.Nil(test, response)
 	})
 
 	test.Run("Registration_TokenGeneration_Error", func(test *testing.T) {
@@ -527,7 +525,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		mocks.MockUserService.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil, invalidEmailOrPasswordError)
-		mocks.MockLogger.EXPECT().Error(invalidEmailOrPasswordError, "Invalid email or password")
+		mocks.MockLogger.EXPECT().Error(invalidEmailOrPasswordError, "Invalid email or password for user: test@example.com")
 
 		response, returnedError := mocks.AuthenticationServer.Authenticate(mocks.Ctx, authenticateRequest)
 
@@ -540,7 +538,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		defer mocks.Controller.Finish()
 
 		authenticationError := errors.New("some error")
-		expectedError := status.Errorf(codes.Internal, "Internal server error")
+		expectedError := status.Errorf(codes.Internal, service.InternalServerError)
 
 		mocks.MockUserService.EXPECT().
 			Authenticate(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -626,6 +624,146 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Equal(test, successfulResponse, response)
 	})
 
+	test.Run("AuthenticateWithFirebase_Success", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		authenticateResponse := &model.AuthTokensResponse{
+			AuthToken:          "some_auth_token",
+			AuthTokenExpiry:    time.Now(),
+			RefreshToken:       "some_refresh_token",
+			RefreshTokenExpiry: time.Now(),
+			UserEmail:          "test@example.com",
+		}
+
+		successfulResponse := &pb_authentication.AuthenticateResponse{
+			AuthToken:    authenticateResponse.AuthToken,
+			RefreshToken: authenticateResponse.RefreshToken,
+		}
+
+		mocks.MockUserService.EXPECT().AuthenticateWithFirebase(
+			gomock.Any(),
+			authenticateWithFirebaseRequest.IdToken,
+			authenticateWithFirebaseRequest.Email,
+			authenticateWithFirebaseRequest.FirstName,
+			authenticateWithFirebaseRequest.LastName,
+		).Return(firebaseUser, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex()).
+			Return(authenticateResponse, nil)
+
+		mocks.MockLogger.EXPECT().Info("Firebase authentication successful")
+
+		response, returnedError := mocks.AuthenticationServer.AuthenticateWithFirebase(
+			mocks.Ctx,
+			authenticateWithFirebaseRequest,
+		)
+
+		assert.Nil(
+			test,
+			returnedError,
+		)
+		assert.Nil(test, returnedError)
+		assert.Equal(test, successfulResponse, response)
+	})
+
+	test.Run("AuthenticateWithFirebase_TokenGeneration_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		tokenError := errors.New("some error")
+
+		mocks.MockUserService.EXPECT().AuthenticateWithFirebase(
+			gomock.Any(),
+			authenticateWithFirebaseRequest.IdToken,
+			authenticateWithFirebaseRequest.Email,
+			authenticateWithFirebaseRequest.FirstName,
+			authenticateWithFirebaseRequest.LastName,
+		).Return(firebaseUser, nil)
+		mocks.MockTokenService.EXPECT().
+			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex()).
+			Return(nil, tokenError)
+
+		response, returnedError := mocks.AuthenticationServer.AuthenticateWithFirebase(
+			mocks.Ctx,
+			authenticateWithFirebaseRequest,
+		)
+
+		assert.EqualError(test, returnedError, "rpc error: code = Internal desc = Error generating new tokens")
+		assert.Nil(test, response)
+	})
+
+	test.Run("AuthenticateWithFirebase_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		validationErr := errors.New("Email")
+
+		mocks.MockUserService.EXPECT().AuthenticateWithFirebase(
+			gomock.Any(),
+			authenticateWithFirebaseRequest.IdToken,
+			authenticateWithFirebaseRequest.Email,
+			authenticateWithFirebaseRequest.FirstName,
+			authenticateWithFirebaseRequest.LastName,
+		).Return(nil, validationErr)
+
+		response, returnedError := mocks.AuthenticationServer.AuthenticateWithFirebase(
+			mocks.Ctx,
+			authenticateWithFirebaseRequest,
+		)
+
+		assert.Nil(test, response)
+		assert.Error(test, returnedError)
+		assert.EqualError(test, returnedError, "rpc error: code = Internal desc = Error authenticating with Firebase")
+	})
+
+	test.Run("AuthenticateWithFirebase_Validation_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		mockValidationError := validator.ValidationErrors{
+			&mock.CustomValidationError{
+				FieldName: "FieldName0",
+			},
+			&mock.CustomValidationError{
+				FieldName: "FieldName1",
+			},
+			&mock.CustomValidationError{
+				FieldName: "FieldName2",
+			},
+			&mock.CustomValidationError{
+				FieldName: "FieldName3",
+			},
+		}
+
+		mocks.MockUserService.EXPECT().AuthenticateWithFirebase(
+			gomock.Any(),
+			authenticateWithFirebaseRequest.IdToken,
+			authenticateWithFirebaseRequest.Email,
+			authenticateWithFirebaseRequest.FirstName,
+			authenticateWithFirebaseRequest.LastName,
+		).Return(nil, mockValidationError)
+
+		response, returnedError := mocks.AuthenticationServer.AuthenticateWithFirebase(
+			mocks.Ctx,
+			authenticateWithFirebaseRequest,
+		)
+
+		assert.Nil(test, response)
+		assert.Error(test, returnedError)
+		errorAmount := len(mockValidationError)
+		fieldErrors, err := commonPB.GetFieldValidationErrors(returnedError)
+		if err != nil {
+			test.Fatal(err)
+		}
+
+		assert.Len(test, fieldErrors, errorAmount)
+		for i := 0; i < errorAmount; i++ {
+			assert.Equal(test, fieldErrors[i].Field, fmt.Sprintf("FieldName%d", i))
+			assert.Equal(test, fieldErrors[i].Error, fmt.Sprintf("FieldName%d", i))
+		}
+	})
+
 	test.Run("ResendEmailVerification_GetProfile_Error", func(test *testing.T) {
 		mocks := initialiseTest(test)
 		defer mocks.Controller.Finish()
@@ -674,7 +812,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
-		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+		assert.Equal(test, "rpc error: code = Internal desc = internal_server_error", returnedError.Error())
 	})
 
 	test.Run("ResendEmailVerification_ResendEmail_Error", func(test *testing.T) {
@@ -738,7 +876,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Nil(test, response)
 		assert.Error(test, returnedError)
-		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+		assert.Equal(test, "rpc error: code = Internal desc = internal_server_error", returnedError.Error())
 	})
 
 	test.Run("ResendEmailVerification_Success", func(test *testing.T) {
@@ -1002,7 +1140,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		})
 
 		assert.Error(test, returnedError)
-		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+		assert.Equal(test, "rpc error: code = Internal desc = internal_server_error", returnedError.Error())
 		assert.Nil(test, response)
 	})
 
@@ -1070,7 +1208,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		})
 
 		assert.Error(test, returnedError)
-		assert.Equal(test, "rpc error: code = Internal desc = Internal server error", returnedError.Error())
+		assert.Equal(test, "rpc error: code = Internal desc = internal_server_error", returnedError.Error())
 		assert.Nil(test, response)
 	})
 
@@ -1185,7 +1323,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Error(test, err)
 		assert.Nil(test, getUserProfileResponse)
-		assert.EqualError(test, err, "rpc error: code = Internal desc = Internal server error")
+		assert.EqualError(test, err, "rpc error: code = Internal desc = internal_server_error")
 	})
 
 	test.Run("GetUserProfile_Claims_Error", func(test *testing.T) {
@@ -1282,7 +1420,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Error(test, err)
 		assert.Nil(test, updateUserProfileResponse)
-		assert.EqualError(test, err, "rpc error: code = Internal desc = Internal server error")
+		assert.EqualError(test, err, "rpc error: code = Internal desc = internal_server_error")
 	})
 
 	test.Run("UpdateUserProfile_Claims_Error", func(test *testing.T) {

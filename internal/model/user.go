@@ -11,21 +11,31 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// AccountStatus is the type for the account status
+// AccountStatus is an int
 type AccountStatus int
+
+// AuthenticationType is a string
+type AuthenticationType string
+
+// Authentication possible types
+const (
+	PasswordAuthType = "PASSWORD"
+	FirebaseAuthType = "FIREBASE"
+)
 
 // User is the model for the user
 type User struct {
-	ID               primitive.ObjectID `bson:"_id,omitempty"`
-	Email            string             `bson:"email" validate:"required,email,lowercase"`
-	PasswordHash     string             `bson:"passwordHash" validate:"required"`
-	PasswordSalt     string             `bson:"passwordSalt" validate:"required"`
-	FirstName        string             `bson:"firstName" validate:"required,max=30"`
-	LastName         string             `bson:"lastName" validate:"required,max=30"`
-	DateOfBirth      time.Time          `bson:"dateOfBirth" validate:"required,not_future"`
-	RegistrationDate time.Time          `bson:"registrationDate" validate:"required"`
-	LastLoginDate    time.Time          `bson:"lastLoginDate" validate:"omitempty"`
-	AccountStatus    AccountStatus      `bson:"accountStatus" validate:"required"`
+	ID               primitive.ObjectID   `bson:"_id,omitempty"`
+	Email            string               `bson:"email" validate:"required,email,lowercase"`
+	PasswordHash     string               `bson:"passwordHash" validate:"required_password"`
+	PasswordSalt     string               `bson:"passwordSalt" validate:"required_password"`
+	FirstName        string               `bson:"firstName" validate:"required,max=30"`
+	LastName         string               `bson:"lastName" validate:"required,max=30"`
+	DateOfBirth      time.Time            `bson:"dateOfBirth" validate:"not_future"`
+	RegistrationDate time.Time            `bson:"registrationDate" validate:"required"`
+	LastLoginDate    time.Time            `bson:"lastLoginDate" validate:"omitempty"`
+	AccountStatus    AccountStatus        `bson:"accountStatus" validate:"required"`
+	AuthTypes        []AuthenticationType `bson:"authTypes" validate:"required"`
 }
 
 // AccountStatus constants
@@ -34,15 +44,45 @@ const (
 	AccountStatusVerified   AccountStatus = 2
 )
 
+// ContainsAuthType checks if array of types contains the given type
+func ContainsAuthType(types []AuthenticationType, authType AuthenticationType) bool {
+	for _, t := range types {
+		if t == authType {
+			return true
+		}
+	}
+	return false
+}
+
+func passwordRequiredIfUsingPasswordAuth(fl validator.FieldLevel) bool {
+	user, ok := fl.Parent().Interface().(User)
+	if !ok {
+		return false
+	}
+	usesPasswordAuth := ContainsAuthType(user.AuthTypes, PasswordAuthType)
+	if usesPasswordAuth {
+		field := fl.Field().String() // Get the value of the field being validated
+		return field != ""           // The field must not be empty
+	}
+	// If PasswordAuthType is not used, then the password is not required
+	return true
+}
+
+func notFuture(fl validator.FieldLevel) bool {
+	asTime, ok := fl.Field().Interface().(time.Time)
+	if !ok {
+		return false
+	}
+	if asTime.IsZero() {
+		return true
+	}
+	return !asTime.After(time.Now())
+}
+
 func getValidator() *validator.Validate {
 	validate := validator.New()
-	validate.RegisterValidation("not_future", func(fl validator.FieldLevel) bool {
-		asTime, ok := fl.Field().Interface().(time.Time)
-		if !ok {
-			return false
-		}
-		return !asTime.After(time.Now())
-	})
+	validate.RegisterValidation("required_password", passwordRequiredIfUsingPasswordAuth)
+	validate.RegisterValidation("not_future", notFuture)
 	validate.RegisterValidation("lowercase", func(fl validator.FieldLevel) bool {
 		return strings.ToLower(fl.Field().String()) == fl.Field().String()
 	})

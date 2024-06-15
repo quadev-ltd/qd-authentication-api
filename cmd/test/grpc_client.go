@@ -44,14 +44,25 @@ func main() {
 
 	// // Authentication
 
-	refreshTokenResponse, err := client.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
-		// Token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imd1c2ZyYW4xN0BnbWFpbC5jb20iLCJleHBpcnkiOjE3MTAwODE1MjUsImlhdCI6MTcwOTQ3NjcyNSwibm9uY2UiOiI0YWJiMGNlMy01ODY5LTQ5MTMtYWM5Yi00ZjQwMzg0MmEzN2MifQ.vZx7SdPNBzL64DwmwwOdwagbYuwKqYZD0yD5kibf2OLaMVKZuL_D-qYWyp-7MoJSzwjG3s_RhCAeRFYBQYEQwFKDVAt_NogLuwuPO-xlCaegsCMETq_v1t0uEOnsFgVnK21w0zq8yCXpT8jsi7MSTwPXOBh7TCR_ICsu-ED86coL47-gTdzgir711_JEqq7IdC_B5mpbAe5bTSsB0wArIpseRUunDM41gd6W8F5hdPNrviDgmUsOYm3PrG4SuPYmRlk3rrqSh1-xmhGmfe4J2BjqNvgleIrET7n7CP0eChn75t4_gSoWMitDlfE_KBKsX-f6YZWKDfkWrwd0Vvnf9g",
+	// refreshTokenResponse, err := client.RefreshToken(ctx, &pb_authentication.RefreshTokenRequest{
+	// 	// Token: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imd1c2ZyYW4xN0BnbWFpbC5jb20iLCJleHBpcnkiOjE3MTAwODE1MjUsImlhdCI6MTcwOTQ3NjcyNSwibm9uY2UiOiI0YWJiMGNlMy01ODY5LTQ5MTMtYWM5Yi00ZjQwMzg0MmEzN2MifQ.vZx7SdPNBzL64DwmwwOdwagbYuwKqYZD0yD5kibf2OLaMVKZuL_D-qYWyp-7MoJSzwjG3s_RhCAeRFYBQYEQwFKDVAt_NogLuwuPO-xlCaegsCMETq_v1t0uEOnsFgVnK21w0zq8yCXpT8jsi7MSTwPXOBh7TCR_ICsu-ED86coL47-gTdzgir711_JEqq7IdC_B5mpbAe5bTSsB0wArIpseRUunDM41gd6W8F5hdPNrviDgmUsOYm3PrG4SuPYmRlk3rrqSh1-xmhGmfe4J2BjqNvgleIrET7n7CP0eChn75t4_gSoWMitDlfE_KBKsX-f6YZWKDfkWrwd0Vvnf9g",
+	// })
+	// if err != nil {
+	// 	log.Fatalf("Refresh token failed: %v", err)
+	// }
+	// // Handle the response
+	// log.Printf("Refresh token response:\n\n\n\n%v", refreshTokenResponse)
+
+	// // AuthenticateWithFirebase
+	authenticateWithFirebaseResponse, err := client.AuthenticateWithFirebase(ctx, &pb_authentication.AuthenticateWithFirebaseRequest{
+		Email:     "gusfran17@gmail.com",
+		FirstName: "Gustavo",
+		LastName:  "Franco",
+		IdToken:   "eyJhbGciOiJSUzI1NiIsImtpZCI6IjMzMDUxMThiZTBmNTZkYzA4NGE0NmExN2RiNzU1NjVkNzY4YmE2ZmUiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiR3VzdGF2byBGcmFuY28iLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EvQUNnOG9jSzFBamNpeEVTRXBnM1ItT2tyMGZpSDl3cHRBVDB3WW1FZV9RSVkxSF9nRE1SN3FfcTV4dz1zOTYtYyIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9xdWFkZXZhcHAtZGV2IiwiYXVkIjoicXVhZGV2YXBwLWRldiIsImF1dGhfdGltZSI6MTcxNzUwODAwMCwidXNlcl9pZCI6ImtvRkZ2ZEZqUjJNblJYcmNoeE11RjZkbHVNYTIiLCJzdWIiOiJrb0ZGdmRGalIyTW5SWHJjaHhNdUY2ZGx1TWEyIiwiaWF0IjoxNzE3NTA4MDAwLCJleHAiOjE3MTc1MTE2MDAsImVtYWlsIjoiZ3VzZnJhbjE3QGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJmaXJlYmFzZSI6eyJpZGVudGl0aWVzIjp7Imdvb2dsZS5jb20iOlsiMTA5OTA3NjA1MTYwNTY1NzkxMDc0Il0sImVtYWlsIjpbImd1c2ZyYW4xN0BnbWFpbC5jb20iXX0sInNpZ25faW5fcHJvdmlkZXIiOiJnb29nbGUuY29tIn19.QmVQpsy3Gm-0oj_DZgdRiF0HB9D2FbDhn6G2M8UagP8uFQEdqDF2k0aGMA1zVnv27XDJfFqAuF4LqXcIBFoDJ4D7qyMUlacRfe27IHVu3wTXagMhibtK060m7eUjIWBHH3NMieUiPdklTlKbN-ZJ01S1My-NbtUCfLLrVXPbl9h1B5i_JRe56r1zVeOoBSlOb0XyZJaPc5fzI7RUYpbQgj7DzD39QBhGb_nZyPjulF87jGBM4hKf64cT0p9t88A7lYuj-uGVVOpCzgmtVaXxgg0T47DVrWJyMURx8xWBFJ_MVZg8ivt7G45aRDFCUk48sXZmTagzvXV4ypIjE3MncQ",
 	})
 	if err != nil {
-		log.Fatalf("Refresh token failed: %v", err)
+		log.Fatalf("Authenticate with firebase failed: %v", err)
 	}
 	// Handle the response
-	log.Printf("Refresh token response:\n\n\n\n%v", refreshTokenResponse)
-
-	// //
+	log.Printf("Authenticate with firebase response:\n\n\n\n%v", authenticateWithFirebaseResponse)
 }

@@ -4,25 +4,27 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	"github.com/quadev-ltd/qd-common/pkg/grpcserver"
 	"github.com/quadev-ltd/qd-common/pkg/log"
 	commonTLS "github.com/quadev-ltd/qd-common/pkg/tls"
 	"google.golang.org/grpc"
 
 	"qd-authentication-api/internal/service"
-
-	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 )
+
+// Config contains the settings for the GRPC Server
+type Config struct {
+	GRPCServerAddress string
+	TLSEnabled        bool
+}
 
 // Factoryer is the interfact for creating a gRPC server
 type Factoryer interface {
 	Create(
-		grpcServerAddress string,
-		authenticationService service.UserServicer,
-		tokenService service.TokenServicer,
-		passwordService service.PasswordServicer,
+		config Config,
+		serviceManager service.Managerer,
 		logFactory log.Factoryer,
-		tlsEnabled bool,
 	) (grpcserver.GRPCServicer, error)
 }
 
@@ -33,33 +35,32 @@ var _ Factoryer = &Factory{}
 
 // Create creates a gRPC server
 func (grpcServerFactory *Factory) Create(
-	grpcServerAddress string,
-	authenticationService service.UserServicer,
-	tokenService service.TokenServicer,
-	passwordService service.PasswordServicer,
+	config Config,
+	serviceManager service.Managerer,
 	logFactory log.Factoryer,
-	tlsEnabled bool,
 ) (grpcserver.GRPCServicer, error) {
 	// TODO: Set domain info in the config file
 	const certFilePath = "certs/qd.authentication.api.crt"
 	const keyFilePath = "certs/qd.authentication.api.key"
 
-	grpcListener, err := commonTLS.CreateTLSListener(grpcServerAddress, certFilePath, keyFilePath, tlsEnabled)
+	grpcListener, err := commonTLS.CreateTLSListener(
+		config.GRPCServerAddress, certFilePath, keyFilePath, config.TLSEnabled)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to listen: %v", err)
 	}
 
 	// Create a gRPC server with a registered authentication service
 	authenticationServiceGRPCServer := NewAuthenticationServiceServer(
-		authenticationService,
-		tokenService,
-		passwordService,
+		serviceManager.GetUserService(),
+		serviceManager.GetFirebaseAuthService(),
+		serviceManager.GetTokenService(),
+		serviceManager.GetPasswordService(),
 	)
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			chainUnaryInterceptors(
 				log.CreateLoggerInterceptor(logFactory),
-				AuthInterceptor(tokenService),
+				AuthInterceptor(serviceManager.GetTokenService()),
 			),
 		),
 	)

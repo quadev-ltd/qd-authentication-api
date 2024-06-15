@@ -31,7 +31,7 @@ func main() {
 		grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stdout, os.Stdout, os.Stdout))
 	}
 
-	application := application.NewApplication(&configurations, &centralConfig)
+	application := application.NewApplication(&configurations, &centralConfig, nil)
 	if application == nil {
 		log.Fatalln("Failed to create application")
 		return

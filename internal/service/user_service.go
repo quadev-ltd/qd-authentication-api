@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
+	"qd-authentication-api/internal/firebase"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
 	"qd-authentication-api/internal/util"
@@ -21,6 +22,7 @@ type UserServicer interface {
 	SendEmailVerification(ctx context.Context, user *model.User, emailVerificationToken string) error
 	ResendEmailVerification(ctx context.Context, email *model.User, emailVerificationToken string) error
 	VerifyEmail(ctx context.Context, token *model.Token) (*string, error)
+	AuthenticateWithFirebase(ctx context.Context, idToken, email, firstName, lastName string) (*model.User, error)
 	Authenticate(ctx context.Context, email, password string) (*model.User, error)
 	GetUserProfile(ctx context.Context, userID string) (*model.User, error)
 	UpdateProfileDetails(ctx context.Context, userID string, profileDetails *pb_authentication.UpdateUserProfileRequest) (*model.User, error)
@@ -28,8 +30,9 @@ type UserServicer interface {
 
 // UserService is the implementation of the authentication service
 type UserService struct {
-	emailService   EmailServicer
-	userRepository repository.UserRepositoryer
+	emailService        EmailServicer
+	firebaseAuthService firebase.AuthServicer
+	userRepository      repository.UserRepositoryer
 }
 
 var _ UserServicer = &UserService{}
@@ -37,15 +40,17 @@ var _ UserServicer = &UserService{}
 // NewUserService creates a new authentication service
 func NewUserService(
 	emailService EmailServicer,
+	firebaseAuthService firebase.AuthServicer,
 	userRepository repository.UserRepositoryer,
 ) UserServicer {
 	return &UserService{
 		emailService,
+		firebaseAuthService,
 		userRepository,
 	}
 }
 
-// TODO pass an object DTO instead of all the parameters and check input validation
+// TODO: pass an object DTO instead of all the parameters and check input validation
 
 // Register registers a new user
 func (service *UserService) Register(
@@ -88,6 +93,7 @@ func (service *UserService) Register(
 		DateOfBirth:      *dateOfBirth,
 		RegistrationDate: time.Now(),
 		AccountStatus:    model.AccountStatusUnverified,
+		AuthTypes:        []model.AuthenticationType{model.PasswordAuthType},
 	}
 
 	// Validate the user object
@@ -102,12 +108,91 @@ func (service *UserService) Register(
 		return nil, fmt.Errorf("Error storing user")
 	}
 
-	// Create the verification token
 	userID, ok := insertedID.(primitive.ObjectID)
 	if !ok {
 		return nil, fmt.Errorf("InsertedID is not of type primitive.ObjectID")
 	}
 	user.ID = userID
+	return user, nil
+}
+
+// AuthenticateWithFirebase uses firebase idToken to authenticate/register user
+func (service *UserService) AuthenticateWithFirebase(
+	ctx context.Context,
+	idToken,
+	email,
+	firstName,
+	lastName string,
+) (*model.User, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	googleToken, err := service.firebaseAuthService.VerifyIDToken(ctx, idToken)
+	if err != nil {
+		logger.Error(err, "Error verifying Firebase ID token")
+		return nil, &Error{Message: FirebaseVerificationError}
+	}
+
+	emailClaim := googleToken.Claims["email"].(string)
+
+	fmt.Printf("Email: %s", emailClaim)
+	exists, err := service.userRepository.ExistsByEmail(ctx, emailClaim)
+	if err != nil {
+		logger.Error(err, "Error checking if user exists")
+		return nil, fmt.Errorf("Error checking if user exists")
+	}
+	fmt.Printf("Exists: %v", exists)
+
+	if !exists {
+		user := &model.User{
+			Email:            emailClaim,
+			FirstName:        firstName,
+			LastName:         lastName,
+			RegistrationDate: time.Now(),
+			LastLoginDate:    time.Now(),
+			AccountStatus:    model.AccountStatusVerified,
+			AuthTypes:        []model.AuthenticationType{model.FirebaseAuthType},
+		}
+
+		if err := model.ValidateUser(user); err != nil {
+			return nil, err
+		}
+		insertedID, err := service.userRepository.InsertUser(ctx, user)
+		if err != nil {
+			logger.Error(err, "Error inserting user in DB")
+			return nil, fmt.Errorf("Error storing user")
+		}
+		userID, ok := insertedID.(primitive.ObjectID)
+		if !ok {
+			return nil, fmt.Errorf("InsertedID is not of type primitive.ObjectID")
+		}
+		user.ID = userID
+		err = service.emailService.SendAuthenticationSuccessEmail(ctx, user.Email, user.FirstName)
+		if err != nil {
+			logger.Error(err, "Error sending successful authentication email")
+		}
+		return user, nil
+	}
+	user, err := service.userRepository.GetByEmail(ctx, emailClaim)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Error getting user by email %s", emailClaim))
+		return nil, fmt.Errorf("Error getting user by email")
+	}
+	fmt.Printf("User: %v", user)
+	if !model.ContainsAuthType(user.AuthTypes, model.FirebaseAuthType) {
+		authTypes := append(user.AuthTypes, model.FirebaseAuthType)
+		user.AuthTypes = authTypes
+		err = service.userRepository.UpdateAuthTypes(ctx, user)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Error updating user %s auth type", user.Email))
+			return nil, fmt.Errorf("Error updating user auth type")
+		}
+	}
+	err = service.emailService.SendAuthenticationSuccessEmail(ctx, user.Email, user.FirstName)
+	if err != nil {
+		logger.Error(err, "Error sending successful authentication email")
+	}
 	return user, nil
 }
 
@@ -196,9 +281,12 @@ func (service *UserService) Authenticate(ctx context.Context, email, password st
 			Message: "Error getting user by email",
 		}
 	}
-
 	if user == nil {
 		return nil, &model.WrongEmailOrPassword{FieldName: "Email"}
+	}
+	usesPasswordAuth := model.ContainsAuthType(user.AuthTypes, model.PasswordAuthType)
+	if !usesPasswordAuth {
+		return nil, &model.WrongEmailOrPassword{FieldName: "AuthType"}
 	}
 
 	resultError = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password+user.PasswordSalt))
@@ -206,6 +294,10 @@ func (service *UserService) Authenticate(ctx context.Context, email, password st
 		return nil, &model.WrongEmailOrPassword{FieldName: "Password"}
 	}
 
+	err = service.emailService.SendAuthenticationSuccessEmail(ctx, user.Email, user.FirstName)
+	if err != nil {
+		logger.Error(err, "Error sending successful authentication email")
+	}
 	return user, nil
 }
 

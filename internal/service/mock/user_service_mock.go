@@ -52,6 +52,21 @@ func (mr *MockUserServicerMockRecorder) Authenticate(ctx, email, password interf
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authenticate", reflect.TypeOf((*MockUserServicer)(nil).Authenticate), ctx, email, password)
 }
 
+// AuthenticateWithFirebase mocks base method.
+func (m *MockUserServicer) AuthenticateWithFirebase(ctx context.Context, idToken, email, firstName, lastName string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AuthenticateWithFirebase", ctx, idToken, email, firstName, lastName)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AuthenticateWithFirebase indicates an expected call of AuthenticateWithFirebase.
+func (mr *MockUserServicerMockRecorder) AuthenticateWithFirebase(ctx, idToken, email, firstName, lastName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AuthenticateWithFirebase", reflect.TypeOf((*MockUserServicer)(nil).AuthenticateWithFirebase), ctx, idToken, email, firstName, lastName)
+}
+
 // GetUserProfile mocks base method.
 func (m *MockUserServicer) GetUserProfile(ctx context.Context, userID string) (*model.User, error) {
 	m.ctrl.T.Helper()
@@ -123,6 +138,21 @@ func (m *MockUserServicer) UpdateProfileDetails(ctx context.Context, userID stri
 func (mr *MockUserServicerMockRecorder) UpdateProfileDetails(ctx, userID, profileDetails interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProfileDetails", reflect.TypeOf((*MockUserServicer)(nil).UpdateProfileDetails), ctx, userID, profileDetails)
+}
+
+// UserExistsByEmail mocks base method.
+func (m *MockUserServicer) UserExistsByEmail(ctx context.Context, email string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UserExistsByEmail", ctx, email)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UserExistsByEmail indicates an expected call of UserExistsByEmail.
+func (mr *MockUserServicerMockRecorder) UserExistsByEmail(ctx, email interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserExistsByEmail", reflect.TypeOf((*MockUserServicer)(nil).UserExistsByEmail), ctx, email)
 }
 
 // VerifyEmail mocks base method.

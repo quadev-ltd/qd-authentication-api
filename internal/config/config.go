@@ -12,13 +12,18 @@ type db struct {
 	URI string
 }
 
+type firebase struct {
+	ConfigPath string `mapstructure:"config_path"`
+}
+
 // Config is the configuration of the application
 type Config struct {
 	Verbose           bool
 	Environment       string
 	App               string
-	AuthenticationKey string `mapstructure:"authentication_key"`
-	AuthenticationDB  db     `mapstructure:"authentication_db"`
+	AuthenticationKey string   `mapstructure:"authentication_key"`
+	AuthenticationDB  db       `mapstructure:"authentication_db"`
+	Firebase          firebase `mapstructure:"firebase"`
 	AWS               commonAWS.Config
 }
 

@@ -96,6 +96,20 @@ func (mr *MockUserRepositoryerMockRecorder) InsertUser(ctx, user interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertUser", reflect.TypeOf((*MockUserRepositoryer)(nil).InsertUser), ctx, user)
 }
 
+// UpdateAuthTypes mocks base method.
+func (m *MockUserRepositoryer) UpdateAuthTypes(ctx context.Context, user *model.User) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateAuthTypes", ctx, user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateAuthTypes indicates an expected call of UpdateAuthTypes.
+func (mr *MockUserRepositoryerMockRecorder) UpdateAuthTypes(ctx, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAuthTypes", reflect.TypeOf((*MockUserRepositoryer)(nil).UpdateAuthTypes), ctx, user)
+}
+
 // UpdatePassword mocks base method.
 func (m *MockUserRepositoryer) UpdatePassword(ctx context.Context, user *model.User) error {
 	m.ctrl.T.Helper()

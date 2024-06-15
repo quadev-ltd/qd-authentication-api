@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"firebase.google.com/go/auth"
+	"github.com/golang/mock/gomock"
 	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_authentication"
 	"github.com/quadev-ltd/qd-common/pb/gen/go/pb_email"
 	commonConfig "github.com/quadev-ltd/qd-common/pkg/config"
@@ -30,6 +32,7 @@ import (
 
 	"qd-authentication-api/internal/config"
 	"qd-authentication-api/internal/dto"
+	firebaseMock "qd-authentication-api/internal/firebase/mock"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/mongo/mock"
 	"qd-authentication-api/internal/util"
@@ -132,9 +135,11 @@ func startMockEmailServiceServer(t *testing.T, emailGRPCAddress string, tlsEnabl
 }
 
 type EnvironmentParams struct {
-	MockMongoServer *memongo.Server
-	MockConfig      *commonConfig.Config
-	Application     Applicationer
+	MockFirebaseService *firebaseMock.MockAuthServicer
+	MockMongoServer     *memongo.Server
+	MockConfig          *commonConfig.Config
+	Application         Applicationer
+	Controller          *gomock.Controller
 }
 
 var mockCentralConfig = commonConfig.Config{
@@ -157,7 +162,10 @@ func setUpTestEnvironment(t *testing.T) *EnvironmentParams {
 	config.Load("internal/config")
 	config.AuthenticationDB.URI = mongoServer.URI()
 
-	application := NewApplication(&config, &mockCentralConfig)
+	controller := gomock.NewController(t)
+	mockFirebaseService := firebaseMock.NewMockAuthServicer(controller)
+
+	application := NewApplication(&config, &mockCentralConfig, mockFirebaseService)
 	go func() {
 		t.Logf("Starting server on %s...\n", application.GetGRPCServerAddress())
 		application.StartServer()
@@ -166,9 +174,11 @@ func setUpTestEnvironment(t *testing.T) *EnvironmentParams {
 	waitForServerUp(t, application, mockCentralConfig.TLSEnabled)
 
 	return &EnvironmentParams{
-		MockMongoServer: mongoServer,
-		MockConfig:      &mockCentralConfig,
-		Application:     application,
+		MockFirebaseService: mockFirebaseService,
+		MockMongoServer:     mongoServer,
+		MockConfig:          &mockCentralConfig,
+		Application:         application,
+		Controller:          controller,
 	}
 }
 
@@ -429,6 +439,140 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NotNil(t, authenticateResponse)
 		assert.NotNil(t, authenticateResponse.AuthToken)
 		assert.NotNil(t, authenticateResponse.RefreshToken)
+	})
+
+	t.Run("AuthenticateWithFirebase_Success", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Get registered user
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		collection := client.Database("qd_authentication").Collection("user")
+		var foundUser model.User
+		err = collection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		testIDToken := "test-id-token"
+		token := &auth.Token{
+			Claims: map[string]interface{}{
+				"email": foundUser.Email,
+			},
+		}
+		envParams.MockFirebaseService.EXPECT().VerifyIDToken(
+			gomock.Any(),
+			testIDToken,
+		).Return(token, nil)
+		authenticateResponse, err := grpcClient.AuthenticateWithFirebase(
+			ctxWithCorrelationID,
+			&pb_authentication.AuthenticateWithFirebaseRequest{
+				Email:   foundUser.Email,
+				IdToken: testIDToken,
+			},
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, authenticateResponse)
+		assert.NotNil(t, authenticateResponse.AuthToken)
+		assert.NotNil(t, authenticateResponse.RefreshToken)
+
+		err = collection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.True(t, model.ContainsAuthType(foundUser.AuthTypes, model.FirebaseAuthType))
+		assert.True(t, model.ContainsAuthType(foundUser.AuthTypes, model.PasswordAuthType))
+	})
+
+	t.Run("AuthenticateWithFirebase_NonExistentUser_Success", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		testIDToken := "test-id-token"
+		firstName := "first-name"
+		lastName := "last-name"
+		token := &auth.Token{
+			Claims: map[string]interface{}{
+				"email": email,
+			},
+		}
+		envParams.MockFirebaseService.EXPECT().VerifyIDToken(
+			gomock.Any(),
+			testIDToken,
+		).Return(token, nil)
+		authenticateResponse, err := grpcClient.AuthenticateWithFirebase(
+			ctxWithCorrelationID,
+			&pb_authentication.AuthenticateWithFirebaseRequest{
+				Email:     email,
+				FirstName: firstName,
+				LastName:  lastName,
+				IdToken:   testIDToken,
+			},
+		)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, authenticateResponse)
+		assert.NotNil(t, authenticateResponse.AuthToken)
+		assert.NotNil(t, authenticateResponse.RefreshToken)
+
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Get registered user
+		err = client.Connect(ctxWithCorrelationID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		collection := client.Database("qd_authentication").Collection("user")
+		var foundUser model.User
+		err = collection.FindOne(ctxWithCorrelationID, bson.M{"email": email}).Decode(&foundUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, firstName, foundUser.FirstName)
+		assert.Equal(t, lastName, foundUser.LastName)
+		assert.True(t, model.ContainsAuthType(foundUser.AuthTypes, model.FirebaseAuthType))
+		assert.False(t, model.ContainsAuthType(foundUser.AuthTypes, model.PasswordAuthType))
 	})
 
 	t.Run("Authenticate_UpdateAndGetUserProfile_Success", func(t *testing.T) {

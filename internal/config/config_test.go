@@ -32,6 +32,7 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, "mongodb+srv://password:user@cluster.test.mongodb.net/test", cfg.AuthenticationDB.URI)
 		assert.Equal(t, "key", cfg.AWS.Key)
 		assert.Equal(t, "secret", cfg.AWS.Secret)
+		assert.Equal(t, "internal/firebase/firebase-service-account-dev.json", cfg.Firebase.ConfigPath)
 
 		assert.False(t, cfg.Verbose)
 		assert.Equal(t, "test", cfg.Environment)
@@ -47,6 +48,7 @@ func TestLoad(t *testing.T) {
 		os.Setenv("TEST_ENV_AUTHENTICATION_DB_URI", "mongodb://pwd:user@cluster.net/test_env")
 		os.Setenv("TEST_ENV_AWS_KEY", "aws_key_env")
 		os.Setenv("TEST_ENV_AWS_SECRET", "aws_secret_env")
+		os.Setenv("TEST_ENV_FIREBASE_CONFIG_PATH", "firebase_config_path")
 
 		defer os.Unsetenv(config.AppEnvironmentKey)
 		defer os.Unsetenv(config.VerboseKey)
@@ -55,6 +57,7 @@ func TestLoad(t *testing.T) {
 		defer os.Unsetenv("TEST_ENV_AUTHENTICATION_DB_URI")
 		defer os.Unsetenv("TEST_ENV_AWS_KEY")
 		defer os.Unsetenv("TEST_ENV_AWS_SECRET")
+		defer os.Unsetenv("TEST_ENV_FIREBASE_CONFIG_PATH")
 
 		err := cfg.Load(MockConfigPath)
 		assert.NoError(t, err, "expected no error from Load")
@@ -65,6 +68,7 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, "mongodb://pwd:user@cluster.net/test_env", cfg.AuthenticationDB.URI)
 		assert.Equal(t, "aws_key_env", cfg.AWS.Key)
 		assert.Equal(t, "aws_secret_env", cfg.AWS.Secret)
+		assert.Equal(t, "firebase_config_path", cfg.Firebase.ConfigPath)
 
 		assert.False(t, cfg.Verbose)
 		assert.Equal(t, "test", cfg.Environment)
