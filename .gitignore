@@ -39,3 +39,6 @@ config.local.yml
 /bin/
 /pkg/
 /vendor/
+
+# Firebase
+firebase-service-account*.json

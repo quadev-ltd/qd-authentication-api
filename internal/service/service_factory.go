@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"qd-authentication-api/internal/config"
+	"qd-authentication-api/internal/firebase"
 	"qd-authentication-api/internal/jwt"
 	mongo "qd-authentication-api/internal/mongo"
 	"qd-authentication-api/internal/util"
@@ -14,7 +15,11 @@ import (
 
 // Factoryer is a factory for creating a service
 type Factoryer interface {
-	CreateServiceManager(*config.Config, *commonConfig.Config) (Servicer, error)
+	CreateServiceManager(
+		*config.Config,
+		*commonConfig.Config,
+		firebase.AuthServicer,
+	) (Managerer, error)
 }
 
 // Factory is the implementation of the service factory
@@ -26,7 +31,8 @@ var _ Factoryer = &Factory{}
 func (serviceFactory *Factory) CreateServiceManager(
 	config *config.Config,
 	centralConfig *commonConfig.Config,
-) (Servicer, error) {
+	firebaseService firebase.AuthServicer,
+) (Managerer, error) {
 	repository, err := (&mongo.RepositoryStoreFactory{}).CreateRepositoryStore(config)
 	if err != nil {
 		log.Error().Msg(fmt.Sprintf(
@@ -44,14 +50,30 @@ func (serviceFactory *Factory) CreateServiceManager(
 		GRPCPort:                  centralConfig.EmailService.Port,
 		TLSEnabled:                centralConfig.TLSEnabled,
 	}
-	emailService := NewEmailService(emailServiceConfig)
+	emailService, err := NewEmailService(emailServiceConfig)
+	if err != nil {
+		log.Error().Msg("Failed to create email service")
+		return nil, err
+	}
 	jwtManager, err := jwt.NewManager("./keys")
 	if err != nil {
 		return nil, err
 	}
 
+	var firebaseAuthService firebase.AuthServicer
+	if firebaseService != nil {
+		firebaseAuthService = firebaseService
+	} else {
+		firebaseAuthService, err = firebase.NewAuthService(config.Firebase.ConfigPath)
+		if err != nil {
+			log.Error().Msg("Failed to create firebase auth service")
+			return nil, err
+		}
+	}
+
 	userService := NewUserService(
 		emailService,
+		firebaseAuthService,
 		repository.GetUserRepository(),
 	)
 	timeProvider := &util.RealTimeProvider{}
@@ -62,10 +84,12 @@ func (serviceFactory *Factory) CreateServiceManager(
 		repository.GetUserRepository(),
 	)
 
-	return &Service{
+	return &Manager{
 		userService,
+		firebaseAuthService,
 		tokenService,
 		passwordService,
+		emailService,
 		repository,
 	}, nil
 }

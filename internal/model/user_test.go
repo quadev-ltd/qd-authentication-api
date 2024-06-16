@@ -16,12 +16,53 @@ func TestValidateUser(t *testing.T) {
 		err := ValidateUser(user)
 		assert.Nil(t, err)
 	})
+	t.Run("Valid_User_No_Password", func(t *testing.T) {
+		// Valid user
+		user := &User{
+			Email:            "test@example.com",
+			FirstName:        "Test",
+			LastName:         "User",
+			DateOfBirth:      time.Now(),
+			RegistrationDate: time.Now(),
+			LastLoginDate:    time.Now(),
+			AccountStatus:    AccountStatusUnverified,
+			AuthTypes:        []AuthenticationType{FirebaseAuthType},
+		}
+		err := ValidateUser(user)
+		assert.Nil(t, err)
+	})
+	t.Run("Valid_User_With_No_Birth_Date", func(t *testing.T) {
+		// Valid user
+		user := NewUser()
+		user.DateOfBirth = time.Time{}
+		err := ValidateUser(user)
+		assert.Nil(t, err)
+	})
 	t.Run("Valid_User_With_No_Login_Date", func(t *testing.T) {
 		// Valid user
 		user := NewUser()
 		user.LastLoginDate = time.Time{}
 		err := ValidateUser(user)
 		assert.Nil(t, err)
+	})
+	t.Run("Invalid_User_No_Password", func(t *testing.T) {
+		// Valid user
+		user := &User{
+			Email:            "test@example.com",
+			FirstName:        "Test",
+			LastName:         "User",
+			DateOfBirth:      time.Now(),
+			RegistrationDate: time.Now(),
+			LastLoginDate:    time.Now(),
+			AccountStatus:    AccountStatusUnverified,
+			AuthTypes:        []AuthenticationType{PasswordAuthType},
+		}
+		resultError := ValidateUser(user)
+		assert.NotNil(t, resultError)
+		assert.Contains(t, resultError.Error(), "PasswordHash")
+		assert.Contains(t, resultError.Error(), "PasswordSalt")
+		errors := resultError.(validator.ValidationErrors)
+		assert.Len(t, errors, 2)
 	})
 	t.Run("Invalid_Email", func(t *testing.T) {
 		user := NewUser()
@@ -40,17 +81,6 @@ func TestValidateUser(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "FirstName")
 		assert.Contains(t, err.Error(), "LastName")
-		errors := err.(validator.ValidationErrors)
-		assert.Len(t, errors, 2)
-	})
-	t.Run("Missing_Birth_Date", func(t *testing.T) {
-		user := NewUser()
-		user.DateOfBirth = time.Time{}
-		user.RegistrationDate = time.Time{}
-		err := ValidateUser(user)
-		assert.NotNil(t, err)
-		assert.Contains(t, err.Error(), "DateOfBirth")
-		assert.Contains(t, err.Error(), "RegistrationDate")
 		errors := err.(validator.ValidationErrors)
 		assert.Len(t, errors, 2)
 	})

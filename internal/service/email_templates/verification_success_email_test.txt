@@ -20,7 +20,7 @@
             margin-top: 30px;
             border-radius: 20px;
             background-color: #5050C3;
-            color: #ffffff;
+            color: #ffffff !important;
             text-decoration: none;
             font-weight: bold;
         }
@@ -31,8 +31,8 @@
   </head>
   <body>
     <div class="container">
-        <h2>Hi {firstName},</h2>
-        <p>Your password has been successfully reset.</p>
+        <h2>Hi Test,</h2>
+        <p>Your email account has been successfully verified.</p>
         <p>Thanks.</p>
     </div>
   </body>

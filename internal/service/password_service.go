@@ -97,6 +97,10 @@ func (service *PasswordService) ResetPassword(ctx context.Context, userID, token
 	}
 	user.PasswordHash = string(hashedPassword)
 	user.PasswordSalt = *salt
+	usesPasswordAuth := model.ContainsAuthType(user.AuthTypes, model.PasswordAuthType)
+	if !usesPasswordAuth {
+		user.AuthTypes = append(user.AuthTypes, model.PasswordAuthType)
+	}
 	if err := service.userRepository.UpdatePassword(ctx, user); err != nil {
 		logger.Error(err, "Error updating user")
 		return fmt.Errorf("Error updating user")

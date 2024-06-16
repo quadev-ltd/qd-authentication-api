@@ -34,6 +34,34 @@ func (m *MockEmailServicer) EXPECT() *MockEmailServicerMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method.
+func (m *MockEmailServicer) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockEmailServicerMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockEmailServicer)(nil).Close))
+}
+
+// SendAuthenticationSuccessEmail mocks base method.
+func (m *MockEmailServicer) SendAuthenticationSuccessEmail(ctx context.Context, dest, userName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendAuthenticationSuccessEmail", ctx, dest, userName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendAuthenticationSuccessEmail indicates an expected call of SendAuthenticationSuccessEmail.
+func (mr *MockEmailServicerMockRecorder) SendAuthenticationSuccessEmail(ctx, dest, userName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAuthenticationSuccessEmail", reflect.TypeOf((*MockEmailServicer)(nil).SendAuthenticationSuccessEmail), ctx, dest, userName)
+}
+
 // SendPasswordResetEmail mocks base method.
 func (m *MockEmailServicer) SendPasswordResetEmail(ctx context.Context, dest, userName, userID, resetToken string) error {
 	m.ctrl.T.Helper()

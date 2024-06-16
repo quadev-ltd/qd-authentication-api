@@ -27,6 +27,31 @@ type PasswordServiceMockedParams struct {
 	Ctx              context.Context
 }
 
+type userAuthTypeMatcher struct {
+	expectedUser *model.User
+}
+
+func (m *userAuthTypeMatcher) Matches(x interface{}) bool {
+	user, ok := x.(*model.User)
+	if !ok {
+		return false
+	}
+
+	if len(user.AuthTypes) != len(m.expectedUser.AuthTypes) {
+		return false
+	}
+	for i, authType := range user.AuthTypes {
+		if authType != m.expectedUser.AuthTypes[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (m *userAuthTypeMatcher) String() string {
+	return fmt.Sprintf("AuthType array is equal to AuthType array in %v", m.expectedUser)
+}
+
 func createPasswordService(test *testing.T) *PasswordServiceMockedParams {
 	controller := gomock.NewController(test)
 	mockUserRepo := repositoryMock.NewMockUserRepositoryer(controller)
@@ -152,7 +177,7 @@ func TestPasswordService(test *testing.T) {
 		assert.Equal(test, "Error getting user by email", err.Error())
 	})
 
-	// 	// ResetPassword
+	// ResetPassword
 	test.Run("ResetPassword_Success", func(test *testing.T) {
 		// Arrange
 		mocks := createPasswordService(test)
@@ -172,6 +197,46 @@ func TestPasswordService(test *testing.T) {
 		).Return(testToken, nil)
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 		mocks.MockUserRepo.EXPECT().UpdatePassword(gomock.Any(), testUser).Return(nil)
+		mocks.MockEmailService.EXPECT().SendPasswordResetSuccessEmail(
+			gomock.Any(),
+			testUser.Email,
+			testUser.FirstName,
+		).Return(nil)
+		mocks.MockTokenService.EXPECT().RemoveUsedToken(gomock.Any(), testToken).Return(nil)
+
+		err := mocks.PasswordService.ResetPassword(
+			mocks.Ctx,
+			testUser.ID.Hex(),
+			resetPasswordTokenValue,
+			testPassword,
+		)
+		assert.NoError(test, err)
+	})
+
+	test.Run("ResetPassword_Success_AuthTypeAdded", func(test *testing.T) {
+		// Arrange
+		mocks := createPasswordService(test)
+		defer mocks.Controller.Finish()
+
+		testUser := model.NewUser()
+		testUser.AuthTypes = []model.AuthenticationType{}
+		resultUser := model.NewUser()
+
+		testToken := model.NewToken(testTokenHashValue)
+		testToken.Type = commonToken.ResetPasswordTokenType
+		testToken.UserID = testUser.ID
+		testPassword := "NewPassword@123"
+
+		mocks.MockTokenService.EXPECT().VerifyResetPasswordToken(
+			gomock.Any(),
+			testToken.UserID.Hex(),
+			resetPasswordTokenValue,
+		).Return(testToken, nil)
+		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
+		mocks.MockUserRepo.EXPECT().UpdatePassword(
+			gomock.Any(),
+			&userAuthTypeMatcher{expectedUser: resultUser},
+		).Return(nil)
 		mocks.MockEmailService.EXPECT().SendPasswordResetSuccessEmail(
 			gomock.Any(),
 			testUser.Email,

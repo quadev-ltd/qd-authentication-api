@@ -5,3 +5,5 @@ authentication_db:
 aws:
   key: key
   secret: secret
+firebase:
+  config_path: internal/firebase/firebase-service-account-dev.json

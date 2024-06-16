@@ -4,6 +4,7 @@ package grpcserver
 const (
 	GetPublicKeyMethod             = "GetPublicKey"
 	RegisterMethod                 = "Register"
+	AuthenticateWithFirebaseMethod = "AuthenticateWithFirebase"
 	VerifyEmailMethod              = "VerifyEmail"
 	AuthenticateMethod             = "Authenticate"
 	ForgotPasswordMethod           = "ForgotPassword"
@@ -19,6 +20,7 @@ const (
 var PublicMethods = map[string]string{
 	GetPublicKeyMethod:             "/pb_authentication.AuthenticationService/GetPublicKey",
 	RegisterMethod:                 "/pb_authentication.AuthenticationService/Register",
+	AuthenticateWithFirebaseMethod: "/pb_authentication.AuthenticationService/AuthenticateWithFirebase",
 	VerifyEmailMethod:              "/pb_authentication.AuthenticationService/VerifyEmail",
 	ResendEmailVerificationMethod:  "/pb_authentication.AuthenticationService/ResendEmailVerification",
 	AuthenticateMethod:             "/pb_authentication.AuthenticationService/Authenticate",

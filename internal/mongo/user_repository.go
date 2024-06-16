@@ -93,6 +93,17 @@ func (userRepository *UserRepository) UpdatePassword(ctx context.Context, user *
 		"$set": bson.M{
 			"passwordHash": user.PasswordHash,
 			"passwordSalt": user.PasswordSalt,
+			"authTypes":    user.AuthTypes,
+		},
+	}
+	return userRepository.Update(ctx, user, update)
+}
+
+// UpdateAuthTypes updates a user in the mongo database
+func (userRepository *UserRepository) UpdateAuthTypes(ctx context.Context, user *model.User) error {
+	update := bson.M{
+		"$set": bson.M{
+			"authTypes": user.AuthTypes,
 		},
 	}
 	return userRepository.Update(ctx, user, update)

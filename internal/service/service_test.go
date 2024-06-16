@@ -17,9 +17,42 @@ func TestService(test *testing.T) {
 		defer controller.Finish()
 
 		userServiceMock := mock.NewMockUserServicer(controller)
+		emailServiceMock := mock.NewMockEmailServicer(controller)
 		repositoryMock := repositoryMock.NewMockRepositoryer(controller)
 
-		service := &Service{
+		service := &Manager{
+			userService:  userServiceMock,
+			emailService: emailServiceMock,
+			repository:   repositoryMock,
+		}
+
+		emailServiceMock.EXPECT().Close().Return(nil)
+		repositoryMock.EXPECT().Close().Return(nil)
+
+		err := service.Close()
+
+		assert.NoError(test, err)
+	})
+
+	test.Run("Close_Client_Nil_Repository_Error", func(test *testing.T) {
+		service := &Manager{
+			userService: nil,
+			repository:  nil,
+		}
+
+		err := service.Close()
+
+		assert.Equal(test, "Service repository is nil", err.Error())
+	})
+
+	test.Run("Close_Client_Nil_EmailService_Error", func(test *testing.T) {
+		controller := gomock.NewController(test)
+		defer controller.Finish()
+
+		userServiceMock := mock.NewMockUserServicer(controller)
+		repositoryMock := repositoryMock.NewMockRepositoryer(controller)
+
+		service := &Manager{
 			userService: userServiceMock,
 			repository:  repositoryMock,
 		}
@@ -28,17 +61,6 @@ func TestService(test *testing.T) {
 
 		err := service.Close()
 
-		assert.NoError(test, err)
-	})
-
-	test.Run("Close_Client_Nil_Error", func(test *testing.T) {
-		service := &Service{
-			userService: nil,
-			repository:  nil,
-		}
-
-		err := service.Close()
-
-		assert.Equal(test, "Service repository is nil", err.Error())
+		assert.Equal(test, "Email service is nil", err.Error())
 	})
 }
