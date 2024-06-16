@@ -103,7 +103,7 @@ jobs:
       - name: Build, tag, and push docker image to Amazon ECR
         env:
           REGISTRY: 116203835544.dkr.ecr.eu-west-1.amazonaws.com
-          REPOSITORY: dev.qd.authentication.api
+          REPOSITORY: qd.authentication.api
           IMAGE_TAG: 0.0.0
         run: |
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
