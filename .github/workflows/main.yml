@@ -2,8 +2,8 @@ name: Push to main
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
 
 jobs:
   sanity-check:
