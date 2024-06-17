@@ -18,6 +18,12 @@ if [ -z "$FIREBASE_CONFIG_PATH" ]; then
   exit 1
 fi
 
+# Create the directory if it does not exist
+DIR=$(dirname "$FIREBASE_CONFIG_PATH")
+if [ ! -d "$DIR" ]; then
+  mkdir -p "$DIR"
+fi
+
 # Decode the base64 encoded service account and write to the file
 echo $FIREBASE_SERVICE_ACCOUNT_BASE64 | base64 -d > "$FIREBASE_CONFIG_PATH"
 
