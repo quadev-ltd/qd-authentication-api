@@ -44,7 +44,7 @@ func (serviceFactory *Factory) CreateServiceManager(
 	}
 
 	emailServiceConfig := EmailServiceConfig{
-		AppName:                   config.App,
+		AppName:                   centralConfig.AppName,
 		EmailVerificationEndpoint: centralConfig.EmailVerificationEndpoint,
 		GRPCHost:                  centralConfig.EmailService.Host,
 		GRPCPort:                  centralConfig.EmailService.Port,
