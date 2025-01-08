@@ -47,31 +47,11 @@ GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 <!-- TODOs -->
 <!--
     Refactor register (devide into parts)
-    Change function to get log from context to return an error
-    ERROR LOGGING
-
-    Add unit tests
-        JWTAuthenticator
-        authentication_service_test.go
-        GetPublicKey journey
-        GenerateKeyFiles
-    Add token refresh endpoint
-    Add forgot password
-    Add change password
-    Add reset password
-    Add logout
+    Change name of EmailVerification variable
     Add routines
     Add 2 Factor Authentication
 
-    Refresh Token: This endpoint allows users to refresh their authentication token using a valid refresh token. It helps maintain the user's session without requiring them to log in again.
 
 Logout: This endpoint logs the user out by invalidating their refresh token. It's useful when a user wants to sign out or when you need to manage active sessions.
 
-Change Password: Users should be able to change their account password. This endpoint typically requires the user to provide their current password and a new password.
-
-Forgot Password: In case a user forgets their password, this endpoint allows them to request a password reset email with a link to reset their password.
-
-Reset Password: When a user receives a password reset email, this endpoint lets them set a new password after verifying their identity with a reset token.
-
-Two-Factor Authentication (2FA): If your application supports 2FA, you'll need endpoints for enabling, disabling, and verifying 2FA setups.
  -->

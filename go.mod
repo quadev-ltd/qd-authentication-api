@@ -6,7 +6,7 @@ require (
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/go-playground/validator/v10 v10.14.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/quadev-ltd/qd-common v0.0.60
+	github.com/quadev-ltd/qd-common v0.0.61
 	github.com/rs/zerolog v1.31.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tryvium-travels/memongo v0.11.0
