@@ -1,4 +1,3 @@
-app: QuaDevAuthenticationTest
 authentication_key: test_key
 authentication_db:
   uri: mongodb+srv://password:user@cluster.test.mongodb.net/test

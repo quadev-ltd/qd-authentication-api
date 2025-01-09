@@ -20,7 +20,6 @@ type firebase struct {
 type Config struct {
 	Verbose           bool
 	Environment       string
-	App               string
 	AuthenticationKey string   `mapstructure:"authentication_key"`
 	AuthenticationDB  db       `mapstructure:"authentication_db"`
 	Firebase          firebase `mapstructure:"firebase"`
