@@ -1,4 +1,3 @@
-app: AppName
 authentication_key: service_key
 authentication_db:
   uri: mongo-db-uri

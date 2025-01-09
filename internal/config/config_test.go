@@ -27,7 +27,6 @@ func TestLoad(t *testing.T) {
 		assert.NoError(t, err, "expected no error from Load")
 
 		// Assertions
-		assert.Equal(t, "QuaDevAuthenticationTest", cfg.App)
 		assert.Equal(t, "test_key", cfg.AuthenticationKey)
 		assert.Equal(t, "mongodb+srv://password:user@cluster.test.mongodb.net/test", cfg.AuthenticationDB.URI)
 		assert.Equal(t, "key", cfg.AWS.Key)
@@ -43,7 +42,6 @@ func TestLoad(t *testing.T) {
 		cfg := &Config{}
 		os.Setenv(config.AppEnvironmentKey, "test")
 		os.Setenv(config.VerboseKey, "false")
-		os.Setenv("TEST_ENV_APP", "QuaDevAuthenticationTest_env")
 		os.Setenv("TEST_ENV_AUTHENTICATION_KEY", "test_key_env")
 		os.Setenv("TEST_ENV_AUTHENTICATION_DB_URI", "mongodb://pwd:user@cluster.net/test_env")
 		os.Setenv("TEST_ENV_AWS_KEY", "aws_key_env")
@@ -52,7 +50,6 @@ func TestLoad(t *testing.T) {
 
 		defer os.Unsetenv(config.AppEnvironmentKey)
 		defer os.Unsetenv(config.VerboseKey)
-		defer os.Unsetenv("TEST_ENV_APP")
 		defer os.Unsetenv("TEST_ENV_AUTHENTICATION_KEY")
 		defer os.Unsetenv("TEST_ENV_AUTHENTICATION_DB_URI")
 		defer os.Unsetenv("TEST_ENV_AWS_KEY")
@@ -63,7 +60,6 @@ func TestLoad(t *testing.T) {
 		assert.NoError(t, err, "expected no error from Load")
 
 		// Assertions
-		assert.Equal(t, "QuaDevAuthenticationTest_env", cfg.App)
 		assert.Equal(t, "test_key_env", cfg.AuthenticationKey)
 		assert.Equal(t, "mongodb://pwd:user@cluster.net/test_env", cfg.AuthenticationDB.URI)
 		assert.Equal(t, "aws_key_env", cfg.AWS.Key)
