@@ -26,6 +26,9 @@ var verificationSuccessEmail string
 //go:embed email_templates/reset_password_success_email.txt
 var passwordResetSuccessEmail string
 
+//go:embed email_templates/delete_user_success_email.txt
+var deleteUserSuccessEmail string
+
 //go:embed email_templates/authentication_success_email.txt
 var authenticationSuccessEmail string
 
@@ -45,6 +48,7 @@ type EmailServicer interface {
 	SendPasswordResetEmail(ctx context.Context, dest string, userName, userID, resetToken string) error
 	SendPasswordResetSuccessEmail(ctx context.Context, dest string, userName string) error
 	SendAuthenticationSuccessEmail(ctx context.Context, dest, userName string) error
+	SendDeletedUserEmail(ctx context.Context, dest, userName string) error
 	Close() error
 }
 
@@ -198,6 +202,20 @@ func (service *EmailService) CreatePasswordResetSuccessEmailContent(ctx context.
 // SendPasswordResetSuccessEmail sends an email verification success email
 func (service *EmailService) SendPasswordResetSuccessEmail(ctx context.Context, dest, userName string) error {
 	subject, body := service.CreatePasswordResetSuccessEmailContent(ctx, userName)
+	return service.sendMail(ctx, dest, subject, body)
+}
+
+// CreatePasswordResetSuccessEmailContent generates teh content for the success notification
+func (service *EmailService) CreateDeletedUserEmailContent(ctx context.Context, userName string) (string, string) {
+	subject := "Your Account Has Been Successfully Deleted"
+	body := strings.ReplaceAll(deleteUserSuccessEmail, "{firstName}", userName)
+	body = strings.ReplaceAll(body, "{appName}", service.appName)
+	return subject, body
+}
+
+// SendPasswordResetSuccessEmail sends an email verification success email
+func (service *EmailService) SendDeletedUserEmail(ctx context.Context, dest, userName string) error {
+	subject, body := service.CreateDeletedUserEmailContent(ctx, userName)
 	return service.sendMail(ctx, dest, subject, body)
 }
 

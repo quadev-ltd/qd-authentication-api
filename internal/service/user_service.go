@@ -26,6 +26,7 @@ type UserServicer interface {
 	Authenticate(ctx context.Context, email, password string) (*model.User, error)
 	GetUserProfile(ctx context.Context, userID string) (*model.User, error)
 	UpdateProfileDetails(ctx context.Context, userID string, profileDetails *pb_authentication.UpdateUserProfileRequest) (*model.User, error)
+	DeleteUser(ctx context.Context, userID string) error
 }
 
 // UserService is the implementation of the authentication service
@@ -353,4 +354,36 @@ func (service *UserService) UpdateProfileDetails(
 		return nil, fmt.Errorf("Error getting user by ID")
 	}
 	return updatedUser, nil
+}
+
+// DeleteUser deletes a user
+func (service *UserService) DeleteUser(
+	ctx context.Context,
+	userID string,
+) error {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	id, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Could not convert user ID %s to ObjectID", userID))
+		return &Error{Message: "Invalid user ID"}
+	}
+	user, err := service.userRepository.GetByUserID(ctx, id)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("User ID %s does not exist", id.Hex()))
+		return fmt.Errorf("Error deleting user by ID")
+	}
+	err = service.userRepository.DeleteByUserID(ctx, id)
+	if err != nil {
+		logger.Error(err, "Error deleting user by ID")
+		return fmt.Errorf("Error deleting user by ID")
+	}
+
+	err = service.emailService.SendDeletedUserEmail(ctx, user.Email, user.FirstName)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Error sending delete success notification email to user ID %s", user.ID.Hex()))
+	}
+	return nil
 }

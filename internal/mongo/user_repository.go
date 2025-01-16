@@ -160,3 +160,16 @@ func (userRepository *UserRepository) Update(ctx context.Context, user *model.Us
 	}
 	return nil
 }
+
+// GetByUserID gets a user by verification token from the mongo database
+func (userRepository *UserRepository) DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error {
+	collection := userRepository.getCollection()
+	filter := bson.M{"_id": userID}
+
+	_, resultError := collection.DeleteOne(ctx, filter)
+	if resultError != nil {
+		return fmt.Errorf("Error deleting user by ID %s: %v", userID.Hex(), resultError)
+	}
+
+	return nil
+}

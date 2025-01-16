@@ -67,6 +67,20 @@ func (mr *MockUserServicerMockRecorder) AuthenticateWithFirebase(ctx, idToken, e
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AuthenticateWithFirebase", reflect.TypeOf((*MockUserServicer)(nil).AuthenticateWithFirebase), ctx, idToken, email, firstName, lastName)
 }
 
+// DeleteUser mocks base method.
+func (m *MockUserServicer) DeleteUser(ctx context.Context, userID string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteUser", ctx, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteUser indicates an expected call of DeleteUser.
+func (mr *MockUserServicerMockRecorder) DeleteUser(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUserServicer)(nil).DeleteUser), ctx, userID)
+}
+
 // GetUserProfile mocks base method.
 func (m *MockUserServicer) GetUserProfile(ctx context.Context, userID string) (*model.User, error) {
 	m.ctrl.T.Helper()
@@ -138,21 +152,6 @@ func (m *MockUserServicer) UpdateProfileDetails(ctx context.Context, userID stri
 func (mr *MockUserServicerMockRecorder) UpdateProfileDetails(ctx, userID, profileDetails interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateProfileDetails", reflect.TypeOf((*MockUserServicer)(nil).UpdateProfileDetails), ctx, userID, profileDetails)
-}
-
-// UserExistsByEmail mocks base method.
-func (m *MockUserServicer) UserExistsByEmail(ctx context.Context, email string) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UserExistsByEmail", ctx, email)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UserExistsByEmail indicates an expected call of UserExistsByEmail.
-func (mr *MockUserServicerMockRecorder) UserExistsByEmail(ctx, email interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UserExistsByEmail", reflect.TypeOf((*MockUserServicer)(nil).UserExistsByEmail), ctx, email)
 }
 
 // VerifyEmail mocks base method.

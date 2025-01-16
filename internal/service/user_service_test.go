@@ -1156,4 +1156,112 @@ func TestUserService(test *testing.T) {
 		assert.Nil(test, updateResponse)
 		assert.EqualError(test, resultError, "Key: 'User.DateOfBirth' Error:Field validation for 'DateOfBirth' failed on the 'not_future' tag")
 	})
+
+	test.Run("DeleteAccount_Success", func(test *testing.T) {
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		// Arrange
+		validUserID := primitive.NewObjectID()
+		user := &model.User{
+			ID:        validUserID,
+			Email:     "test@email.com",
+			FirstName: "name",
+			LastName:  "surname",
+		}
+		mocks.MockUserRepo.EXPECT().GetByUserID(
+			gomock.Any(),
+			validUserID,
+		).Return(user, nil)
+		mocks.MockUserRepo.EXPECT().DeleteByUserID(
+			gomock.Any(),
+			validUserID,
+		).Return(nil)
+		mocks.MockEmailService.EXPECT().SendDeletedUserEmail(
+			gomock.Any(),
+			user.Email,
+			user.FirstName,
+		)
+
+		// Act
+		err := mocks.UserService.DeleteUser(mocks.Ctx, validUserID.Hex())
+
+		// Assert
+		assert.NoError(test, err)
+	})
+
+	test.Run("DeleteAccount_InvalidUserID_Error", func(test *testing.T) {
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		// The logger expects an error about converting userID to ObjectID
+		invalidUserID := "invalid-hex-id"
+		mocks.MockLogger.EXPECT().Error(
+			gomock.Any(), // We'll match any error object
+			fmt.Sprintf("Could not convert user ID %s to ObjectID", invalidUserID),
+		)
+
+		// Act
+		err := mocks.UserService.DeleteUser(mocks.Ctx, invalidUserID)
+
+		// Assert
+		assert.Error(test, err)
+		assert.EqualError(test, err, "Invalid user ID")
+	})
+
+	test.Run("DeleteAccount_FindUserError", func(test *testing.T) {
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		// Arrange
+		validUserID := primitive.NewObjectID()
+		mocks.MockUserRepo.EXPECT().GetByUserID(
+			gomock.Any(),
+			validUserID,
+		).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(
+			errExample,
+			fmt.Sprintf("User ID %s does not exist", validUserID.Hex()),
+		)
+
+		// Act
+		err := mocks.UserService.DeleteUser(mocks.Ctx, validUserID.Hex())
+
+		// Assert
+		assert.Error(test, err)
+		assert.EqualError(test, err, "Error deleting user by ID")
+	})
+
+	test.Run("DeleteAccount_RepositoryError", func(test *testing.T) {
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		// Arrange
+		validUserID := primitive.NewObjectID()
+		user := &model.User{
+			ID:        validUserID,
+			Email:     "test@email.com",
+			FirstName: "name",
+			LastName:  "surname",
+		}
+		mocks.MockUserRepo.EXPECT().GetByUserID(
+			gomock.Any(),
+			validUserID,
+		).Return(user, nil)
+		mocks.MockUserRepo.EXPECT().DeleteByUserID(
+			gomock.Any(),
+			validUserID,
+		).Return(errExample)
+		mocks.MockLogger.EXPECT().Error(
+			errExample,
+			"Error deleting user by ID",
+		)
+
+		// Act
+		err := mocks.UserService.DeleteUser(mocks.Ctx, validUserID.Hex())
+
+		// Assert
+		assert.Error(test, err)
+		assert.EqualError(test, err, "Error deleting user by ID")
+	})
 }

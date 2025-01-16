@@ -18,4 +18,5 @@ type UserRepositoryer interface {
 	UpdatePassword(ctx context.Context, user *model.User) error
 	UpdateAuthTypes(ctx context.Context, user *model.User) error
 	UpdateProfileDetails(ctx context.Context, user *model.User) (*model.User, error)
+	DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error
 }
