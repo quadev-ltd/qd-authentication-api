@@ -19,6 +19,9 @@ var passwordResetEmailTest string
 //go:embed email_templates/verification_success_email_test.txt
 var verificationSuccessEmailTest string
 
+//go:embed email_templates/delete_user_success_email_test.txt
+var deleteUserSuccessEmailTest string
+
 //go:embed email_templates/authentication_success_email_test.txt
 var authenticationSuccessEmailTest string
 
@@ -103,6 +106,26 @@ func TestCreateAuthenticationSuccessEmailContent(test *testing.T) {
 	expectedBody := authenticationSuccessEmailTest
 
 	subject, body := emailService.CreateAuthenticationSuccessEmailContent(
+		context.Background(),
+		userName,
+	)
+
+	assert.Equal(test, expectedSubject, subject)
+	assert.Equal(test, expectedBody, body)
+}
+
+func TestCreateDeleteUserSuccessEmailContent(test *testing.T) {
+	emailService := &EmailService{
+		appName:                   "appName",
+		emailVerificationEndpoint: "http://myapp.com/",
+	}
+
+	userName := "firstName"
+
+	expectedSubject := "Your Account Has Been Successfully Deleted"
+	expectedBody := deleteUserSuccessEmailTest
+
+	subject, body := emailService.CreateDeletedUserEmailContent(
 		context.Background(),
 		userName,
 	)

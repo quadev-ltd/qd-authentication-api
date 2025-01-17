@@ -1444,4 +1444,192 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		assert.Nil(test, updateUserProfileResponse)
 		assert.EqualError(test, err, "rpc error: code = Internal desc = Could not obtain token claims from context")
 	})
+
+	test.Run("DeleteAccount_Success", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		// Mock the claims
+		ctxWithClaims := NewContextWithClaims(
+			mocks.Ctx,
+			&commonJWT.TokenClaims{
+				UserID: exampleClaims.UserID,
+				Email:  exampleClaims.Email,
+				Type:   commonToken.AuthTokenType,
+			},
+		)
+
+		// Expect userService.DeleteUser to succeed
+		mocks.MockUserService.EXPECT().
+			DeleteUser(gomock.Any(), exampleClaims.UserID).
+			Return(nil)
+
+		// Expect tokenService.RemoveUnusedTokens to succeed
+		mocks.MockTokenService.EXPECT().
+			RemoveUnusedTokens(gomock.Any(), exampleClaims.UserID, commonToken.AllTokenType).
+			Return(nil)
+
+		// Expect a success log message
+		mocks.MockLogger.EXPECT().Info(
+			fmt.Sprintf("User %s account deleted successfully", exampleClaims.Email),
+		)
+
+		resp, err := mocks.AuthenticationServer.DeleteAccount(ctxWithClaims, &pb_authentication.DeleteAccountRequest{})
+		assert.NoError(test, err)
+		assert.NotNil(test, resp)
+		assert.True(test, resp.Success)
+		assert.Equal(test, "User account deleted successfully", resp.Message)
+	})
+
+	test.Run("DeleteAccount_Claims_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		resp, err := mocks.AuthenticationServer.DeleteAccount(
+			mocks.Ctx, // Context WITHOUT the needed claims
+			&pb_authentication.DeleteAccountRequest{},
+		)
+
+		assert.Error(test, err)
+		assert.Nil(test, resp)
+		assert.EqualError(test, err, "rpc error: code = Internal desc = Could not obtain token claims from context")
+	})
+
+	test.Run("DeleteAccount_MissingLogger_Error", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		resp, err := mocks.AuthenticationServer.DeleteAccount(
+			context.Background(),
+			&pb_authentication.DeleteAccountRequest{},
+		)
+
+		assert.Error(test, err)
+		assert.Nil(test, resp)
+		assert.EqualError(test, err, "rpc error: code = Internal desc = Logger not found in context")
+	})
+
+	test.Run("DeleteAccount_UserService_Error_AsServicePkgError", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		expectedError := &service.Error{Message: "service-error"}
+		ctxWithClaims := NewContextWithClaims(
+			mocks.Ctx,
+			&commonJWT.TokenClaims{
+				UserID: exampleClaims.UserID,
+				Email:  exampleClaims.Email,
+				Type:   commonToken.AuthTokenType,
+			},
+		)
+
+		// userService.DeleteUser returns a service.Error
+		mocks.MockUserService.EXPECT().
+			DeleteUser(gomock.Any(), exampleClaims.UserID).
+			Return(expectedError)
+
+		resp, err := mocks.AuthenticationServer.DeleteAccount(
+			ctxWithClaims,
+			&pb_authentication.DeleteAccountRequest{},
+		)
+
+		assert.Nil(test, resp)
+		assert.Error(test, err)
+		assert.EqualError(test, err, "rpc error: code = InvalidArgument desc = service-error")
+	})
+
+	test.Run("DeleteAccount_UserService_GeneralError", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		expectedError := errors.New("general-error")
+		ctxWithClaims := NewContextWithClaims(
+			mocks.Ctx,
+			&commonJWT.TokenClaims{
+				UserID: exampleClaims.UserID,
+				Email:  exampleClaims.Email,
+				Type:   commonToken.AuthTokenType,
+			},
+		)
+
+		// userService.DeleteUser returns a general error
+		mocks.MockUserService.EXPECT().
+			DeleteUser(gomock.Any(), exampleClaims.UserID).
+			Return(expectedError)
+
+		resp, err := mocks.AuthenticationServer.DeleteAccount(
+			ctxWithClaims,
+			&pb_authentication.DeleteAccountRequest{},
+		)
+
+		assert.Nil(test, resp)
+		assert.Error(test, err)
+		assert.EqualError(test, err, "rpc error: code = Internal desc = internal_server_error")
+	})
+
+	test.Run("DeleteAccount_RemoveUnusedTokens_Error_AsServicePkgError", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		ctxWithClaims := NewContextWithClaims(
+			mocks.Ctx,
+			&commonJWT.TokenClaims{
+				UserID: exampleClaims.UserID,
+				Email:  exampleClaims.Email,
+				Type:   commonToken.AuthTokenType,
+			},
+		)
+
+		// userService.DeleteUser is successful
+		mocks.MockUserService.EXPECT().
+			DeleteUser(gomock.Any(), exampleClaims.UserID).
+			Return(nil)
+
+		// tokenService.RemoveUnusedTokens returns a service.Error
+		expectedError := &service.Error{Message: "service-error"}
+		mocks.MockTokenService.EXPECT().
+			RemoveUnusedTokens(gomock.Any(), exampleClaims.UserID, commonToken.AllTokenType).
+			Return(expectedError)
+
+		resp, err := mocks.AuthenticationServer.DeleteAccount(
+			ctxWithClaims,
+			&pb_authentication.DeleteAccountRequest{},
+		)
+
+		assert.Nil(test, resp)
+		assert.Error(test, err)
+		assert.EqualError(test, err, "rpc error: code = InvalidArgument desc = service-error")
+	})
+
+	test.Run("DeleteAccount_RemoveUnusedTokens_GeneralError", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+
+		ctxWithClaims := NewContextWithClaims(
+			mocks.Ctx,
+			&commonJWT.TokenClaims{
+				UserID: exampleClaims.UserID,
+				Email:  exampleClaims.Email,
+				Type:   commonToken.AuthTokenType,
+			},
+		)
+
+		// userService.DeleteUser is successful
+		mocks.MockUserService.EXPECT().
+			DeleteUser(gomock.Any(), exampleClaims.UserID).
+			Return(nil)
+
+		// tokenService.RemoveUnusedTokens returns a general error
+		expectedError := errors.New("general-error")
+		mocks.MockTokenService.EXPECT().
+			RemoveUnusedTokens(gomock.Any(), exampleClaims.UserID, commonToken.AllTokenType).
+			Return(expectedError)
+
+		resp, err := mocks.AuthenticationServer.DeleteAccount(
+			ctxWithClaims,
+			&pb_authentication.DeleteAccountRequest{},
+		)
+
+		assert.Nil(test, resp)
+		assert.Error(test, err)
+		assert.EqualError(test, err, "rpc error: code = Internal desc = internal_server_error")
+	})
 }

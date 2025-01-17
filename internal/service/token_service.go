@@ -6,7 +6,6 @@ import (
 	"time"
 
 	commonJWT "github.com/quadev-ltd/qd-common/pkg/jwt"
-	"github.com/quadev-ltd/qd-common/pkg/log"
 	commonLogger "github.com/quadev-ltd/qd-common/pkg/log"
 	commonToken "github.com/quadev-ltd/qd-common/pkg/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -29,7 +28,7 @@ type TokenServicer interface {
 	VerifyResetPasswordToken(ctx context.Context, userID, token string) (*model.Token, error)
 	VerifyEmailVerificationToken(ctx context.Context, userID, token string) (*model.Token, error)
 	RemoveUsedToken(ctx context.Context, token *model.Token) error
-	RemoveUnusedTokens(ctx context.Context, userID primitive.ObjectID, tokenType commonToken.Type) error
+	RemoveUnusedTokens(ctx context.Context, userID string, tokenType commonToken.Type) error
 }
 
 // TokenService is the implementation of the authentication service
@@ -64,9 +63,9 @@ func (service *TokenService) generateVerificationToken(
 	if err != nil {
 		return nil, err
 	}
-  
-	err = service.RemoveUnusedTokens(ctx, userID, tokenType)
-  if err != nil {
+
+	err = service.RemoveUnusedTokens(ctx, userID.Hex(), tokenType)
+	if err != nil {
 		return nil, err
 	}
 	verificationToken, err := util.GenerateVerificationToken()
@@ -128,14 +127,19 @@ func (service *TokenService) RemoveUsedToken(ctx context.Context, token *model.T
 // RemoveUnusedTokens removes the user old tokens from the database
 func (service *TokenService) RemoveUnusedTokens(
 	ctx context.Context,
-	userID primitive.ObjectID,
+	userID string,
 	tokenType commonToken.Type,
 ) error {
 	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return err
 	}
-	err = service.tokenRepository.RemoveAllByUserIDAndTokenType(ctx, userID, tokenType)
+	userIDObject, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		logger.Error(err, "Error converting user id to object id")
+		return &Error{Message: InvalidUserIDError}
+	}
+	err = service.tokenRepository.RemoveAllByUserIDAndTokenType(ctx, userIDObject, tokenType)
 	if err != nil {
 		logger.Error(err, "Error removing old tokens")
 		return &Error{Message: "Could not remove old tokens"}
@@ -223,7 +227,7 @@ func (service *TokenService) VerifyJWTToken(
 	ctx context.Context,
 	tokenValue string,
 ) (*commonJWT.TokenClaims, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +259,7 @@ func (service *TokenService) VerifyTokenValidity(
 	tokenValue string,
 	tokenType commonToken.Type,
 ) (*model.Token, error) {
-	logger, err := log.GetLoggerFromContext(ctx)
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}

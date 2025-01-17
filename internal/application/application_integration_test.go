@@ -1154,4 +1154,183 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.Equal(t, foundUser.Email, authClaims.Email)
 		assert.Equal(t, foundUser.Email, refreshClaims.Email)
 	})
+
+	t.Run("DeleteAccount_NotVerified_Success", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		// Register user but do NOT verify
+		unverifiedEmail := "delete_unverified@test.com"
+		unverifiedPassword := "Password123!"
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			&pb_authentication.RegisterRequest{
+				Email:       unverifiedEmail,
+				Password:    unverifiedPassword,
+				FirstName:   "DeleteUnverified",
+				LastName:    "User",
+				DateOfBirth: timestamppb.New(time.Now().AddDate(-20, 0, 0)),
+			},
+		)
+		assert.NoError(t, err, "Registration for not-verified user failed")
+
+		// Authenticate user
+		authResp, err := grpcClient.Authenticate(
+			ctxWithCorrelationID,
+			&pb_authentication.AuthenticateRequest{
+				Email:    unverifiedEmail,
+				Password: unverifiedPassword,
+			},
+		)
+		assert.NoError(t, err, "Authentication for unverified user must succeed (assuming no block on unverified users)")
+
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		assert.NoError(t, err)
+
+		err = client.Connect(ctxWithCorrelationID)
+		assert.NoError(t, err)
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		userCollection := client.Database("qd_authentication").Collection("user")
+		tokenCollection := client.Database("qd_authentication").Collection("token")
+
+		// Ensure user and tokens exist
+		var unverifiedUser model.User
+		err = userCollection.FindOne(ctxWithCorrelationID, bson.M{"email": unverifiedEmail}).Decode(&unverifiedUser)
+		assert.NoError(t, err)
+		assert.Equal(t, unverifiedUser.Email, unverifiedEmail)
+		count, err := tokenCollection.CountDocuments(ctxWithCorrelationID, bson.M{"userID": unverifiedUser.ID})
+		assert.NoError(t, err)
+		assert.Equal(t, int64(1), count, "There should be one token")
+
+		// Add Auth token to context
+		authCtx := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authResp.AuthToken)
+
+		// Call DeleteAccount
+		deleteResp, err := grpcClient.DeleteAccount(
+			authCtx,
+			&pb_authentication.DeleteAccountRequest{},
+		)
+		assert.NoError(t, err, "Expected successful delete for unverified user")
+		assert.NotNil(t, deleteResp)
+		assert.True(t, deleteResp.Success)
+		assert.Equal(t, "User account deleted successfully", deleteResp.Message)
+
+		// Ensure user no longer exists
+		var foundUser model.User
+		err = userCollection.FindOne(ctxWithCorrelationID, bson.M{"email": unverifiedEmail}).Decode(&foundUser)
+		assert.Error(t, err, "User should be removed from DB")
+		assert.EqualError(t, err, "mongo: no documents in result")
+
+		// Ensure no tokens remain for that user
+		count, err = tokenCollection.CountDocuments(ctxWithCorrelationID, bson.M{"userID": unverifiedUser.ID})
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), count, "All tokens for user should be removed")
+	})
+
+	t.Run("DeleteAccount_Verified_Success", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		// 1) Register user
+		verifiedEmail := "delete_verified@test.com"
+		verifiedPassword := "Password123!"
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			&pb_authentication.RegisterRequest{
+				Email:       verifiedEmail,
+				Password:    verifiedPassword,
+				FirstName:   "DeleteVerified",
+				LastName:    "User",
+				DateOfBirth: timestamppb.New(time.Now().AddDate(-20, 0, 0)),
+			},
+		)
+		assert.NoError(t, err)
+
+		// Retrieve user + token from DB, then verify email
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		assert.NoError(t, err)
+
+		err = client.Connect(ctxWithCorrelationID)
+		assert.NoError(t, err)
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		userCollection := client.Database("qd_authentication").Collection("user")
+		tokenCollection := client.Database("qd_authentication").Collection("token")
+
+		var foundUser model.User
+		err = userCollection.FindOne(ctxWithCorrelationID, bson.M{"email": verifiedEmail}).Decode(&foundUser)
+		assert.NoError(t, err)
+
+		var foundToken model.Token
+		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userID": foundUser.ID}).Decode(&foundToken)
+		assert.NoError(t, err)
+
+		// Simulate reading the verification token from the captured email
+		verifyResp, err := grpcClient.VerifyEmail(
+			ctxWithCorrelationID,
+			&pb_authentication.VerifyEmailRequest{
+				UserID:            foundToken.UserID.Hex(),
+				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
+			},
+		)
+		assert.NoError(t, err, "Failed to verify user")
+		assert.NotNil(t, verifyResp.AuthToken)
+		assert.NotNil(t, verifyResp.RefreshToken)
+
+		// Re-fetch user to confirm verified
+		err = userCollection.FindOne(ctxWithCorrelationID, bson.M{"email": verifiedEmail}).Decode(&foundUser)
+		assert.NoError(t, err)
+		assert.Equal(t, model.AccountStatusVerified, foundUser.AccountStatus)
+
+		// Authenticate user
+		authResp, err := grpcClient.Authenticate(
+			ctxWithCorrelationID,
+			&pb_authentication.AuthenticateRequest{
+				Email:    verifiedEmail,
+				Password: verifiedPassword,
+			},
+		)
+		assert.NoError(t, err)
+
+		// Call DeleteAccount
+		authCtx := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authResp.AuthToken)
+		deleteResp, err := grpcClient.DeleteAccount(
+			authCtx,
+			&pb_authentication.DeleteAccountRequest{},
+		)
+		assert.NoError(t, err)
+		assert.NotNil(t, deleteResp)
+		assert.True(t, deleteResp.Success)
+		assert.Equal(t, "User account deleted successfully", deleteResp.Message)
+
+		// Confirm user + tokens removed from DB
+		err = userCollection.FindOne(ctxWithCorrelationID, bson.M{"email": verifiedEmail}).Decode(&foundUser)
+		assert.Error(t, err, "Verified user should be removed from DB after DeleteAccount")
+		assert.EqualError(t, err, "mongo: no documents in result")
+
+		count, err := tokenCollection.CountDocuments(ctxWithCorrelationID, bson.M{"email": verifiedEmail})
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), count, "All tokens for user should be removed after DeleteAccount")
+	})
 }

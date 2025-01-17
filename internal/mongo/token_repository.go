@@ -118,7 +118,10 @@ func (tokenRepository *TokenRepository) RemoveAllByUserIDAndTokenType(
 	tokenType commonToken.Type,
 ) error {
 	collection := tokenRepository.getCollection()
-	filter := bson.M{"userID": userID, "type": tokenType}
+	filter := bson.M{"userID": userID}
+	if tokenType != commonToken.AllTokenType {
+		filter["type"] = tokenType
+	}
 
 	_, err := collection.DeleteMany(ctx, filter)
 	if err != nil {

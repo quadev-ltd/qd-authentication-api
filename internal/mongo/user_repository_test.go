@@ -409,4 +409,58 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Equal(test, int64(2), count, "There should only be two tokens left after removal")
 	})
 
+	test.Run("DeleteByUserID_Success", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		repo := NewUserRepository(client)
+
+		// Insert a user to delete
+		user := model.NewUser()
+		insertedID, err := repo.InsertUser(context.Background(), user)
+		assert.NoError(test, err)
+
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
+
+		// Delete the user
+		err = repo.DeleteByUserID(context.Background(), id)
+		assert.NoError(test, err)
+
+		// Verify user no longer exists
+		foundUser, err := repo.GetByUserID(context.Background(), id)
+		assert.Nil(test, foundUser)
+		assert.Error(test, err)
+		assert.Contains(test, err.Error(), "Error finding user by verification token")
+	})
+
+	test.Run("DeleteByUserID_User_Not_Found", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		repo := NewUserRepository(client)
+
+		// Attempt to delete a user that doesn't exist
+		id := primitive.NewObjectID()
+		err = repo.DeleteByUserID(context.Background(), id)
+
+		// The DeleteOne method in MongoDB does not return an error if no document is found.
+		// So this err should be nil. We just confirm that a user is indeed not found afterward.
+		assert.NoError(test, err)
+
+		foundUser, err := repo.GetByUserID(context.Background(), id)
+		assert.Nil(test, foundUser)
+		assert.Error(test, err)
+		assert.Contains(test, err.Error(), "Error finding user by verification token")
+	})
+
 }

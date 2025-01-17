@@ -507,3 +507,37 @@ func (service *AuthenticationServiceServer) UpdateUserProfile(
 		User: dto.ConvertUserToUserDTO(updatedUser),
 	}, nil
 }
+
+// DeleteAccount updates a user's profile details
+func (service *AuthenticationServiceServer) DeleteAccount(
+	ctx context.Context,
+	_ *pb_authentication.DeleteAccountRequest,
+) (*pb_authentication.BaseResponse, error) {
+	logger, err := commonLogger.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+	claims, err := commonJWT.GetClaimsFromContext(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Could not obtain token claims from context")
+	}
+	err = service.userService.DeleteUser(ctx, claims.UserID)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
+	}
+	err = service.tokenService.RemoveUnusedTokens(ctx, claims.UserID, commonToken.AllTokenType)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, servicePkg.InternalServerError)
+	}
+	logger.Info(fmt.Sprintf("User %s account deleted successfully", claims.Email))
+	return &pb_authentication.BaseResponse{
+		Success: true,
+		Message: "User account deleted successfully",
+	}, nil
+}

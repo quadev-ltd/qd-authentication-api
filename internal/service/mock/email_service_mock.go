@@ -62,6 +62,20 @@ func (mr *MockEmailServicerMockRecorder) SendAuthenticationSuccessEmail(ctx, des
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendAuthenticationSuccessEmail", reflect.TypeOf((*MockEmailServicer)(nil).SendAuthenticationSuccessEmail), ctx, dest, userName)
 }
 
+// SendDeletedUserEmail mocks base method.
+func (m *MockEmailServicer) SendDeletedUserEmail(ctx context.Context, dest, userName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendDeletedUserEmail", ctx, dest, userName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendDeletedUserEmail indicates an expected call of SendDeletedUserEmail.
+func (mr *MockEmailServicerMockRecorder) SendDeletedUserEmail(ctx, dest, userName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendDeletedUserEmail", reflect.TypeOf((*MockEmailServicer)(nil).SendDeletedUserEmail), ctx, dest, userName)
+}
+
 // SendPasswordResetEmail mocks base method.
 func (m *MockEmailServicer) SendPasswordResetEmail(ctx context.Context, dest, userName, userID, resetToken string) error {
 	m.ctrl.T.Helper()

@@ -114,7 +114,7 @@ func (mr *MockTokenServicerMockRecorder) GetPublicKey(ctx interface{}) *gomock.C
 }
 
 // RemoveUnusedTokens mocks base method.
-func (m *MockTokenServicer) RemoveUnusedTokens(ctx context.Context, userID primitive.ObjectID, tokenType token.Type) error {
+func (m *MockTokenServicer) RemoveUnusedTokens(ctx context.Context, userID string, tokenType token.Type) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveUnusedTokens", ctx, userID, tokenType)
 	ret0, _ := ret[0].(error)
