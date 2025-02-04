@@ -137,13 +137,11 @@ func (service *UserService) AuthenticateWithFirebase(
 
 	emailClaim := googleToken.Claims["email"].(string)
 
-	fmt.Printf("Email: %s", emailClaim)
 	exists, err := service.userRepository.ExistsByEmail(ctx, emailClaim)
 	if err != nil {
 		logger.Error(err, "Error checking if user exists")
 		return nil, fmt.Errorf("Error checking if user exists")
 	}
-	fmt.Printf("Exists: %v", exists)
 
 	if !exists {
 		user := &model.User{
@@ -180,7 +178,6 @@ func (service *UserService) AuthenticateWithFirebase(
 		logger.Error(err, fmt.Sprintf("Error getting user by email %s", emailClaim))
 		return nil, fmt.Errorf("Error getting user by email")
 	}
-	fmt.Printf("User: %v", user)
 	if !model.ContainsAuthType(user.AuthTypes, model.FirebaseAuthType) {
 		authTypes := append(user.AuthTypes, model.FirebaseAuthType)
 		user.AuthTypes = authTypes
@@ -188,6 +185,14 @@ func (service *UserService) AuthenticateWithFirebase(
 		if err != nil {
 			logger.Error(err, fmt.Sprintf("Error updating user %s auth type", user.Email))
 			return nil, fmt.Errorf("Error updating user auth type")
+		}
+	}
+	if user.AccountStatus != model.AccountStatusVerified {
+		user.AccountStatus = model.AccountStatusVerified
+		err = service.userRepository.UpdateStatus(ctx, user)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("Error updating user %s status", user.Email))
+			return nil, fmt.Errorf("Error updating user status")
 		}
 	}
 	err = service.emailService.SendAuthenticationSuccessEmail(ctx, user.Email, user.FirstName)

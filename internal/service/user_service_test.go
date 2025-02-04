@@ -691,7 +691,13 @@ func TestUserService(test *testing.T) {
 		)
 		mocks.MockUserRepo.EXPECT().UpdateAuthTypes(
 			gomock.Any(),
-			testUser,
+			gomock.Eq(testUser),
+		).Return(
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().UpdateStatus(
+			gomock.Any(),
+			gomock.Eq(testUser),
 		).Return(
 			nil,
 		)
@@ -717,6 +723,138 @@ func TestUserService(test *testing.T) {
 		assert.Equal(test, testUser.FirstName, resultUser.FirstName)
 		assert.Equal(test, testUser.LastName, resultUser.LastName)
 		assert.Equal(test, testUser.LastLoginDate.UTC().String(), resultUser.LastLoginDate.UTC().String())
+	})
+
+	test.Run("AuthenticateWithFirebase_PasswordUserExistVerifiedUser_Success", func(test *testing.T) {
+		// Arrange
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		testUser := model.NewUser()
+		testUser.AccountStatus = model.AccountStatusVerified
+		idToken := "id-token"
+		userID = primitive.NewObjectID()
+
+		token := &auth.Token{
+			Claims: map[string]interface{}{
+				"email": testUser.Email,
+			},
+		}
+
+		mocks.MockFirebaseService.EXPECT().VerifyIDToken(
+			gomock.Any(),
+			idToken,
+		).Return(
+			token,
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().ExistsByEmail(
+			gomock.Any(),
+			testUser.Email,
+		).Return(
+			true,
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().GetByEmail(
+			gomock.Any(),
+			testUser.Email,
+		).Return(
+			testUser,
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().UpdateAuthTypes(
+			gomock.Any(),
+			gomock.Eq(testUser),
+		).Return(
+			nil,
+		)
+		mocks.MockEmailService.EXPECT().SendAuthenticationSuccessEmail(
+			gomock.Any(),
+			testUser.Email,
+			testUser.FirstName,
+		).Return(nil)
+
+		// Act
+		resultUser, resultError := mocks.UserService.AuthenticateWithFirebase(
+			mocks.Ctx,
+			idToken,
+			testUser.Email,
+			testUser.FirstName,
+			testUser.LastName,
+		)
+
+		// Assert
+		assert.NoError(test, resultError)
+		assert.NotNil(test, resultUser)
+		assert.Equal(test, testUser.Email, resultUser.Email)
+		assert.Equal(test, testUser.FirstName, resultUser.FirstName)
+		assert.Equal(test, testUser.LastName, resultUser.LastName)
+		assert.Equal(test, testUser.LastLoginDate.UTC().String(), resultUser.LastLoginDate.UTC().String())
+	})
+
+	test.Run("AuthenticateWithFirebase_UpdateStatus_Error", func(test *testing.T) {
+		// Arrange
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		testUser := model.NewUser()
+		idToken := "id-token"
+		userID = primitive.NewObjectID()
+
+		token := &auth.Token{
+			Claims: map[string]interface{}{
+				"email": testUser.Email,
+			},
+		}
+
+		mocks.MockFirebaseService.EXPECT().VerifyIDToken(
+			gomock.Any(),
+			idToken,
+		).Return(
+			token,
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().ExistsByEmail(
+			gomock.Any(),
+			testUser.Email,
+		).Return(
+			true,
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().GetByEmail(
+			gomock.Any(),
+			testUser.Email,
+		).Return(
+			testUser,
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().UpdateAuthTypes(
+			gomock.Any(),
+			gomock.Eq(testUser),
+		).Return(
+			nil,
+		)
+		mocks.MockUserRepo.EXPECT().UpdateStatus(
+			gomock.Any(),
+			gomock.Eq(testUser),
+		).Return(
+			errExample,
+		)
+		mocks.MockLogger.EXPECT().Error(errExample, fmt.Sprintf("Error updating user %s status", testUser.Email))
+
+		// Act
+		resultUser, resultError := mocks.UserService.AuthenticateWithFirebase(
+			mocks.Ctx,
+			idToken,
+			testUser.Email,
+			testUser.FirstName,
+			testUser.LastName,
+		)
+
+		// Assert
+		assert.Error(test, resultError)
+		assert.Nil(test, resultUser)
+		assert.EqualError(test, resultError, "Error updating user status")
 	})
 
 	test.Run("AuthenticateWithFirebase_PasswordUserExist_Error", func(test *testing.T) {

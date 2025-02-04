@@ -52,15 +52,6 @@ GO111MODULE=off go get google.golang.org/protobuf/cmd/protoc-gen-go
 
 Logout: This endpoint logs the user out by invalidating their refresh token. It's useful when a user wants to sign out or when you need to manage active sessions.
 
-
-Add Delete account endpoint
-- Create protobuf contract
-- create repository function to delete user and token
-- test repository function
-- create service function
-- create unit test
-- integrate with grpc service and protobuf contract
-- create end to end test
 Add Change password endpoint
 
  -->
