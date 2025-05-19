@@ -35,6 +35,21 @@ func (m *MockAuthServicer) EXPECT() *MockAuthServicerMockRecorder {
 	return m.recorder
 }
 
+// CreateCustomToken mocks base method.
+func (m *MockAuthServicer) CreateCustomToken(ctx context.Context, uid string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateCustomToken", ctx, uid)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateCustomToken indicates an expected call of CreateCustomToken.
+func (mr *MockAuthServicerMockRecorder) CreateCustomToken(ctx, uid interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateCustomToken", reflect.TypeOf((*MockAuthServicer)(nil).CreateCustomToken), ctx, uid)
+}
+
 // VerifyIDToken mocks base method.
 func (m *MockAuthServicer) VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error) {
 	m.ctrl.T.Helper()

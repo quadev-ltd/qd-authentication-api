@@ -12,6 +12,7 @@ import (
 // AuthServicer defines the operations available from Firebase authentication service
 type AuthServicer interface {
 	VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error)
+	CreateCustomToken(ctx context.Context, uid string) (string, error)
 }
 
 // AuthService implements FirebaseAuther using a Firebase auth client
@@ -29,8 +30,13 @@ func NewAuthService(firebaseConfigPath string) (*AuthService, error) {
 }
 
 // VerifyIDToken verifies the ID token using Firebase's client
-func (fs *AuthService) VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error) {
-	return fs.client.VerifyIDToken(ctx, idToken)
+func (FirebaseService *AuthService) VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error) {
+	return FirebaseService.client.VerifyIDToken(ctx, idToken)
+}
+
+// CreateCustomToken creates a custom token for the given user ID
+func (FirebaseService *AuthService) CreateCustomToken(ctx context.Context, uid string) (string, error) {
+	return FirebaseService.client.CustomToken(ctx, uid)
 }
 
 func setupAuthClient(firebaseConfigPath string) (*auth.Client, error) {

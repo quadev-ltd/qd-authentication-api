@@ -9,7 +9,8 @@ import (
 // ConvertAuthTokensToResponse converts auth tokens to a response
 func ConvertAuthTokensToResponse(authTokens *model.AuthTokensResponse) *pb_authentication.AuthenticateResponse {
 	return &pb_authentication.AuthenticateResponse{
-		AuthToken:    authTokens.AuthToken,
-		RefreshToken: authTokens.RefreshToken,
+		AuthToken:     authTokens.AuthToken,
+		RefreshToken:  authTokens.RefreshToken,
+		FirebaseToken: authTokens.FirebaseToken,
 	}
 }

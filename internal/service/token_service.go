@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 
+	"qd-authentication-api/internal/firebase"
 	"qd-authentication-api/internal/jwt"
 	"qd-authentication-api/internal/model"
 	"qd-authentication-api/internal/repository"
@@ -21,7 +22,7 @@ import (
 type TokenServicer interface {
 	GetPublicKey(ctx context.Context) (string, error)
 	GenerateJWTToken(ctx context.Context, claims *commonJWT.TokenClaims) (*string, error)
-	GenerateJWTTokens(ctx context.Context, userEmail, userID string) (*model.AuthTokensResponse, error)
+	GenerateJWTTokens(ctx context.Context, userEmail, userID string, includeFirebaseToken bool) (*model.AuthTokensResponse, error)
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*commonJWT.TokenClaims, error)
@@ -36,6 +37,7 @@ type TokenService struct {
 	tokenRepository repository.TokenRepositoryer
 	jwtManager      jwt.Managerer
 	timeProvider    util.TimeProvider
+	firebaseService firebase.AuthServicer
 }
 
 var _ TokenServicer = &TokenService{}
@@ -45,11 +47,13 @@ func NewTokenService(
 	tokenRepository repository.TokenRepositoryer,
 	jwtManager jwt.Managerer,
 	timeProvider util.TimeProvider,
+	firebaseService firebase.AuthServicer,
 ) TokenServicer {
 	return &TokenService{
 		tokenRepository,
 		jwtManager,
 		timeProvider,
+		firebaseService,
 	}
 }
 
@@ -185,6 +189,7 @@ func (service *TokenService) GenerateJWTTokens(
 	ctx context.Context,
 	userEmail,
 	userID string,
+	includeFirebaseToken bool,
 ) (*model.AuthTokensResponse, error) {
 	// Auth token creation
 	authenticationTokenExpiration := service.timeProvider.Now().Add(AuthenticationTokenDuration)
@@ -212,14 +217,25 @@ func (service *TokenService) GenerateJWTTokens(
 		return nil, fmt.Errorf("Error creating refresh token: %v", err)
 	}
 
-	return &model.AuthTokensResponse{
+	response := &model.AuthTokensResponse{
 		AuthToken:          *authTokenString,
 		AuthTokenExpiry:    authenticationTokenExpiration,
 		RefreshToken:       *refreshTokenString,
 		RefreshTokenExpiry: refreshTokenExpiration,
 		UserEmail:          userEmail,
 		UserID:             userID,
-	}, nil
+	}
+
+	// Generate Firebase custom token if requested
+	if includeFirebaseToken {
+		firebaseToken, err := service.firebaseService.CreateCustomToken(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("Error creating Firebase custom token: %v", err)
+		}
+		response.FirebaseToken = firebaseToken
+	}
+
+	return response, nil
 }
 
 // VerifyJWTToken refreshes an authentication token using a refresh token
