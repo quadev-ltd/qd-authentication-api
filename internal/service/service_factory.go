@@ -77,7 +77,12 @@ func (serviceFactory *Factory) CreateServiceManager(
 		repository.GetUserRepository(),
 	)
 	timeProvider := &util.RealTimeProvider{}
-	tokenService := NewTokenService(repository.GetTokenRepository(), jwtManager, *timeProvider)
+	tokenService := NewTokenService(
+		repository.GetTokenRepository(),
+		jwtManager,
+		*timeProvider,
+		firebaseAuthService,
+	)
 	passwordService := NewPasswordService(
 		emailService,
 		tokenService,

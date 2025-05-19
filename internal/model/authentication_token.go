@@ -10,4 +10,5 @@ type AuthTokensResponse struct {
 	RefreshTokenExpiry time.Time `json:"refreshTokenExpiry"`
 	UserEmail          string    `json:"userEmail"`
 	UserID             string    `json:"userID"`
+	FirebaseToken      string    `json:"firebaseToken"`
 }

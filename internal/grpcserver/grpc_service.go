@@ -238,7 +238,7 @@ func (service *AuthenticationServiceServer) VerifyEmail(
 
 	service.tokenService.RemoveUsedToken(ctx, token)
 
-	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, *email, request.UserID)
+	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, *email, request.UserID, true)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -265,7 +265,7 @@ func (service *AuthenticationServiceServer) Authenticate(
 		err = handleAuthenticationError(err, logger, request.Email)
 		return nil, err
 	}
-	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex())
+	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex(), true)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -319,7 +319,7 @@ func (service *AuthenticationServiceServer) AuthenticateWithFirebase(
 		}
 		return nil, status.Errorf(codes.Internal, "Error authenticating with Firebase")
 	}
-	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, firebaseUser.Email, firebaseUser.ID.Hex())
+	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, firebaseUser.Email, firebaseUser.ID.Hex(), false)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -358,7 +358,7 @@ func (service *AuthenticationServiceServer) RefreshToken(
 	if claims.Type != commonToken.RefreshTokenType {
 		return nil, status.Errorf(codes.InvalidArgument, "Not a refresh token")
 	}
-	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID)
+	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID, false)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())

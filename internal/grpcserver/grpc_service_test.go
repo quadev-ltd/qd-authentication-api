@@ -421,6 +421,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 				gomock.Any(),
 				user.Email,
 				user.ID.Hex(),
+				true,
 			).Return(nil, mockVerifyEmailError)
 
 		response, returnedError := mocks.AuthenticationServer.VerifyEmail(mocks.Ctx, verifyEmailRequest)
@@ -457,6 +458,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 				gomock.Any(),
 				user.Email,
 				user.ID.Hex(),
+				true,
 			).Return(nil, mockVerifyEmailError)
 
 		response, returnedError := mocks.AuthenticationServer.VerifyEmail(mocks.Ctx, verifyEmailRequest)
@@ -504,6 +506,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 				gomock.Any(),
 				user.Email,
 				user.ID.Hex(),
+				true,
 			).Return(authenticateResponse, nil)
 		mocks.MockLogger.EXPECT().Info("Email verified successfully")
 
@@ -562,7 +565,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
 			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex()).
+			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex(), true).
 			Return(nil, tokenError)
 
 		response, returnedError := mocks.AuthenticationServer.Authenticate(mocks.Ctx, authenticateRequest)
@@ -582,7 +585,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
 			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex()).
+			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex(), true).
 			Return(nil, tokenError)
 
 		response, returnedError := mocks.AuthenticationServer.Authenticate(mocks.Ctx, authenticateRequest)
@@ -614,7 +617,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
 			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex()).
+			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex(), true).
 			Return(authenticateResponse, nil)
 		mocks.MockLogger.EXPECT().Info("Authentication successful")
 
@@ -649,7 +652,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			authenticateWithFirebaseRequest.LastName,
 		).Return(firebaseUser, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex()).
+			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex(), false).
 			Return(authenticateResponse, nil)
 
 		mocks.MockLogger.EXPECT().Info("Firebase authentication successful")
@@ -681,7 +684,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			authenticateWithFirebaseRequest.LastName,
 		).Return(firebaseUser, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex()).
+			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex(), false).
 			Return(nil, tokenError)
 
 		response, returnedError := mocks.AuthenticationServer.AuthenticateWithFirebase(
@@ -927,7 +930,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			UserID: exampleClaims.UserID,
 		}
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID).
+			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID, false).
 			Return(resultTokens, nil)
 		mocks.MockLogger.EXPECT().Info("Refresh authentication token successful")
 
@@ -953,7 +956,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			UserID: exampleClaims.UserID,
 		}
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID).
+			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID, false).
 			Return(nil, mockedError)
 
 		ctxWithClaims := NewContextWithClaims(mocks.Ctx, refreshClaims)
@@ -978,7 +981,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			UserID: exampleClaims.UserID,
 		}
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID).
+			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID, false).
 			Return(nil, mockedError)
 
 		ctxWithClaims := NewContextWithClaims(mocks.Ctx, refreshClaims)

@@ -430,6 +430,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
+
 		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: password,
@@ -439,6 +448,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NotNil(t, authenticateResponse)
 		assert.NotNil(t, authenticateResponse.AuthToken)
 		assert.NotNil(t, authenticateResponse.RefreshToken)
+		assert.Equal(t, testFirebaseToken, authenticateResponse.FirebaseToken, "Firebase token should be included in the response")
 	})
 
 	t.Run("AuthenticateWithFirebase_Success", func(t *testing.T) {
@@ -614,6 +624,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
+
 		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: password,
@@ -773,6 +792,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
 		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: password,
@@ -871,6 +898,15 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
+
 		verifyEmailResponse, err := grpcClient.VerifyEmail(
 			ctxWithCorrelationID, &pb_authentication.VerifyEmailRequest{
 				VerificationToken: mockEmailService.LastCapturedEmailVerificationToken,
@@ -882,6 +918,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, verifyEmailResponse.AuthToken)
 		assert.NotNil(t, verifyEmailResponse.RefreshToken)
+		assert.Equal(t, testFirebaseToken, verifyEmailResponse.FirebaseToken, "Firebase token should be included in the response")
 	})
 
 	t.Run("Refresh_Token_Error", func(t *testing.T) {
@@ -935,6 +972,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			gomock.Any(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
 		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    registerRequest.Email,
 			Password: password,
@@ -949,6 +994,9 @@ func TestRegisterUserJourneys(t *testing.T) {
 			ctxAuth,
 			&pb_authentication.RefreshTokenRequest{},
 		)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		authClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
 		if err != nil {
@@ -963,6 +1011,7 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NotNil(t, refreshTokenResponse)
 		assert.NotNil(t, refreshTokenResponse.AuthToken)
 		assert.NotNil(t, refreshTokenResponse.RefreshToken)
+		assert.Empty(t, refreshTokenResponse.FirebaseToken, "Firebase token should be empty for refresh token response")
 		assert.Equal(t, registerRequest.Email, authClaims.Email)
 		assert.Equal(t, registerRequest.Email, refreshClaims.Email)
 	})
@@ -990,6 +1039,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			gomock.Any(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
 		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    registerRequest.Email,
 			Password: password,
@@ -1056,7 +1113,16 @@ func TestRegisterUserJourneys(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			gomock.Any(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
+		_, err = grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    registerRequest.Email,
 			Password: registerRequest.Password,
 		})
@@ -1087,6 +1153,13 @@ func TestRegisterUserJourneys(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
 		_, err = grpcClient.VerifyEmail(
 			commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID),
 			&pb_authentication.VerifyEmailRequest{
@@ -1133,10 +1206,20 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.True(t, resetPasswordResponse.Success)
 		assert.Equal(t, "Reset password successful", resetPasswordResponse.Message)
 
-		authenticateResponse, err = grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
+		authenticateResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
 			Email:    foundUser.Email,
 			Password: newPassword,
 		})
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		authClaims, err := tokenInspector.GetClaimsFromTokenString(authenticateResponse.AuthToken)
 		if err != nil {
@@ -1184,6 +1267,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 		)
 		assert.NoError(t, err, "Registration for not-verified user failed")
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			gomock.Any(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
 		// Authenticate user
 		authResp, err := grpcClient.Authenticate(
 			ctxWithCorrelationID,
@@ -1286,6 +1377,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 		err = tokenCollection.FindOne(ctxWithCorrelationID, bson.M{"userID": foundUser.ID}).Decode(&foundToken)
 		assert.NoError(t, err)
 
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
 		// Simulate reading the verification token from the captured email
 		verifyResp, err := grpcClient.VerifyEmail(
 			ctxWithCorrelationID,
@@ -1303,6 +1402,14 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, model.AccountStatusVerified, foundUser.AccountStatus)
 
+		testFirebaseToken = "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			foundUser.ID.Hex(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
 		// Authenticate user
 		authResp, err := grpcClient.Authenticate(
 			ctxWithCorrelationID,

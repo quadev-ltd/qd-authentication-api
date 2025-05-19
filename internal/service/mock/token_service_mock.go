@@ -69,18 +69,18 @@ func (mr *MockTokenServicerMockRecorder) GenerateJWTToken(ctx, claims interface{
 }
 
 // GenerateJWTTokens mocks base method.
-func (m *MockTokenServicer) GenerateJWTTokens(ctx context.Context, userEmail, userID string) (*model.AuthTokensResponse, error) {
+func (m *MockTokenServicer) GenerateJWTTokens(ctx context.Context, userEmail, userID string, includeFirebaseToken bool) (*model.AuthTokensResponse, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GenerateJWTTokens", ctx, userEmail, userID)
+	ret := m.ctrl.Call(m, "GenerateJWTTokens", ctx, userEmail, userID, includeFirebaseToken)
 	ret0, _ := ret[0].(*model.AuthTokensResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GenerateJWTTokens indicates an expected call of GenerateJWTTokens.
-func (mr *MockTokenServicerMockRecorder) GenerateJWTTokens(ctx, userEmail, userID interface{}) *gomock.Call {
+func (mr *MockTokenServicerMockRecorder) GenerateJWTTokens(ctx, userEmail, userID, includeFirebaseToken interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateJWTTokens", reflect.TypeOf((*MockTokenServicer)(nil).GenerateJWTTokens), ctx, userEmail, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateJWTTokens", reflect.TypeOf((*MockTokenServicer)(nil).GenerateJWTTokens), ctx, userEmail, userID, includeFirebaseToken)
 }
 
 // GeneratePasswordResetToken mocks base method.

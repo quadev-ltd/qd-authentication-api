@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	firebaseMock "qd-authentication-api/internal/firebase/mock"
 	jwtManagerMock "qd-authentication-api/internal/jwt/mock"
 	"qd-authentication-api/internal/model"
 	repositoryMock "qd-authentication-api/internal/repository/mock"
@@ -22,12 +23,13 @@ import (
 )
 
 type TokenAuthenServiceMockedParams struct {
-	MockTokenRepo  repositoryMock.MockTokenRepositoryer
-	MockJWTManager jwtManagerMock.MockManagerer
-	MockLogger     *loggerMock.MockLoggerer
-	TokenService   TokenServicer
-	Controller     *gomock.Controller
-	Ctx            context.Context
+	MockTokenRepo       repositoryMock.MockTokenRepositoryer
+	MockJWTManager      jwtManagerMock.MockManagerer
+	MockLogger          *loggerMock.MockLoggerer
+	MockFirebaseService firebaseMock.MockAuthServicer
+	TokenService        TokenServicer
+	Controller          *gomock.Controller
+	Ctx                 context.Context
 }
 
 func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
@@ -35,11 +37,13 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 	mockTokenRepo := repositoryMock.NewMockTokenRepositoryer(controller)
 	mockJWTManager := jwtManagerMock.NewMockManagerer(controller)
 	mockLogger := loggerMock.NewMockLoggerer(controller)
+	mockFirebaseService := firebaseMock.NewMockAuthServicer(controller)
 	mockTimeProvider := &util.MockTimeProvider{}
 	tokenService := NewTokenService(
 		mockTokenRepo,
 		mockJWTManager,
 		mockTimeProvider,
+		mockFirebaseService,
 	)
 	ctx := context.WithValue(context.Background(), log.LoggerKey, mockLogger)
 
@@ -47,6 +51,7 @@ func createTokenService(test *testing.T) *TokenAuthenServiceMockedParams {
 		*mockTokenRepo,
 		*mockJWTManager,
 		mockLogger,
+		*mockFirebaseService,
 		tokenService,
 		controller,
 		ctx,
@@ -552,6 +557,7 @@ func TestTokenService(test *testing.T) {
 			mocks.Ctx,
 			testUser.Email,
 			testUser.ID.Hex(),
+			false,
 		)
 
 		// Assert
@@ -559,6 +565,98 @@ func TestTokenService(test *testing.T) {
 		assert.NotNil(test, response)
 		assert.Equal(test, newRefreshTokenValue, response.RefreshToken)
 		assert.Equal(test, testTokenHashValue, response.AuthToken)
+		assert.Equal(test, "", response.FirebaseToken)
+	})
+
+	test.Run("GenerateJWTTokens_WithFirebaseToken_Success", func(test *testing.T) {
+		mocks := createTokenService(test)
+		defer mocks.Controller.Finish()
+
+		testUser := model.NewUser()
+		userID, err := primitive.ObjectIDFromHex(exampleauthTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
+		firebaseToken := "firebase-custom-token"
+
+		mocks.MockJWTManager.EXPECT().SignToken(
+			gomock.Eq(exampleauthTokenClaims),
+		).Return(
+			&testTokenHashValue,
+			nil,
+		)
+		mocks.MockJWTManager.EXPECT().SignToken(
+			gomock.Eq(exampleRefreshTokenClaims),
+		).Return(
+			&newRefreshTokenValue,
+			nil,
+		)
+		mocks.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+		).Return(
+			firebaseToken,
+			nil,
+		)
+
+		response, err := mocks.TokenService.GenerateJWTTokens(
+			mocks.Ctx,
+			testUser.Email,
+			testUser.ID.Hex(),
+			true,
+		)
+
+		// Assert
+		assert.NoError(test, err)
+		assert.NotNil(test, response)
+		assert.Equal(test, newRefreshTokenValue, response.RefreshToken)
+		assert.Equal(test, testTokenHashValue, response.AuthToken)
+		assert.Equal(test, firebaseToken, response.FirebaseToken)
+	})
+
+	test.Run("GenerateJWTTokens_FirebaseTokenError", func(test *testing.T) {
+		mocks := createTokenService(test)
+		defer mocks.Controller.Finish()
+
+		testUser := model.NewUser()
+		userID, err := primitive.ObjectIDFromHex(exampleauthTokenClaims.UserID)
+		if err != nil {
+			test.Fatal(err)
+		}
+		testUser.ID = userID
+
+		mocks.MockJWTManager.EXPECT().SignToken(
+			gomock.Eq(exampleauthTokenClaims),
+		).Return(
+			&testTokenHashValue,
+			nil,
+		)
+		mocks.MockJWTManager.EXPECT().SignToken(
+			gomock.Eq(exampleRefreshTokenClaims),
+		).Return(
+			&newRefreshTokenValue,
+			nil,
+		)
+		mocks.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			testUser.ID.Hex(),
+		).Return(
+			"",
+			errExample,
+		)
+
+		response, err := mocks.TokenService.GenerateJWTTokens(
+			mocks.Ctx,
+			testUser.Email,
+			testUser.ID.Hex(),
+			true,
+		)
+
+		// Assert
+		assert.Error(test, err)
+		assert.Nil(test, response)
+		assert.EqualError(test, err, "Error creating Firebase custom token: test-error")
 	})
 
 	test.Run("GenerateJWTTokens_RefreshTokenGeneration_Error", func(test *testing.T) {
@@ -590,6 +688,7 @@ func TestTokenService(test *testing.T) {
 			mocks.Ctx,
 			testUser.Email,
 			testUser.ID.Hex(),
+			false,
 		)
 
 		// Assert
@@ -621,6 +720,7 @@ func TestTokenService(test *testing.T) {
 			mocks.Ctx,
 			testUser.Email,
 			testUser.ID.Hex(),
+			false,
 		)
 
 		// Assert
