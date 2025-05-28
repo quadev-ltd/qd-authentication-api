@@ -205,7 +205,7 @@ func (service *EmailService) SendPasswordResetSuccessEmail(ctx context.Context, 
 	return service.sendMail(ctx, dest, subject, body)
 }
 
-// CreatePasswordResetSuccessEmailContent generates teh content for the success notification
+// CreateDeletedUserEmailContent generates teh content for the success notification
 func (service *EmailService) CreateDeletedUserEmailContent(ctx context.Context, userName string) (string, string) {
 	subject := "Your Account Has Been Successfully Deleted"
 	body := strings.ReplaceAll(deleteUserSuccessEmail, "{firstName}", userName)
@@ -213,7 +213,7 @@ func (service *EmailService) CreateDeletedUserEmailContent(ctx context.Context, 
 	return subject, body
 }
 
-// SendPasswordResetSuccessEmail sends an email verification success email
+// SendDeletedUserEmail sends an email verification success email
 func (service *EmailService) SendDeletedUserEmail(ctx context.Context, dest, userName string) error {
 	subject, body := service.CreateDeletedUserEmailContent(ctx, userName)
 	return service.sendMail(ctx, dest, subject, body)
