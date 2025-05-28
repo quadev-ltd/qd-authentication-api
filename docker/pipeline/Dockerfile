@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
     netcat
 
 # Install Go
-RUN curl -fsSL https://golang.org/dl/go1.21.2.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+RUN curl -fsSL https://golang.org/dl/go1.23.4.linux-amd64.tar.gz | tar -C /usr/local -xzf -
 
 # Set Go environment variables
 ENV PATH="/usr/local/go/bin:/go/bin:${PATH}"

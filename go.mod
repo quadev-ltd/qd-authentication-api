@@ -1,6 +1,6 @@
 module qd-authentication-api
 
-go 1.21.2
+go 1.23.4
 
 require (
 	firebase.google.com/go v3.13.0+incompatible

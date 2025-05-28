@@ -161,7 +161,7 @@ func (userRepository *UserRepository) Update(ctx context.Context, user *model.Us
 	return nil
 }
 
-// GetByUserID gets a user by verification token from the mongo database
+// DeleteByUserID gets a user by verification token from the mongo database
 func (userRepository *UserRepository) DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error {
 	collection := userRepository.getCollection()
 	filter := bson.M{"_id": userID}
