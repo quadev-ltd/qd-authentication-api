@@ -463,4 +463,64 @@ func TestMongoUserRepository(test *testing.T) {
 		assert.Contains(test, err.Error(), "Error finding user by verification token")
 	})
 
+	test.Run("GetByEmail_DefaultHasPaidFeatures", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		repo := NewUserRepository(client)
+
+		// Create a user without HasPaidFeatures field
+		user := model.NewUser()
+		insertedID, err := repo.InsertUser(context.Background(), user)
+		assert.NoError(test, err)
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
+
+		// Update the document to remove HasPaidFeatures field
+		collection := client.Database("test").Collection("users")
+		_, err = collection.UpdateOne(
+			context.Background(),
+			bson.M{"_id": id},
+			bson.M{"$unset": bson.M{"hasPaidFeatures": ""}},
+		)
+		assert.NoError(test, err)
+
+		// Get the user and verify HasPaidFeatures is false
+		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
+		assert.NoError(test, err)
+		assert.NotNil(test, foundUser)
+		assert.False(test, foundUser.HasPaidFeatures, "HasPaidFeatures should default to false when not present in document")
+	})
+
+	test.Run("GetByEmail_HasPaidFeaturesTrue", func(test *testing.T) {
+		mongoServer, client, err := mock.SetupMockMongoServerAndClient(test)
+		if err != nil {
+			test.Fatal(err)
+		}
+		defer client.Disconnect(context.Background())
+		defer mongoServer.Stop()
+
+		repo := NewUserRepository(client)
+
+		// Create a user with HasPaidFeatures set to true
+		user := model.NewUser()
+		user.HasPaidFeatures = true
+		insertedID, err := repo.InsertUser(context.Background(), user)
+		assert.NoError(test, err)
+		id, ok := insertedID.(primitive.ObjectID)
+		assert.True(test, ok)
+		assert.NotNil(test, id)
+
+		// Get the user and verify HasPaidFeatures is true
+		foundUser, err := repo.GetByEmail(context.Background(), user.Email)
+		assert.NoError(test, err)
+		assert.NotNil(test, foundUser)
+		assert.True(test, foundUser.HasPaidFeatures, "HasPaidFeatures should be true when set in document")
+	})
+
 }

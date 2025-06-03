@@ -540,6 +540,7 @@ func TestTokenService(test *testing.T) {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
+		testUser.Email = testEmail
 
 		mocks.MockJWTManager.EXPECT().SignToken(
 			gomock.Eq(exampleauthTokenClaims),
@@ -555,8 +556,7 @@ func TestTokenService(test *testing.T) {
 		)
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser.Email,
-			testUser.ID.Hex(),
+			testUser,
 			false,
 		)
 
@@ -578,6 +578,7 @@ func TestTokenService(test *testing.T) {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
+		testUser.Email = testEmail
 		firebaseToken := "firebase-custom-token"
 
 		mocks.MockJWTManager.EXPECT().SignToken(
@@ -602,8 +603,7 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser.Email,
-			testUser.ID.Hex(),
+			testUser,
 			true,
 		)
 
@@ -625,6 +625,7 @@ func TestTokenService(test *testing.T) {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
+		testUser.Email = testEmail
 
 		mocks.MockJWTManager.EXPECT().SignToken(
 			gomock.Eq(exampleauthTokenClaims),
@@ -648,8 +649,7 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser.Email,
-			testUser.ID.Hex(),
+			testUser,
 			true,
 		)
 
@@ -669,6 +669,7 @@ func TestTokenService(test *testing.T) {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
+		testUser.Email = testEmail
 
 		mocks.MockJWTManager.EXPECT().SignToken(
 			gomock.Eq(exampleauthTokenClaims),
@@ -686,8 +687,7 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser.Email,
-			testUser.ID.Hex(),
+			testUser,
 			false,
 		)
 
@@ -707,6 +707,7 @@ func TestTokenService(test *testing.T) {
 			test.Fatal(err)
 		}
 		testUser.ID = userID
+		testUser.Email = testEmail
 
 		mocks.MockJWTManager.EXPECT().SignToken(
 			gomock.Eq(exampleauthTokenClaims),
@@ -718,8 +719,7 @@ func TestTokenService(test *testing.T) {
 
 		response, err := mocks.TokenService.GenerateJWTTokens(
 			mocks.Ctx,
-			testUser.Email,
-			testUser.ID.Hex(),
+			testUser,
 			false,
 		)
 

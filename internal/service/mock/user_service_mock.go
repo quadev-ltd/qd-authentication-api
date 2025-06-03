@@ -81,6 +81,21 @@ func (mr *MockUserServicerMockRecorder) DeleteUser(ctx, userID interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUserServicer)(nil).DeleteUser), ctx, userID)
 }
 
+// GetUserByID mocks base method.
+func (m *MockUserServicer) GetUserByID(ctx context.Context, userID string) (*model.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserByID", ctx, userID)
+	ret0, _ := ret[0].(*model.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUserByID indicates an expected call of GetUserByID.
+func (mr *MockUserServicerMockRecorder) GetUserByID(ctx, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserByID", reflect.TypeOf((*MockUserServicer)(nil).GetUserByID), ctx, userID)
+}
+
 // GetUserProfile mocks base method.
 func (m *MockUserServicer) GetUserProfile(ctx context.Context, userID string) (*model.User, error) {
 	m.ctrl.T.Helper()
@@ -155,10 +170,10 @@ func (mr *MockUserServicerMockRecorder) UpdateProfileDetails(ctx, userID, profil
 }
 
 // VerifyEmail mocks base method.
-func (m *MockUserServicer) VerifyEmail(ctx context.Context, token *model.Token) (*string, error) {
+func (m *MockUserServicer) VerifyEmail(ctx context.Context, token *model.Token) (*model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "VerifyEmail", ctx, token)
-	ret0, _ := ret[0].(*string)
+	ret0, _ := ret[0].(*model.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

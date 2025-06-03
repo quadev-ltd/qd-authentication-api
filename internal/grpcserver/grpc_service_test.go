@@ -92,15 +92,16 @@ func TestAuthenticationServiceServer(test *testing.T) {
 		Email:    "test@example.com",
 		Password: "password",
 	}
+	userID := primitive.NewObjectID()
 	exampleClaims := &commonJWT.TokenClaims{
-		UserID: primitive.NewObjectID().Hex(),
+		UserID: userID.Hex(),
 		Email:  "test@example.com",
 		Type:   commonToken.AuthTokenType,
 		Expiry: time.Now().Add(5 * time.Minute),
 	}
 
 	firebaseUser := &model.User{
-		ID:               primitive.NewObjectID(),
+		ID:               userID,
 		Email:            "test@email.com",
 		FirstName:        "FirstName",
 		LastName:         "LastName",
@@ -412,15 +413,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Return(testTokenObj, nil)
 		mocks.MockUserService.EXPECT().
 			VerifyEmail(gomock.Any(), gomock.Eq(testTokenObj)).
-			Return(&user.Email, nil)
+			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
 			RemoveUsedToken(gomock.Any(), gomock.Eq(testTokenObj)).
 			Return(nil)
 		mocks.MockTokenService.EXPECT().
 			GenerateJWTTokens(
 				gomock.Any(),
-				user.Email,
-				user.ID.Hex(),
+				user,
 				true,
 			).Return(nil, mockVerifyEmailError)
 
@@ -449,15 +449,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Return(testTokenObj, nil)
 		mocks.MockUserService.EXPECT().
 			VerifyEmail(gomock.Any(), gomock.Eq(testTokenObj)).
-			Return(&user.Email, nil)
+			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
 			RemoveUsedToken(gomock.Any(), gomock.Eq(testTokenObj)).
 			Return(nil)
 		mocks.MockTokenService.EXPECT().
 			GenerateJWTTokens(
 				gomock.Any(),
-				user.Email,
-				user.ID.Hex(),
+				user,
 				true,
 			).Return(nil, mockVerifyEmailError)
 
@@ -497,15 +496,14 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Return(testTokenObj, nil)
 		mocks.MockUserService.EXPECT().
 			VerifyEmail(gomock.Any(), gomock.Eq(testTokenObj)).
-			Return(&user.Email, nil)
+			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
 			RemoveUsedToken(gomock.Any(), gomock.Eq(testTokenObj)).
 			Return(nil)
 		mocks.MockTokenService.EXPECT().
 			GenerateJWTTokens(
 				gomock.Any(),
-				user.Email,
-				user.ID.Hex(),
+				user,
 				true,
 			).Return(authenticateResponse, nil)
 		mocks.MockLogger.EXPECT().Info("Email verified successfully")
@@ -565,7 +563,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
 			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex(), true).
+			GenerateJWTTokens(gomock.Any(), user, true).
 			Return(nil, tokenError)
 
 		response, returnedError := mocks.AuthenticationServer.Authenticate(mocks.Ctx, authenticateRequest)
@@ -585,7 +583,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
 			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex(), true).
+			GenerateJWTTokens(gomock.Any(), user, true).
 			Return(nil, tokenError)
 
 		response, returnedError := mocks.AuthenticationServer.Authenticate(mocks.Ctx, authenticateRequest)
@@ -617,7 +615,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			Authenticate(gomock.Any(), authenticateRequest.Email, authenticateRequest.Password).
 			Return(user, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), user.Email, user.ID.Hex(), true).
+			GenerateJWTTokens(gomock.Any(), user, true).
 			Return(authenticateResponse, nil)
 		mocks.MockLogger.EXPECT().Info("Authentication successful")
 
@@ -652,7 +650,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			authenticateWithFirebaseRequest.LastName,
 		).Return(firebaseUser, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex(), false).
+			GenerateJWTTokens(gomock.Any(), firebaseUser, false).
 			Return(authenticateResponse, nil)
 
 		mocks.MockLogger.EXPECT().Info("Firebase authentication successful")
@@ -684,7 +682,7 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			authenticateWithFirebaseRequest.LastName,
 		).Return(firebaseUser, nil)
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), firebaseUser.Email, firebaseUser.ID.Hex(), false).
+			GenerateJWTTokens(gomock.Any(), firebaseUser, false).
 			Return(nil, tokenError)
 
 		response, returnedError := mocks.AuthenticationServer.AuthenticateWithFirebase(
@@ -930,8 +928,11 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			UserID: exampleClaims.UserID,
 		}
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID, false).
+			GenerateJWTTokens(gomock.Any(), firebaseUser, false).
 			Return(resultTokens, nil)
+		mocks.MockUserService.EXPECT().
+			GetUserByID(gomock.Any(), exampleClaims.UserID).
+			Return(firebaseUser, nil)
 		mocks.MockLogger.EXPECT().Info("Refresh authentication token successful")
 
 		ctxWithClaims := NewContextWithClaims(mocks.Ctx, refreshClaims)
@@ -956,8 +957,11 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			UserID: exampleClaims.UserID,
 		}
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID, false).
+			GenerateJWTTokens(gomock.Any(), firebaseUser, false).
 			Return(nil, mockedError)
+		mocks.MockUserService.EXPECT().
+			GetUserByID(gomock.Any(), exampleClaims.UserID).
+			Return(firebaseUser, nil)
 
 		ctxWithClaims := NewContextWithClaims(mocks.Ctx, refreshClaims)
 		response, returnedError := mocks.AuthenticationServer.RefreshToken(
@@ -981,8 +985,11 @@ func TestAuthenticationServiceServer(test *testing.T) {
 			UserID: exampleClaims.UserID,
 		}
 		mocks.MockTokenService.EXPECT().
-			GenerateJWTTokens(gomock.Any(), exampleClaims.Email, exampleClaims.UserID, false).
+			GenerateJWTTokens(gomock.Any(), firebaseUser, false).
 			Return(nil, mockedError)
+		mocks.MockUserService.EXPECT().
+			GetUserByID(gomock.Any(), exampleClaims.UserID).
+			Return(firebaseUser, nil)
 
 		ctxWithClaims := NewContextWithClaims(mocks.Ctx, refreshClaims)
 		response, returnedError := mocks.AuthenticationServer.RefreshToken(
@@ -1017,6 +1024,58 @@ func TestAuthenticationServiceServer(test *testing.T) {
 
 		assert.Error(test, returnedError)
 		assert.Equal(test, "rpc error: code = Internal desc = Logger not found in context", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("RefreshToken_GetUserByID_ServiceError", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		mockedError := &service.Error{Message: "test-service-error"}
+		refreshClaims := &commonJWT.TokenClaims{
+			Email:  exampleClaims.Email,
+			Type:   commonToken.RefreshTokenType,
+			Expiry: exampleClaims.Expiry,
+			UserID: exampleClaims.UserID,
+		}
+
+		mocks.MockUserService.EXPECT().
+			GetUserByID(gomock.Any(), exampleClaims.UserID).
+			Return(nil, mockedError)
+
+		ctxWithClaims := NewContextWithClaims(mocks.Ctx, refreshClaims)
+		response, returnedError := mocks.AuthenticationServer.RefreshToken(
+			ctxWithClaims,
+			&pb_authentication.RefreshTokenRequest{},
+		)
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = InvalidArgument desc = test-service-error", returnedError.Error())
+		assert.Nil(test, response)
+	})
+
+	test.Run("RefreshToken_GetUserByID_GeneralError", func(test *testing.T) {
+		mocks := initialiseTest(test)
+		defer mocks.Controller.Finish()
+		mockedError := errors.New("test-general-error")
+		refreshClaims := &commonJWT.TokenClaims{
+			Email:  exampleClaims.Email,
+			Type:   commonToken.RefreshTokenType,
+			Expiry: exampleClaims.Expiry,
+			UserID: exampleClaims.UserID,
+		}
+
+		mocks.MockUserService.EXPECT().
+			GetUserByID(gomock.Any(), exampleClaims.UserID).
+			Return(nil, mockedError)
+
+		ctxWithClaims := NewContextWithClaims(mocks.Ctx, refreshClaims)
+		response, returnedError := mocks.AuthenticationServer.RefreshToken(
+			ctxWithClaims,
+			&pb_authentication.RefreshTokenRequest{},
+		)
+
+		assert.Error(test, returnedError)
+		assert.Equal(test, "rpc error: code = Internal desc = Error verifying token", returnedError.Error())
 		assert.Nil(test, response)
 	})
 

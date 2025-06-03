@@ -259,11 +259,11 @@ func TestUserService(test *testing.T) {
 		mocks.MockEmailService.EXPECT().SendVerificationSuccessEmail(gomock.Any(), testUser.Email, testUser.FirstName)
 
 		// Test successful verification
-		email, err := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		user, err := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		assert.NoError(test, err)
 		assert.Equal(test, model.AccountStatusVerified, testUser.AccountStatus)
-		assert.Equal(test, testUser.Email, *email)
+		assert.Equal(test, testUser, user)
 	})
 
 	test.Run("VerifyEmail_Get_User_By_ID_Error", func(test *testing.T) {
@@ -277,12 +277,12 @@ func TestUserService(test *testing.T) {
 		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user by ID")
 
 		// Test Verify
-		email, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		user, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		assert.Error(test, resultError)
 		assert.NotNil(test, resultError)
 		assert.Equal(test, "invalid_token", resultError.Error())
-		assert.Nil(test, email)
+		assert.Nil(test, user)
 	})
 	test.Run("Invalid_Token_Error", func(test *testing.T) {
 		// Arrange
@@ -296,12 +296,12 @@ func TestUserService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().GetByUserID(gomock.Any(), testToken.UserID).Return(testUser, nil)
 
 		// Test Verify
-		email, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		user, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		assert.Error(test, resultError)
 		assert.IsType(test, &Error{}, resultError)
 		assert.Equal(test, "email_already_verified", resultError.Error())
-		assert.Nil(test, email)
+		assert.Nil(test, user)
 	})
 	test.Run("VerifyEmail_Update_error", func(test *testing.T) {
 		// Arrange
@@ -315,12 +315,12 @@ func TestUserService(test *testing.T) {
 		mocks.MockUserRepo.EXPECT().UpdateStatus(gomock.Any(), testUser).Return(errExample)
 		mocks.MockLogger.EXPECT().Error(errExample, "Error updating user status")
 		// Act
-		email, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
+		user, resultError := mocks.UserService.VerifyEmail(mocks.Ctx, testToken)
 
 		// Assert
 		assert.Error(test, resultError)
 		assert.Equal(test, "Error updating user status", resultError.Error())
-		assert.Nil(test, email)
+		assert.Nil(test, user)
 	})
 
 	// Authenticate
@@ -1401,5 +1401,70 @@ func TestUserService(test *testing.T) {
 		// Assert
 		assert.Error(test, err)
 		assert.EqualError(test, err, "Error deleting user by ID")
+	})
+
+	// GetUserByID
+	test.Run("GetUserByID_Success", func(test *testing.T) {
+		// Arrange
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		testUser := model.NewUser()
+		testUser.ID = userID
+		testUser.Email = testEmail
+
+		mocks.MockUserRepo.EXPECT().GetByUserID(
+			gomock.Any(),
+			userID,
+		).Return(testUser, nil)
+
+		// Act
+		user, err := mocks.UserService.GetUserByID(mocks.Ctx, userID.Hex())
+
+		// Assert
+		assert.NoError(test, err)
+		assert.NotNil(test, user)
+		assert.Equal(test, testUser.Email, user.Email)
+		assert.Equal(test, testUser.ID, user.ID)
+	})
+
+	test.Run("GetUserByID_InvalidID_Error", func(test *testing.T) {
+		// Arrange
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		invalidID := "invalid-id"
+		mocks.MockLogger.EXPECT().Error(
+			gomock.Any(),
+			fmt.Sprintf("Could not convert user ID %s to ObjectID", invalidID),
+		)
+
+		// Act
+		user, err := mocks.UserService.GetUserByID(mocks.Ctx, invalidID)
+
+		// Assert
+		assert.Error(test, err)
+		assert.Nil(test, user)
+		assert.Equal(test, InvalidUserIDError, err.Error())
+	})
+
+	test.Run("GetUserByID_Repository_Error", func(test *testing.T) {
+		// Arrange
+		mocks := createUserService(test)
+		defer mocks.Controller.Finish()
+
+		mocks.MockUserRepo.EXPECT().GetByUserID(
+			gomock.Any(),
+			userID,
+		).Return(nil, errExample)
+		mocks.MockLogger.EXPECT().Error(errExample, "Error getting user by ID")
+
+		// Act
+		user, err := mocks.UserService.GetUserByID(mocks.Ctx, userID.Hex())
+
+		// Assert
+		assert.Error(test, err)
+		assert.Nil(test, user)
+		assert.Equal(test, "Error getting user by ID", err.Error())
 	})
 }

@@ -227,7 +227,7 @@ func (service *AuthenticationServiceServer) VerifyEmail(
 		}
 		return nil, status.Errorf(codes.Internal, "Email verification token creation failed")
 	}
-	email, verifyEmailError := service.userService.VerifyEmail(ctx, token)
+	user, verifyEmailError := service.userService.VerifyEmail(ctx, token)
 	if verifyEmailError != nil {
 		logger.Error(verifyEmailError, "Email verification failed")
 		if serviceErr, ok := verifyEmailError.(*servicePkg.Error); ok {
@@ -238,7 +238,7 @@ func (service *AuthenticationServiceServer) VerifyEmail(
 
 	service.tokenService.RemoveUsedToken(ctx, token)
 
-	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, *email, request.UserID, true)
+	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user, true)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -265,7 +265,7 @@ func (service *AuthenticationServiceServer) Authenticate(
 		err = handleAuthenticationError(err, logger, request.Email)
 		return nil, err
 	}
-	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user.Email, user.ID.Hex(), true)
+	jwtTokens, err := service.tokenService.GenerateJWTTokens(ctx, user, true)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -319,7 +319,7 @@ func (service *AuthenticationServiceServer) AuthenticateWithFirebase(
 		}
 		return nil, status.Errorf(codes.Internal, "Error authenticating with Firebase")
 	}
-	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, firebaseUser.Email, firebaseUser.ID.Hex(), false)
+	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, firebaseUser, false)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
@@ -358,7 +358,14 @@ func (service *AuthenticationServiceServer) RefreshToken(
 	if claims.Type != commonToken.RefreshTokenType {
 		return nil, status.Errorf(codes.InvalidArgument, "Not a refresh token")
 	}
-	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, claims.Email, claims.UserID, false)
+	user, err := service.userService.GetUserByID(ctx, claims.UserID)
+	if err != nil {
+		if serviceErr, ok := err.(*servicePkg.Error); ok {
+			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
+		}
+		return nil, status.Errorf(codes.Internal, "Error verifying token")
+	}
+	authTokens, err := service.tokenService.GenerateJWTTokens(ctx, user, false)
 	if err != nil {
 		if serviceErr, ok := err.(*servicePkg.Error); ok {
 			return nil, status.Errorf(codes.InvalidArgument, serviceErr.Error())
