@@ -36,6 +36,7 @@ type User struct {
 	LastLoginDate    time.Time            `bson:"lastLoginDate" validate:"omitempty"`
 	AccountStatus    AccountStatus        `bson:"accountStatus" validate:"required"`
 	AuthTypes        []AuthenticationType `bson:"authTypes" validate:"required"`
+	HasPaidFeatures  bool                 `bson:"hasPaidFeatures"`
 }
 
 // AccountStatus constants

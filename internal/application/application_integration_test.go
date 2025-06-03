@@ -1440,4 +1440,111 @@ func TestRegisterUserJourneys(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, int64(0), count, "All tokens for user should be removed after DeleteAccount")
 	})
+
+	t.Run("HasPaidFeatures_Claim_Behavior", func(t *testing.T) {
+		envParams := setUpTestEnvironment(t)
+		defer envParams.Application.Close()
+		defer envParams.MockMongoServer.Stop()
+		connection, err := commonTLS.CreateGRPCConnection(
+			envParams.Application.GetGRPCServerAddress(),
+			envParams.MockConfig.TLSEnabled,
+		)
+		assert.NoError(t, err)
+
+		ctxWithCorrelationID := commonLogger.AddCorrelationIDToOutgoingContext(context.Background(), correlationID)
+		grpcClient := pb_authentication.NewAuthenticationServiceClient(connection)
+
+		// Register and authenticate user
+		_, err = grpcClient.Register(
+			ctxWithCorrelationID,
+			registerRequest,
+		)
+		assert.NoError(t, err)
+
+		testFirebaseToken := "test-firebase-token"
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			gomock.Any(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
+
+		// First authentication - HasPaidFeatures should be false
+		authResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    registerRequest.Email,
+			Password: password,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, authResponse)
+
+		// Verify HasPaidFeatures is false in auth token
+		authClaims, err := tokenInspector.GetClaimsFromTokenString(authResponse.AuthToken)
+		assert.NoError(t, err)
+		assert.False(t, authClaims.HasPaidFeatures, "HasPaidFeatures should be false in initial auth token")
+
+		// Refresh token and verify HasPaidFeatures is still false
+		ctxWithRefreshToken := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, authResponse.RefreshToken)
+		refreshResponse, err := grpcClient.RefreshToken(
+			ctxWithRefreshToken,
+			&pb_authentication.RefreshTokenRequest{},
+		)
+		assert.NoError(t, err)
+		assert.NotNil(t, refreshResponse)
+
+		// Verify HasPaidFeatures is false in refreshed token
+		refreshedAuthClaims, err := tokenInspector.GetClaimsFromTokenString(refreshResponse.AuthToken)
+		assert.NoError(t, err)
+		assert.False(t, refreshedAuthClaims.HasPaidFeatures, "HasPaidFeatures should be false in refreshed token")
+
+		// Update user's HasPaidFeatures to true in MongoDB
+		client, err := mongo.NewClient(options.Client().ApplyURI(envParams.MockMongoServer.URI()))
+		assert.NoError(t, err)
+		err = client.Connect(ctxWithCorrelationID)
+		assert.NoError(t, err)
+		defer client.Disconnect(ctxWithCorrelationID)
+
+		collection := client.Database("qd_authentication").Collection("user")
+		_, err = collection.UpdateOne(
+			ctxWithCorrelationID,
+			bson.M{"email": registerRequest.Email},
+			bson.M{"$set": bson.M{"hasPaidFeatures": true}},
+		)
+		assert.NoError(t, err)
+
+		// Authenticate again - HasPaidFeatures should now be true
+		envParams.MockFirebaseService.EXPECT().CreateCustomToken(
+			gomock.Any(),
+			gomock.Any(),
+		).Return(
+			testFirebaseToken,
+			nil,
+		)
+
+		updatedAuthResponse, err := grpcClient.Authenticate(ctxWithCorrelationID, &pb_authentication.AuthenticateRequest{
+			Email:    registerRequest.Email,
+			Password: password,
+		})
+		assert.NoError(t, err)
+		assert.NotNil(t, updatedAuthResponse)
+
+		// Verify HasPaidFeatures is true in new auth token
+		updatedAuthClaims, err := tokenInspector.GetClaimsFromTokenString(updatedAuthResponse.AuthToken)
+		assert.NoError(t, err)
+		assert.True(t, updatedAuthClaims.HasPaidFeatures, "HasPaidFeatures should be true in updated auth token")
+
+		// Refresh token again and verify HasPaidFeatures is still true
+		ctxWithUpdatedRefreshToken := commonJWT.AddAuthorizationMetadataToContext(ctxWithCorrelationID, updatedAuthResponse.RefreshToken)
+		updatedRefreshResponse, err := grpcClient.RefreshToken(
+			ctxWithUpdatedRefreshToken,
+			&pb_authentication.RefreshTokenRequest{},
+		)
+		assert.NoError(t, err)
+		assert.NotNil(t, updatedRefreshResponse)
+
+		// Verify HasPaidFeatures is true in refreshed token
+		updatedRefreshedAuthClaims, err := tokenInspector.GetClaimsFromTokenString(updatedRefreshResponse.AuthToken)
+		assert.NoError(t, err)
+		assert.True(t, updatedRefreshedAuthClaims.HasPaidFeatures, "HasPaidFeatures should be true in updated refreshed token")
+	})
 }

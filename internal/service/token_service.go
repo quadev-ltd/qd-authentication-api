@@ -22,7 +22,7 @@ import (
 type TokenServicer interface {
 	GetPublicKey(ctx context.Context) (string, error)
 	GenerateJWTToken(ctx context.Context, claims *commonJWT.TokenClaims) (*string, error)
-	GenerateJWTTokens(ctx context.Context, userEmail, userID string, includeFirebaseToken bool) (*model.AuthTokensResponse, error)
+	GenerateJWTTokens(ctx context.Context, user *model.User, includeFirebaseToken bool) (*model.AuthTokensResponse, error)
 	GenerateEmailVerificationToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (*string, error)
 	VerifyJWTToken(ctx context.Context, refreshTokenString string) (*commonJWT.TokenClaims, error)
@@ -187,17 +187,17 @@ func (service *TokenService) GenerateJWTToken(
 // GenerateJWTTokens creates a jwt access and refresh token
 func (service *TokenService) GenerateJWTTokens(
 	ctx context.Context,
-	userEmail,
-	userID string,
+	user *model.User,
 	includeFirebaseToken bool,
 ) (*model.AuthTokensResponse, error) {
 	// Auth token creation
 	authenticationTokenExpiration := service.timeProvider.Now().Add(AuthenticationTokenDuration)
 	authTokenClaims := &commonJWT.TokenClaims{
-		Email:  userEmail,
-		UserID: userID,
-		Type:   commonToken.AuthTokenType,
-		Expiry: authenticationTokenExpiration,
+		Email:           user.Email,
+		UserID:          user.ID.Hex(),
+		Type:            commonToken.AuthTokenType,
+		Expiry:          authenticationTokenExpiration,
+		HasPaidFeatures: user.HasPaidFeatures,
 	}
 	authTokenString, err := service.GenerateJWTToken(ctx, authTokenClaims)
 	if err != nil {
@@ -207,10 +207,11 @@ func (service *TokenService) GenerateJWTTokens(
 	// Refresh token creation
 	refreshTokenExpiration := service.timeProvider.Now().Add(RefreshTokenDuration)
 	refreshTokenClaims := &commonJWT.TokenClaims{
-		Email:  userEmail,
-		UserID: userID,
-		Type:   commonToken.RefreshTokenType,
-		Expiry: refreshTokenExpiration,
+		Email:           user.Email,
+		UserID:          user.ID.Hex(),
+		Type:            commonToken.RefreshTokenType,
+		Expiry:          refreshTokenExpiration,
+		HasPaidFeatures: user.HasPaidFeatures,
 	}
 	refreshTokenString, err := service.GenerateJWTToken(ctx, refreshTokenClaims)
 	if err != nil {
@@ -222,13 +223,13 @@ func (service *TokenService) GenerateJWTTokens(
 		AuthTokenExpiry:    authenticationTokenExpiration,
 		RefreshToken:       *refreshTokenString,
 		RefreshTokenExpiry: refreshTokenExpiration,
-		UserEmail:          userEmail,
-		UserID:             userID,
+		UserEmail:          user.Email,
+		UserID:             user.ID.Hex(),
 	}
 
 	// Generate Firebase custom token if requested
 	if includeFirebaseToken {
-		firebaseToken, err := service.firebaseService.CreateCustomToken(ctx, userID)
+		firebaseToken, err := service.firebaseService.CreateCustomToken(ctx, user.ID.Hex())
 		if err != nil {
 			return nil, fmt.Errorf("Error creating Firebase custom token: %v", err)
 		}

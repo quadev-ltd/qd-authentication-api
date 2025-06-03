@@ -21,10 +21,11 @@ type UserServicer interface {
 	Register(ctx context.Context, email, password, firstName, lastName string, dateOfBirth *time.Time) (*model.User, error)
 	SendEmailVerification(ctx context.Context, user *model.User, emailVerificationToken string) error
 	ResendEmailVerification(ctx context.Context, email *model.User, emailVerificationToken string) error
-	VerifyEmail(ctx context.Context, token *model.Token) (*string, error)
+	VerifyEmail(ctx context.Context, token *model.Token) (*model.User, error)
 	AuthenticateWithFirebase(ctx context.Context, idToken, email, firstName, lastName string) (*model.User, error)
 	Authenticate(ctx context.Context, email, password string) (*model.User, error)
 	GetUserProfile(ctx context.Context, userID string) (*model.User, error)
+	GetUserByID(ctx context.Context, userID string) (*model.User, error)
 	UpdateProfileDetails(ctx context.Context, userID string, profileDetails *pb_authentication.UpdateUserProfileRequest) (*model.User, error)
 	DeleteUser(ctx context.Context, userID string) error
 }
@@ -244,7 +245,7 @@ func (service *UserService) ResendEmailVerification(
 }
 
 // VerifyEmail verifies a user's email
-func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token) (*string, error) {
+func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token) (*model.User, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -271,7 +272,7 @@ func (service *UserService) VerifyEmail(ctx context.Context, token *model.Token)
 	); err != nil {
 		return nil, err
 	}
-	return &user.Email, nil
+	return user, nil
 }
 
 // Authenticate authenticates a user and provides a token
@@ -309,6 +310,25 @@ func (service *UserService) Authenticate(ctx context.Context, email, password st
 
 // GetUserProfile gets a user's profile
 func (service *UserService) GetUserProfile(ctx context.Context, userID string) (*model.User, error) {
+	logger, err := log.GetLoggerFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	userIDObj, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("Could not convert user ID %s to ObjectID", userID))
+		return nil, &Error{Message: InvalidUserIDError}
+	}
+	user, err := service.userRepository.GetByUserID(ctx, userIDObj)
+	if err != nil {
+		logger.Error(err, "Error getting user by ID")
+		return nil, fmt.Errorf("Error getting user by ID")
+	}
+	return user, nil
+}
+
+// GetUserByID gets a user by their ID
+func (service *UserService) GetUserByID(ctx context.Context, userID string) (*model.User, error) {
 	logger, err := log.GetLoggerFromContext(ctx)
 	if err != nil {
 		return nil, err

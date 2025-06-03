@@ -63,6 +63,7 @@ func (authenticator *Manager) SignToken(tokenClaims *commonJWT.TokenClaims) (*st
 		{Key: commonJWT.TypeClaim, Value: tokenClaims.Type},
 		{Key: commonJWT.ExpiryClaim, Value: tokenClaims.Expiry},
 		{Key: commonJWT.UserIDClaim, Value: tokenClaims.UserID},
+		{Key: commonJWT.HasPaidFeaturesClaim, Value: tokenClaims.HasPaidFeatures},
 	}
 	return authenticator.tokenSigner.SignToken(claims...)
 }
